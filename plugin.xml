@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<plugin xmlns="http://cordova.apache.org/ns/plugins/1.0"
+    id="com.evothings.ble"
+    version="1.0.1">
+  <engines>
+    <engine name="cordova" version=">=3.0.0" />
+  </engines>
+
+  <name>Evothings BLE API</name>
+
+  <js-module src="ble.js" name="BLE">
+  </js-module>
+
+  <platform name="android">
+    <source-file src="src/android/ble.java" target-dir="src/com/evothings" />
+  </platform>
+
+<!--
+  <platform name="ios">
+    <source-file src="src/ios/ble.m" />
+    <header-file src="src/ios/ble.h" />
+  </platform>
+-->
+</plugin>

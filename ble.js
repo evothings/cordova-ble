@@ -8,10 +8,11 @@ var exec = cordova.require('cordova/exec');
 * To conserve energy, call stopScan() as soon as you've found the device you're looking for.
 * Calling this function while scanning is in progress has no effect?
 *
-* win(address, rssi, name)
+* win(address, rssi, name, scanRecord)
 * address is a string on the form xx:xx:xx:xx:xx:xx, where x are hexadecimal characters.
 * rssi is an integer.
 * name is a string or nil.
+* scanRecord is a string of bytes.
 *
 * fail(errorCode)
 *
@@ -31,11 +32,28 @@ exports.stopScan = function() {
 /** Connect to a remote device.
 * address: from startScan().
 *
-* win(remoteDeviceHandle)
+* win(device, state)
+* Will be called whenever the device's connection state changes.
+*
 * fail(errorCode)
 */
 exports.connect = function(address, win, fail) {
 	exec(win, fail, 'BLE', 'connect', address);
+};
+
+exports.connectionState = {
+	[0] = 'STATE_DISCONNECTED',
+	[1] = 'STATE_CONNECTING',
+	[2] = 'STATE_CONNECTED',
+	[3] = 'STATE_DISCONNECTING',
+};
+
+/** Close the connection to a remote device.
+* Frees any native resources.
+* Causes callbacks to the function passed to connect().
+*/
+exports.close = function(device) {
+	exec(null, null, 'BLE', 'close', device);
 };
 
 /** Fetch the remote device's RSSI (signal strength).
@@ -52,7 +70,7 @@ exports.rssi = function(device, win, fail) {
 *
 * win(service)
 * service is a json object that also serves as a handle to the service in other functions.
-* contents: uuid,	int type, int characteristicCount.
+* contents: int handle, string uuid, int type, int characteristicCount.
 * uuid is a string formatted according to RFC 4122.
 */
 exports.services = function(device, win, fail) {
@@ -68,10 +86,10 @@ exports.serviceType = {
 * This function cannot fail.
 *
 * win(characteristic)
-* uuid, int permissions, int properties, int writeType, int descriptorCount.
+* int handle, string uuid, int permissions, int properties, int writeType, int descriptorCount.
 */
-exports.characteristics = function(service, win) {
-	exec(win, null, 'BLE', 'characteristics', service);
+exports.characteristics = function(device, serviceHandle, win) {
+	exec(win, null, 'BLE', 'characteristics', [device, service]);
 };
 
 exports.permission = {
@@ -106,10 +124,10 @@ exports.writeType = {
 * This function cannot fail.
 *
 * win(descriptor)
-* uuid, int permissions.
+* int handle, string uuid, int permissions.
 */
-exports.descriptors = function(characteristic, win) {
-	exec(win, null, 'BLE', 'descriptors', characteristic);
+exports.descriptors = function(device, characteristicHandle, win) {
+	exec(win, null, 'BLE', 'descriptors', [device, characteristicHandle]);
 };
 
 
@@ -118,12 +136,13 @@ exports.descriptors = function(characteristic, win) {
 // data is a string that contains byte values. use charCodeAt() to extract individual values.
 
 /** Reads a characteristic's value from the remote device.
+// todo: charset?
 *
 * win(data)
 * fail(errorCode)
 */
-exports.readCharacteristic = function(characteristic, win, fail) {
-	exec(win, fail, 'BLE', 'readCharacteristic', characteristic);
+exports.readCharacteristic = function(device, characteristicHandle, win, fail) {
+	exec(win, fail, 'BLE', 'readCharacteristic', [device, characteristicHandle]);
 };
 
 /** Reads a descriptor's value from the remote device.
@@ -131,17 +150,19 @@ exports.readCharacteristic = function(characteristic, win, fail) {
 * win(data)
 * fail(errorCode)
 */
-exports.readDescriptor = function(descriptor, win, fail) {
-	exec(win, fail, 'BLE', 'readDescriptor', descriptor);
+exports.readDescriptor = function(device, descriptorHandle, win, fail) {
+	exec(win, fail, 'BLE', 'readDescriptor', [device, descriptorHandle]);
 };
 
 /** Write a characteristic's value to the remote device.
+* \a charset is the name of the charset that will be used to convert the data to bytes.
+* Useful charsets include "ISO-8859-1" and "UTF-8".
 *
 * win()
 * fail(errorCode)
 */
-exports.writeCharacteristic(characteristic, data, win, fail) {
-	exec(win, fail, 'BLE', 'writeCharacteristic', [characteristic, data]);
+exports.writeCharacteristic(device, characteristicHandle, data, charset, win, fail) {
+	exec(win, fail, 'BLE', 'writeCharacteristic', [device, characteristicHandle, data, charset]);
 };
 
 /** Write a descriptor's value to the remote device.
@@ -149,8 +170,8 @@ exports.writeCharacteristic(characteristic, data, win, fail) {
 * win()
 * fail(errorCode)
 */
-exports.writeDescriptor(descriptor, data, win, fail) {
-	exec(win, fail, 'BLE', 'writeDescriptor', [descriptor, data]);
+exports.writeDescriptor(device, descriptorHandle, data, charset, win, fail) {
+	exec(win, fail, 'BLE', 'writeDescriptor', [device, descriptorHandle, data, charset]);
 };
 
 /** Request notification on changes to a characteristic's value.
@@ -161,11 +182,11 @@ exports.writeDescriptor(descriptor, data, win, fail) {
 * in addition to calling this function.
 * Refer to your device's documentation.
 *
-* win()	-- called every time the value changes.
+* win(data)	-- called every time the value changes.
 * fail(errorCode)
 */
-exports.enableNotification(characteristic, win, fail) {
-	exec(win, fail, 'BLE', 'enableNotification', characteristic);
+exports.enableNotification(device, characteristicHandle, win, fail) {
+	exec(win, fail, 'BLE', 'enableNotification', [device, characteristicHandle]);
 };
 
 /** Disable notification of changes to a characteristic's value.
@@ -173,6 +194,6 @@ exports.enableNotification(characteristic, win, fail) {
 * win()
 * fail(errorCode)
 */
-exports.disableNotification(characteristic, win, fail) {
-	exec(win, fail, 'BLE', 'disableNotification', characteristic);
+exports.disableNotification(device, characteristicHandle, win, fail) {
+	exec(win, fail, 'BLE', 'disableNotification', [device, characteristicHandle]);
 };

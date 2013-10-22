@@ -131,18 +131,22 @@ exports.descriptors = function(device, characteristicHandle, win) {
 };
 
 
-// fetch and return.
+// read*: fetch and return value in one op.
 // values should be cached on the JS side, if at all.
-// data is a string that contains byte values. use charCodeAt() to extract individual values.
+
+// \a charset is the name of the charset that will be used to convert the data to/from bytes.
+// Useful charsets include "ISO-8859-1" and "UTF-8".
+// "UTF-8" is standard for textual data in BLE.
+// "ISO-8859-1" does no conversion at all, resulting in a string that contains byte values.
+// You can then use charCodeAt() to extract individual values.
 
 /** Reads a characteristic's value from the remote device.
-// todo: charset?
 *
 * win(data)
 * fail(errorCode)
 */
-exports.readCharacteristic = function(device, characteristicHandle, win, fail) {
-	exec(win, fail, 'BLE', 'readCharacteristic', [device, characteristicHandle]);
+exports.readCharacteristic = function(device, characteristicHandle, charset, win, fail) {
+	exec(win, fail, 'BLE', 'readCharacteristic', [device, characteristicHandle, charset]);
 };
 
 /** Reads a descriptor's value from the remote device.
@@ -150,18 +154,16 @@ exports.readCharacteristic = function(device, characteristicHandle, win, fail) {
 * win(data)
 * fail(errorCode)
 */
-exports.readDescriptor = function(device, descriptorHandle, win, fail) {
-	exec(win, fail, 'BLE', 'readDescriptor', [device, descriptorHandle]);
+exports.readDescriptor = function(device, descriptorHandle, charset, win, fail) {
+	exec(win, fail, 'BLE', 'readDescriptor', [device, descriptorHandle, charset]);
 };
 
 /** Write a characteristic's value to the remote device.
-* \a charset is the name of the charset that will be used to convert the data to bytes.
-* Useful charsets include "ISO-8859-1" and "UTF-8".
 *
 * win()
 * fail(errorCode)
 */
-exports.writeCharacteristic(device, characteristicHandle, data, charset, win, fail) {
+exports.writeCharacteristic = function(device, characteristicHandle, data, charset, win, fail) {
 	exec(win, fail, 'BLE', 'writeCharacteristic', [device, characteristicHandle, data, charset]);
 };
 
@@ -170,7 +172,7 @@ exports.writeCharacteristic(device, characteristicHandle, data, charset, win, fa
 * win()
 * fail(errorCode)
 */
-exports.writeDescriptor(device, descriptorHandle, data, charset, win, fail) {
+exports.writeDescriptor = function(device, descriptorHandle, data, charset, win, fail) {
 	exec(win, fail, 'BLE', 'writeDescriptor', [device, descriptorHandle, data, charset]);
 };
 
@@ -185,7 +187,7 @@ exports.writeDescriptor(device, descriptorHandle, data, charset, win, fail) {
 * win(data)	-- called every time the value changes.
 * fail(errorCode)
 */
-exports.enableNotification(device, characteristicHandle, win, fail) {
+exports.enableNotification = function(device, characteristicHandle, win, fail) {
 	exec(win, fail, 'BLE', 'enableNotification', [device, characteristicHandle]);
 };
 
@@ -194,6 +196,10 @@ exports.enableNotification(device, characteristicHandle, win, fail) {
 * win()
 * fail(errorCode)
 */
-exports.disableNotification(device, characteristicHandle, win, fail) {
+exports.disableNotification = function(device, characteristicHandle, win, fail) {
 	exec(win, fail, 'BLE', 'disableNotification', [device, characteristicHandle]);
+};
+
+exports.testCharConversion = function(i, charset, win) {
+	exec(win, null, 'BLE', 'testCharConversion', [i, charset]);
 };

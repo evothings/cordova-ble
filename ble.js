@@ -1,4 +1,5 @@
-
+cordova.define.remove("com.evothings.ble.BLE");
+cordova.define("com.evothings.ble.BLE", function(require, exports, module) {
 var exports = module.exports;
 var exec = cordova.require('cordova/exec');
 
@@ -20,13 +21,13 @@ var exec = cordova.require('cordova/exec');
 * maybe: add scanRecord.
 */
 exports.startScan = function(win, fail) {
-	exec(win, fail, 'BLE', 'startScan');
+	exec(win, fail, 'BLE', 'startScan', []);
 };
 
 /** Stops scanning for devices.
 */
 exports.stopScan = function() {
-	exec(null, null, 'BLE', 'stopScan');
+	exec(null, null, 'BLE', 'stopScan', []);
 };
 
 /** Connect to a remote device.
@@ -38,14 +39,14 @@ exports.stopScan = function() {
 * fail(errorCode)
 */
 exports.connect = function(address, win, fail) {
-	exec(win, fail, 'BLE', 'connect', address);
+	exec(win, fail, 'BLE', 'connect', [address]);
 };
 
 exports.connectionState = {
-	[0] = 'STATE_DISCONNECTED',
-	[1] = 'STATE_CONNECTING',
-	[2] = 'STATE_CONNECTED',
-	[3] = 'STATE_DISCONNECTING',
+	0: 'STATE_DISCONNECTED',
+	1: 'STATE_CONNECTING',
+	2: 'STATE_CONNECTED',
+	3: 'STATE_DISCONNECTING',
 };
 
 /** Close the connection to a remote device.
@@ -53,7 +54,7 @@ exports.connectionState = {
 * Causes callbacks to the function passed to connect().
 */
 exports.close = function(device) {
-	exec(null, null, 'BLE', 'close', device);
+	exec(null, null, 'BLE', 'close', [device]);
 };
 
 /** Fetch the remote device's RSSI (signal strength).
@@ -62,7 +63,7 @@ exports.close = function(device) {
 * fail(errorCode)
 */
 exports.rssi = function(device, win, fail) {
-	exec(win, fail, 'BLE', 'rssi', device);
+	exec(win, fail, 'BLE', 'rssi', [device]);
 };
 
 // returns handles that ought to remain valid over the program's lifetime.
@@ -74,12 +75,12 @@ exports.rssi = function(device, win, fail) {
 * uuid is a string formatted according to RFC 4122.
 */
 exports.services = function(device, win, fail) {
-	exec(win, fail, 'BLE', 'services', device);
+	exec(win, fail, 'BLE', 'services', [device]);
 };
 
 exports.serviceType = {
-	[0] = 'SERVICE_TYPE_PRIMARY',
-	[1] = 'SERVICE_TYPE_SECONDARY',
+	0: 'SERVICE_TYPE_PRIMARY',
+	1: 'SERVICE_TYPE_SECONDARY',
 };
 
 /** Iterate through a service's characteristics.
@@ -89,35 +90,35 @@ exports.serviceType = {
 * int handle, string uuid, int permissions, int properties, int writeType, int descriptorCount.
 */
 exports.characteristics = function(device, serviceHandle, win) {
-	exec(win, null, 'BLE', 'characteristics', [device, service]);
+	exec(win, null, 'BLE', 'characteristics', [device, serviceHandle]);
 };
 
 exports.permission = {
-	[1] = 'PERMISSION_READ',
-	[2] = 'PERMISSION_READ_ENCRYPTED',
-	[4] = 'PERMISSION_READ_ENCRYPTED_MITM',
-	[16] = 'PERMISSION_WRITE',
-	[32] = 'PERMISSION_WRITE_ENCRYPTED',
-	[64] = 'PERMISSION_WRITE_ENCRYPTED_MITM',
-	[128] = 'PERMISSION_WRITE_SIGNED',
-	[256] = 'PERMISSION_WRITE_SIGNED_MITM',
+	1: 'PERMISSION_READ',
+	2: 'PERMISSION_READ_ENCRYPTED',
+	4: 'PERMISSION_READ_ENCRYPTED_MITM',
+	16: 'PERMISSION_WRITE',
+	32: 'PERMISSION_WRITE_ENCRYPTED',
+	64: 'PERMISSION_WRITE_ENCRYPTED_MITM',
+	128: 'PERMISSION_WRITE_SIGNED',
+	256: 'PERMISSION_WRITE_SIGNED_MITM',
 };
 
 exports.property = {
-	[1] = 'PROPERTY_BROADCAST',
-	[2] = 'PROPERTY_READ',
-	[4] = 'PROPERTY_WRITE_NO_RESPONSE',
-	[8] = 'PROPERTY_WRITE',
-	[16] = 'PROPERTY_NOTIFY',
-	[32] = 'PROPERTY_INDICATE',
-	[64] = 'PROPERTY_SIGNED_WRITE',
-	[128] = 'PROPERTY_EXTENDED_PROPS',
+	1: 'PROPERTY_BROADCAST',
+	2: 'PROPERTY_READ',
+	4: 'PROPERTY_WRITE_NO_RESPONSE',
+	8: 'PROPERTY_WRITE',
+	16: 'PROPERTY_NOTIFY',
+	32: 'PROPERTY_INDICATE',
+	64: 'PROPERTY_SIGNED_WRITE',
+	128: 'PROPERTY_EXTENDED_PROPS',
 };
 
 exports.writeType = {
-	[1] = 'WRITE_TYPE_NO_RESPONSE',
-	[2] = 'WRITE_TYPE_DEFAULT',
-	[4] = 'WRITE_TYPE_SIGNED',
+	1: 'WRITE_TYPE_NO_RESPONSE',
+	2: 'WRITE_TYPE_DEFAULT',
+	4: 'WRITE_TYPE_SIGNED',
 };
 
 /** Iterate through a characteristic's descriptors.
@@ -134,19 +135,13 @@ exports.descriptors = function(device, characteristicHandle, win) {
 // read*: fetch and return value in one op.
 // values should be cached on the JS side, if at all.
 
-// \a charset is the name of the charset that will be used to convert the data to/from bytes.
-// Useful charsets include "ISO-8859-1" and "UTF-8".
-// "UTF-8" is standard for textual data in BLE.
-// "ISO-8859-1" does no conversion at all, resulting in a string that contains byte values.
-// You can then use charCodeAt() to extract individual values.
-
 /** Reads a characteristic's value from the remote device.
 *
 * win(data)
 * fail(errorCode)
 */
-exports.readCharacteristic = function(device, characteristicHandle, charset, win, fail) {
-	exec(win, fail, 'BLE', 'readCharacteristic', [device, characteristicHandle, charset]);
+exports.readCharacteristic = function(device, characteristicHandle, win, fail) {
+	exec(win, fail, 'BLE', 'readCharacteristic', [device, characteristicHandle]);
 };
 
 /** Reads a descriptor's value from the remote device.
@@ -154,8 +149,8 @@ exports.readCharacteristic = function(device, characteristicHandle, charset, win
 * win(data)
 * fail(errorCode)
 */
-exports.readDescriptor = function(device, descriptorHandle, charset, win, fail) {
-	exec(win, fail, 'BLE', 'readDescriptor', [device, descriptorHandle, charset]);
+exports.readDescriptor = function(device, descriptorHandle, win, fail) {
+	exec(win, fail, 'BLE', 'readDescriptor', [device, descriptorHandle]);
 };
 
 /** Write a characteristic's value to the remote device.
@@ -163,8 +158,8 @@ exports.readDescriptor = function(device, descriptorHandle, charset, win, fail) 
 * win()
 * fail(errorCode)
 */
-exports.writeCharacteristic = function(device, characteristicHandle, data, charset, win, fail) {
-	exec(win, fail, 'BLE', 'writeCharacteristic', [device, characteristicHandle, data, charset]);
+exports.writeCharacteristic = function(device, characteristicHandle, data, win, fail) {
+	exec(win, fail, 'BLE', 'writeCharacteristic', [device, characteristicHandle, data]);
 };
 
 /** Write a descriptor's value to the remote device.
@@ -172,8 +167,8 @@ exports.writeCharacteristic = function(device, characteristicHandle, data, chars
 * win()
 * fail(errorCode)
 */
-exports.writeDescriptor = function(device, descriptorHandle, data, charset, win, fail) {
-	exec(win, fail, 'BLE', 'writeDescriptor', [device, descriptorHandle, data, charset]);
+exports.writeDescriptor = function(device, descriptorHandle, data, win, fail) {
+	exec(win, fail, 'BLE', 'writeDescriptor', [device, descriptorHandle, data]);
 };
 
 /** Request notification on changes to a characteristic's value.
@@ -200,6 +195,32 @@ exports.disableNotification = function(device, characteristicHandle, win, fail) 
 	exec(win, fail, 'BLE', 'disableNotification', [device, characteristicHandle]);
 };
 
-exports.testCharConversion = function(i, charset, win) {
-	exec(win, null, 'BLE', 'testCharConversion', [i, charset]);
+/** i is an integer. It is converted to byte and put in an array[1].
+* The array is returned.
+* assert(string.charCodeAt(0) == i).
+*
+* win(string)
+*/
+exports.testCharConversion = function(i, win) {
+	exec(win, null, 'BLE', 'testCharConversion', [i]);
 };
+
+/** Resets the device's Bluetooth system.
+* This is useful on some buggy devices where BLE functions stops responding until reset.
+* Read: Android 4.3.
+* This function takes 3-5 seconds.
+*
+* win()
+* fail(errorCode)
+*/
+exports.reset = function(win, fail) {
+	exec(win, fail, 'BLE', 'reset', []);
+};
+
+exports.fromUtf8 = function(s) {
+	return decodeURIComponent(escape(s));
+};
+exports.toUtf8 = function(s) {
+	return unescape(encodeURIComponent(s));
+};
+});

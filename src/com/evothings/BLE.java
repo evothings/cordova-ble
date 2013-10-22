@@ -6,23 +6,25 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import android.bluetooth.*;
 import android.bluetooth.BluetoothAdapter.LeScanCallback;
-import android.content.Context;
+import android.content.*;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.io.UnsupportedEncodingException;
 
 public class BLE extends CordovaPlugin implements LeScanCallback {
 	private CallbackContext mScanCallbackContext;
+	private CallbackContext mResetCallbackContext;
 	private Context mContext;
 
 	int mNextGattHandle = 1;
 	HashMap<Integer, GattHandler> mGatt = null;
 
-
 	@Override
 	public void initialize(final CordovaInterface cordova, CordovaWebView webView) {
 		super.initialize(cordova, webView);
 		mContext = webView.getContext();
+
+		mContext.registerReceiver(new BluetoothStateReceiver(), new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
 	}
 
 	@Override
@@ -42,7 +44,21 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		else if("writeDescriptor".equals(action)) { writeDescriptor(args, callbackContext); return true; }
 		else if("enableNotification".equals(action)) { enableNotification(args, callbackContext); return true; }
 		else if("disableNotification".equals(action)) { disableNotification(args, callbackContext); return true; }
+		else if("testCharConversion".equals(action)) { testCharConversion(args, callbackContext); return true; }
+		else if("reset".equals(action)) { reset(args, callbackContext); return true; }
 		return false;
+	}
+
+	private void keepCallback(final CallbackContext callbackContext, JSONObject message) {
+		PluginResult r = new PluginResult(PluginResult.Status.OK, message);
+		r.setKeepCallback(true);
+		callbackContext.sendPluginResult(r);
+	}
+
+	private void keepCallback(final CallbackContext callbackContext, String message) {
+		PluginResult r = new PluginResult(PluginResult.Status.OK, message);
+		r.setKeepCallback(true);
+		callbackContext.sendPluginResult(r);
 	}
 
 	private void startScan(final CordovaArgs args, final CallbackContext callbackContext) {
@@ -60,14 +76,20 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 	}
 
 	public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord) {
+		if(mScanCallbackContext == null) {
+			return;
+		}
 		try {
+			System.out.println("onLeScan "+device.getAddress()+" "+rssi+" "+device.getName());
 			JSONObject o = new JSONObject();
 			o.put("address", device.getAddress());
 			o.put("rssi", rssi);
 			o.put("name", device.getName());
-			o.put("scanRecord", scanRecord);
-			mScanCallbackContext.success(o);
+			o.put("scanRecord", new String(scanRecord, "ISO-8859-1"));
+			keepCallback(mScanCallbackContext, o);
 		} catch(JSONException e) {
+			mScanCallbackContext.error(e.toString());
+		} catch(UnsupportedEncodingException e) {
 			mScanCallbackContext.error(e.toString());
 		}
 	}
@@ -75,6 +97,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 	private void stopScan(final CordovaArgs args, final CallbackContext callbackContext) {
 		BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
 		adapter.stopLeScan(this);
+		mScanCallbackContext = null;
 	}
 
 	private void connect(final CordovaArgs args, final CallbackContext callbackContext) {
@@ -141,7 +164,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			o.put("descriptorCount", c.getDescriptors().size());
 
 			gh.mNextHandle++;
-			callbackContext.success(o);
+			keepCallback(callbackContext, o);
 		}
 	}
 
@@ -159,7 +182,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			o.put("permissions", d.getPermissions());
 
 			gh.mNextHandle++;
-			callbackContext.success(o);
+			keepCallback(callbackContext, o);
 		}
 	}
 
@@ -170,7 +193,6 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			public void run() {
 				try {
 					gh.mCurrentOpContext = callbackContext;
-					gh.mCurrentCharset = args.getString(2);
 					if(!gh.mGatt.readCharacteristic(gh.mCharacteristics.get(args.getInt(1)))) {
 						gh.mCurrentOpContext = null;
 						callbackContext.error("readCharacteristic");
@@ -192,7 +214,6 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			public void run() {
 				try {
 					gh.mCurrentOpContext = callbackContext;
-					gh.mCurrentCharset = args.getString(2);
 					if(!gh.mGatt.readDescriptor(gh.mDescriptors.get(args.getInt(1)))) {
 						gh.mCurrentOpContext = null;
 						callbackContext.error("readDescriptor");
@@ -215,18 +236,13 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 				try {
 					gh.mCurrentOpContext = callbackContext;
 					BluetoothGattCharacteristic c = gh.mCharacteristics.get(args.getInt(1));
-					String v = args.getString(2);
-					String charset = args.getString(3);
-					c.setValue(v.getBytes(charset));
+					c.setValue(args.getArrayBuffer(2));
 					if(!gh.mGatt.writeCharacteristic(c)) {
 						gh.mCurrentOpContext = null;
 						callbackContext.error("writeCharacteristic");
 						gh.process();
 					}
 				} catch(JSONException e) {
-					callbackContext.error(e.toString());
-					gh.process();
-				} catch(UnsupportedEncodingException e) {
 					callbackContext.error(e.toString());
 					gh.process();
 				}
@@ -243,18 +259,13 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 				try {
 					gh.mCurrentOpContext = callbackContext;
 					BluetoothGattDescriptor d = gh.mDescriptors.get(args.getInt(1));
-					String v = args.getString(2);
-					String charset = args.getString(3);
-					d.setValue(v.getBytes(charset));
+					d.setValue(args.getArrayBuffer(2));
 					if(!gh.mGatt.writeDescriptor(d)) {
 						gh.mCurrentOpContext = null;
 						callbackContext.error("writeDescriptor");
 						gh.process();
 					}
 				} catch(JSONException e) {
-					callbackContext.error(e.toString());
-					gh.process();
-				} catch(UnsupportedEncodingException e) {
 					callbackContext.error(e.toString());
 					gh.process();
 				}
@@ -284,13 +295,70 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 	}
 
 	private void testCharConversion(final CordovaArgs args, final CallbackContext callbackContext) throws JSONException {
-		try {
-			byte[] b = {(byte)args.getInt(0)};
-			callbackContext.success(new String(b, args.getString(1)));
-		} catch(UnsupportedEncodingException e) {
-			callbackContext.error(e.toString());
-		}
+		byte[] b = {(byte)args.getInt(0)};
+		callbackContext.success(b);
 	}
+
+	private void reset(final CordovaArgs args, final CallbackContext cc) throws JSONException {
+		mResetCallbackContext = null;
+		BluetoothAdapter a = BluetoothAdapter.getDefaultAdapter();
+		if(mScanCallbackContext != null) {
+			a.stopLeScan(this);
+			mScanCallbackContext = null;
+		}
+		int state = a.getState();
+		//STATE_OFF, STATE_TURNING_ON, STATE_ON, STATE_TURNING_OFF.
+		if(state == BluetoothAdapter.STATE_TURNING_ON) {
+			// reset in progress; wait for STATE_ON.
+			mResetCallbackContext = cc;
+			return;
+		}
+		if(state == BluetoothAdapter.STATE_TURNING_OFF) {
+			// reset in progress; wait for STATE_OFF.
+			mResetCallbackContext = cc;
+			return;
+		}
+		if(state == BluetoothAdapter.STATE_OFF) {
+			boolean res = a.enable();
+			if(res) {
+				mResetCallbackContext = cc;
+			} else {
+				cc.error("enable");
+			}
+			return;
+		}
+		if(state == BluetoothAdapter.STATE_ON) {
+			boolean res = a.disable();
+			if(res) {
+				mResetCallbackContext = cc;
+			} else {
+				cc.error("disable");
+			}
+			return;
+		}
+		cc.error("Unknown state: "+state);
+	}
+
+	class BluetoothStateReceiver extends BroadcastReceiver {
+		public void onReceive(Context context, Intent intent) {
+			BluetoothAdapter a = BluetoothAdapter.getDefaultAdapter();
+			int state = a.getState();
+			System.out.println("BluetoothState: "+a);
+			if(mResetCallbackContext != null) {
+				if(state == BluetoothAdapter.STATE_OFF) {
+					boolean res = a.enable();
+					if(!res) {
+						mResetCallbackContext.error("enable");
+						mResetCallbackContext = null;
+					}
+				}
+				if(state == BluetoothAdapter.STATE_ON) {
+					mResetCallbackContext.success();
+					mResetCallbackContext = null;
+				}
+			}
+		}
+	};
 
 	/* Running more than one operation of certain types on remote Gatt devices
 	* seem to cause it to stop responding.
@@ -302,7 +370,6 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		final int mHandle;
 		LinkedList<Runnable> mOperations = new LinkedList<Runnable>();
 		CallbackContext mConnectContext, mRssiContext, mCurrentOpContext;
-		String mCurrentCharset;
 		BluetoothGatt mGatt;
 		int mNextHandle = 1;
 		HashMap<Integer, BluetoothGattService> mServices;
@@ -331,7 +398,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 					JSONObject o = new JSONObject();
 					o.put("device", mHandle);
 					o.put("state", newState);
-					mConnectContext.success(o);
+					keepCallback(mConnectContext, o);
 				} catch(JSONException e) {
 					assert(false);
 				}
@@ -365,7 +432,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 						o.put("characteristicCount", s.getCharacteristics().size());
 
 						mNextHandle++;
-						mCurrentOpContext.success(o);
+						keepCallback(mCurrentOpContext, o);
 					} catch(JSONException e) {
 						assert(false);
 					}
@@ -379,11 +446,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		@Override
 		public void onCharacteristicRead(BluetoothGatt g, BluetoothGattCharacteristic c, int status) {
 			if(status == BluetoothGatt.GATT_SUCCESS) {
-				try {
-					mCurrentOpContext.success(new String(c.getValue(), mCurrentCharset));
-				} catch(UnsupportedEncodingException e) {
-					mCurrentOpContext.error(e.toString());
-				}
+				mCurrentOpContext.success(c.getValue());
 			} else {
 				mCurrentOpContext.error(status);
 			}
@@ -393,11 +456,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		@Override
 		public void onDescriptorRead(BluetoothGatt g, BluetoothGattDescriptor d, int status) {
 			if(status == BluetoothGatt.GATT_SUCCESS) {
-				try {
-					mCurrentOpContext.success(new String(d.getValue(), mCurrentCharset));
-				} catch(UnsupportedEncodingException e) {
-					mCurrentOpContext.error(e.toString());
-				}
+				mCurrentOpContext.success(d.getValue());
 			} else {
 				mCurrentOpContext.error(status);
 			}
@@ -426,7 +485,12 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		}
 		@Override
 		public void onCharacteristicChanged(BluetoothGatt g, BluetoothGattCharacteristic c) {
-			mNotifications.get(c).success(c.getValue());
+			CallbackContext cc = mNotifications.get(c);
+			try {
+				keepCallback(cc, new String(c.getValue(), "ISO-8859-1"));
+			} catch(UnsupportedEncodingException e) {
+				cc.error(e.toString());
+			}
 		}
 	};
 }

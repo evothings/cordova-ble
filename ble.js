@@ -71,8 +71,9 @@ exports.rssi = function(device, win, fail) {
 *
 * win(service)
 * service is a json object that also serves as a handle to the service in other functions.
-* contents: int handle, string uuid, int type, int characteristicCount.
+* contents: int handle, string uuid, int type, int characteristicCount, int serviceCount.
 * uuid is a string formatted according to RFC 4122.
+* serviceCount is the number of callbacks you'll get.
 */
 exports.services = function(device, win, fail) {
 	exec(win, fail, 'BLE', 'services', [device]);

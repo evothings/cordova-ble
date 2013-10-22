@@ -9,6 +9,7 @@ import android.bluetooth.BluetoothAdapter.LeScanCallback;
 import android.content.*;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.io.UnsupportedEncodingException;
 
 public class BLE extends CordovaPlugin implements LeScanCallback {
@@ -417,7 +418,8 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		@Override
 		public void onServicesDiscovered(BluetoothGatt g, int status) {
 			if(status == BluetoothGatt.GATT_SUCCESS) {
-				for(BluetoothGattService s : g.getServices()) {
+				List<BluetoothGattService> services = g.getServices();
+				for(BluetoothGattService s : services) {
 					// give the service a handle.
 					if(mServices == null)
 						mServices = new HashMap<Integer, BluetoothGattService>();
@@ -430,6 +432,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 						o.put("uuid", s.getUuid().toString());
 						o.put("type", s.getType());
 						o.put("characteristicCount", s.getCharacteristics().size());
+						o.put("serviceCount", services.size());
 
 						mNextHandle++;
 						keepCallback(mCurrentOpContext, o);

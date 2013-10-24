@@ -135,6 +135,7 @@ exports.descriptors = function(device, characteristicHandle, win) {
 
 // read*: fetch and return value in one op.
 // values should be cached on the JS side, if at all.
+// data is an ArrayBuffer.
 
 /** Reads a characteristic's value from the remote device.
 *
@@ -218,10 +219,10 @@ exports.reset = function(win, fail) {
 	exec(win, fail, 'BLE', 'reset', []);
 };
 
-exports.fromUtf8 = function(s) {
-	return decodeURIComponent(escape(s));
+exports.fromUtf8 = function(arrayBuf) {
+	return decodeURIComponent(escape(String.fromCharCode.apply(null, new Uint8Array(arrayBuf))));
 };
 exports.toUtf8 = function(s) {
-	return unescape(encodeURIComponent(s));
+	return new Uint8Array(unescape(encodeURIComponent(s)));
 };
 });

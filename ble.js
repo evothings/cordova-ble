@@ -72,7 +72,7 @@ exports.rssi = function(device, win, fail) {
 * win(service)
 * service is a json object that also serves as a handle to the service in other functions.
 * contents: int handle, string uuid, int type, int characteristicCount, int serviceCount.
-* uuid is a string formatted according to RFC 4122.
+* uuid is a string formatted according to RFC 4122, all lowercase.
 * serviceCount is the number of callbacks you'll get.
 */
 exports.services = function(device, win, fail) {
@@ -161,7 +161,7 @@ exports.readDescriptor = function(device, descriptorHandle, win, fail) {
 * fail(errorCode)
 */
 exports.writeCharacteristic = function(device, characteristicHandle, data, win, fail) {
-	exec(win, fail, 'BLE', 'writeCharacteristic', [device, characteristicHandle, data]);
+	exec(win, fail, 'BLE', 'writeCharacteristic', [device, characteristicHandle, data.buffer]);
 };
 
 /** Write a descriptor's value to the remote device.
@@ -170,7 +170,7 @@ exports.writeCharacteristic = function(device, characteristicHandle, data, win, 
 * fail(errorCode)
 */
 exports.writeDescriptor = function(device, descriptorHandle, data, win, fail) {
-	exec(win, fail, 'BLE', 'writeDescriptor', [device, descriptorHandle, data]);
+	exec(win, fail, 'BLE', 'writeDescriptor', [device, descriptorHandle, data.buffer]);
 };
 
 /** Request notification on changes to a characteristic's value.

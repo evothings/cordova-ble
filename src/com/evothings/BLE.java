@@ -243,6 +243,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 				try {
 					gh.mCurrentOpContext = callbackContext;
 					BluetoothGattCharacteristic c = gh.mCharacteristics.get(args.getInt(1));
+					System.out.println("writeCharacteristic("+args.getInt(0)+", "+args.getInt(1)+", "+args.getString(2)+")");
 					c.setValue(args.getArrayBuffer(2));
 					if(!gh.mGatt.writeCharacteristic(c)) {
 						gh.mCurrentOpContext = null;

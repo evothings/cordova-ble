@@ -3,26 +3,33 @@ cordova.define("com.evothings.ble.BLE", function(require, exports, module) {
 var exports = module.exports;
 var exec = cordova.require('cordova/exec');
 
+/** @module com.evothings.ble */
+
 /** Starts scanning for devices.
-* Found devices and errors will be reported to the supplied callbacks.
-* Will keep scanning indefinitely until you call stopScan().
+* <p>Found devices and errors will be reported to the supplied callbacks.
+* <p>Will keep scanning indefinitely until you call stopScan().
 * To conserve energy, call stopScan() as soon as you've found the device you're looking for.
-* Calling this function while scanning is in progress has no effect?
+* <p>Calling this function while scanning is in progress has no effect?
 *
-* win(address, rssi, name, scanRecord)
-* address is a string on the form xx:xx:xx:xx:xx:xx, where x are hexadecimal characters.
-* rssi is an integer.
-* name is a string or nil.
-* scanRecord is a string of bytes.
-*
-* fail(errorCode)
-*
-* todo: define errorCodes.
-* maybe: add scanRecord.
+* @param {scanCallback} win
+* @param {failCallback} fail
 */
 exports.startScan = function(win, fail) {
 	exec(win, fail, 'BLE', 'startScan', []);
 };
+
+/** This function is called when a new device is discovered.
+* @callback scanCallback
+* @param {string} address - Has the form xx:xx:xx:xx:xx:xx, where x are hexadecimal characters.
+* @param {number} rssi - A negative integer, the signal strength in decibels.
+* @param {string} name - The device's name, or nil.
+* @param {string} scanRecord - A string of bytes. Its meaning is device-specific.
+*/
+
+/** This function is called when an operation fails.
+* @callback failCallback
+* @param {string} errorString - A human-readable string that describes the error that occurred.
+*/
 
 /** Stops scanning for devices.
 */
@@ -31,17 +38,25 @@ exports.stopScan = function() {
 };
 
 /** Connect to a remote device.
-* address: from startScan().
-*
-* win(device, state)
-* Will be called whenever the device's connection state changes.
-*
-* fail(errorCode)
+* @param {string} address - From scanCallback.
+* @param {connectCallback} win
+* @param {failCallback} fail
 */
 exports.connect = function(address, win, fail) {
 	exec(win, fail, 'BLE', 'connect', [address]);
 };
 
+/** Will be called whenever the device's connection state changes.
+* @callback connectCallback
+* @param {number} device - Handle to the device. Save it for other function calls.
+* @param {number} state - One of the {@link connectionState} keys.
+*/
+
+/** A number-string map describing possible connection states.
+* @global
+* @readonly
+* @enum {string}
+*/
 exports.connectionState = {
 	0: 'STATE_DISCONNECTED',
 	1: 'STATE_CONNECTING',
@@ -50,50 +65,90 @@ exports.connectionState = {
 };
 
 /** Close the connection to a remote device.
-* Frees any native resources.
-* Causes callbacks to the function passed to connect().
+* <p>Frees any native resources associated with the device.
+* <p>Causes STATE_DISCONNECTING and STATE_DISCONNECTED callbacks to the function passed to connect().
+* @param {number} device - A handle from {@link connectCallback}.
 */
 exports.close = function(device) {
 	exec(null, null, 'BLE', 'close', [device]);
 };
 
 /** Fetch the remote device's RSSI (signal strength).
-*
-* win(rssi)
-* fail(errorCode)
+* @param {number} device - A handle from {@link connectCallback}.
+* @param {rssiCallback} win
+* @param {failCallback} fail
 */
 exports.rssi = function(device, win, fail) {
 	exec(win, fail, 'BLE', 'rssi', [device]);
 };
 
-// returns handles that ought to remain valid over the program's lifetime.
-/** Fetch a device's services and iterate through them.
-*
-* win(service)
-* service is a json object that also serves as a handle to the service in other functions.
-* contents: int handle, string uuid, int type, int characteristicCount, int serviceCount.
-* uuid is a string formatted according to RFC 4122, all lowercase.
-* serviceCount is the number of callbacks you'll get.
+/** This function is called when a new device is discovered.
+* @callback rssiCallback
+* @param {number} rssi - A negative integer, the signal strength in decibels.
+*/
+
+/** Fetch a remote device's services and iterate through them.
+* @param {number} device - A handle from {@link connectCallback}.
+* @param {serviceCallback} win - Called once for each service.
+* @param {failCallback} fail
 */
 exports.services = function(device, win, fail) {
 	exec(win, fail, 'BLE', 'services', [device]);
 };
 
+/**
+* @callback serviceCallback
+* @param {Service} service
+*/
+
+/** Describes a GATT service.
+* @typedef {Object} Service
+* @property {number} handle
+* @property {string} uuid - Formatted according to RFC 4122, all lowercase.
+* @property {serviceType} type
+* @property {number} characteristicCount - The number of characteristics in the service.
+* @property {number} serviceCount - The number of services in the device. This value is the same for all services in a device.
+*/
+
+/** A number-string map describing possible service types.
+* @global
+* @readonly
+* @enum {string}
+*/
 exports.serviceType = {
 	0: 'SERVICE_TYPE_PRIMARY',
 	1: 'SERVICE_TYPE_SECONDARY',
 };
 
 /** Iterate through a service's characteristics.
-* This function cannot fail.
-*
-* win(characteristic)
-* int handle, string uuid, int permissions, int properties, int writeType, int descriptorCount.
+* @param {number} device - A handle from {@link connectCallback}.
+* @param {number} serviceHandle - A handle from {@link serviceCallback}.
+* @param {characteristicCallback} win - Called once for each characteristic.
 */
 exports.characteristics = function(device, serviceHandle, win) {
 	exec(win, null, 'BLE', 'characteristics', [device, serviceHandle]);
 };
 
+/**
+* @callback characteristicCallback
+* @param {Characteristic} characteristic
+*/
+
+/** Describes a GATT characteristic.
+* @typedef {Object} Characteristic
+* @property {number} handle
+* @property {string} uuid - Formatted according to RFC 4122, all lowercase.
+* @property {permission} permissions - Bitmask of zero or more permission flags.
+* @property {property} properties - Bitmask of zero or more property flags.
+* @property {writeType} writeType
+* @property {number} descriptorCount - The number of descriptors in the descriptor.
+*/
+
+/** A number-string map describing possible permission flags.
+* @global
+* @readonly
+* @enum {string}
+*/
 exports.permission = {
 	1: 'PERMISSION_READ',
 	2: 'PERMISSION_READ_ENCRYPTED',
@@ -105,6 +160,11 @@ exports.permission = {
 	256: 'PERMISSION_WRITE_SIGNED_MITM',
 };
 
+/** A number-string map describing possible property flags.
+* @global
+* @readonly
+* @enum {string}
+*/
 exports.property = {
 	1: 'PROPERTY_BROADCAST',
 	2: 'PROPERTY_READ',
@@ -116,6 +176,11 @@ exports.property = {
 	128: 'PROPERTY_EXTENDED_PROPS',
 };
 
+/** A number-string map describing possible write types.
+* @global
+* @readonly
+* @enum {string}
+*/
 exports.writeType = {
 	1: 'WRITE_TYPE_NO_RESPONSE',
 	2: 'WRITE_TYPE_DEFAULT',
@@ -123,51 +188,76 @@ exports.writeType = {
 };
 
 /** Iterate through a characteristic's descriptors.
-* This function cannot fail.
-*
-* win(descriptor)
-* int handle, string uuid, int permissions.
+* @param {number} device - A handle from {@link connectCallback}.
+* @param {number} characteristicHandle - A handle from {@link characteristicCallback}.
+* @param {descriptorCallback} win - Called once for each descriptor.
 */
 exports.descriptors = function(device, characteristicHandle, win) {
 	exec(win, null, 'BLE', 'descriptors', [device, characteristicHandle]);
 };
 
+/**
+* @callback descriptorCallback
+* @param {Descriptor} descriptor
+*/
+
+/** Describes a GATT descriptor.
+* @typedef {Object} Descriptor
+* @property {number} handle
+* @property {string} uuid - Formatted according to RFC 4122, all lowercase.
+* @property {permission} permissions - Bitmask of zero or more permission flags.
+*/
+
 
 // read*: fetch and return value in one op.
 // values should be cached on the JS side, if at all.
-// data is an ArrayBuffer.
 
-/** Reads a characteristic's value from the remote device.
-*
-* win(data)
-* fail(errorCode)
+/**
+* @callback dataCallback
+* @param {ArrayBuffer} data
+*/
+
+/** Reads a characteristic's value from a remote device.
+* @param {number} device - A handle from {@link connectCallback}.
+* @param {number} characteristicHandle - A handle from {@link characteristicCallback}.
+* @param {dataCallback} win
+* @param {failCallback} fail
 */
 exports.readCharacteristic = function(device, characteristicHandle, win, fail) {
 	exec(win, fail, 'BLE', 'readCharacteristic', [device, characteristicHandle]);
 };
 
-/** Reads a descriptor's value from the remote device.
-*
-* win(data)
-* fail(errorCode)
+/** Reads a descriptor's value from a remote device.
+* @param {number} device - A handle from {@link connectCallback}.
+* @param {number} descriptorHandle - A handle from {@link descriptorCallback}.
+* @param {dataCallback} win
+* @param {failCallback} fail
 */
 exports.readDescriptor = function(device, descriptorHandle, win, fail) {
 	exec(win, fail, 'BLE', 'readDescriptor', [device, descriptorHandle]);
 };
 
+/**
+* @callback emptyCallback
+*/
+
 /** Write a characteristic's value to the remote device.
-*
-* win()
-* fail(errorCode)
+* @param {number} device - A handle from {@link connectCallback}.
+* @param {number} characteristicHandle - A handle from {@link characteristicCallback}.
+* @param {ArrayBufferView} data - The value to be written.
+* @param {emptyCallback} win
+* @param {failCallback} fail
 */
 exports.writeCharacteristic = function(device, characteristicHandle, data, win, fail) {
 	exec(win, fail, 'BLE', 'writeCharacteristic', [device, characteristicHandle, data.buffer]);
 };
 
-/** Write a descriptor's value to the remote device.
-*
-* win()
-* fail(errorCode)
+/** Write a descriptor's value to a remote device.
+* @param {number} device - A handle from {@link connectCallback}.
+* @param {number} descriptorHandle - A handle from {@link descriptorCallback}.
+* @param {ArrayBufferView} data - The value to be written.
+* @param {emptyCallback} win
+* @param {failCallback} fail
 */
 exports.writeDescriptor = function(device, descriptorHandle, data, win, fail) {
 	exec(win, fail, 'BLE', 'writeDescriptor', [device, descriptorHandle, data.buffer]);
@@ -176,22 +266,25 @@ exports.writeDescriptor = function(device, descriptorHandle, data, win, fail) {
 /** Request notification on changes to a characteristic's value.
 * This is more efficient than polling the value using readCharacteristic().
 *
-* To make them send notifications,
+* <p>To activate notifications,
 * some (all?) devices require you to write a special value to a separate configuration characteristic,
 * in addition to calling this function.
 * Refer to your device's documentation.
 *
-* win(data)	-- called every time the value changes.
-* fail(errorCode)
+* @param {number} device - A handle from {@link connectCallback}.
+* @param {number} characteristicHandle - A handle from {@link characteristicCallback}.
+* @param {dataCallback} win - Called every time the value changes.
+* @param {failCallback} fail
 */
 exports.enableNotification = function(device, characteristicHandle, win, fail) {
 	exec(win, fail, 'BLE', 'enableNotification', [device, characteristicHandle]);
 };
 
 /** Disable notification of changes to a characteristic's value.
-*
-* win()
-* fail(errorCode)
+* @param {number} device - A handle from {@link connectCallback}.
+* @param {number} characteristicHandle - A handle from {@link characteristicCallback}.
+* @param {emptyCallback} win
+* @param {failCallback} fail
 */
 exports.disableNotification = function(device, characteristicHandle, win, fail) {
 	exec(win, fail, 'BLE', 'disableNotification', [device, characteristicHandle]);
@@ -199,9 +292,10 @@ exports.disableNotification = function(device, characteristicHandle, win, fail) 
 
 /** i is an integer. It is converted to byte and put in an array[1].
 * The array is returned.
-* assert(string.charCodeAt(0) == i).
+* <p>assert(string.charCodeAt(0) == i).
 *
-* win(string)
+* @param {number} i
+* @param {dataCallback} win - Called every time the value changes.
 */
 exports.testCharConversion = function(i, win) {
 	exec(win, null, 'BLE', 'testCharConversion', [i]);
@@ -210,18 +304,27 @@ exports.testCharConversion = function(i, win) {
 /** Resets the device's Bluetooth system.
 * This is useful on some buggy devices where BLE functions stops responding until reset.
 * Read: Android 4.3.
-* This function takes 3-5 seconds.
+* <p>This function takes 3-5 seconds.
 *
-* win()
-* fail(errorCode)
+* @param {emptyCallback} win
+* @param {failCallback} fail
 */
 exports.reset = function(win, fail) {
 	exec(win, fail, 'BLE', 'reset', []);
 };
 
-exports.fromUtf8 = function(arrayBuf) {
-	return decodeURIComponent(escape(String.fromCharCode.apply(null, new Uint8Array(arrayBuf))));
+/** Converts an ArrayBuffer containing a UTF-8 data to a JavaScript String.
+* @param {ArrayBuffer} a
+* @returns string
+*/
+exports.fromUtf8 = function(a) {
+	return decodeURIComponent(escape(String.fromCharCode.apply(null, new Uint8Array(a))));
 };
+
+/** Converts a JavaScript String to an Uint8Array containing a UTF-8 data.
+* @param {string} s
+* @returns Uint8Array
+*/
 exports.toUtf8 = function(s) {
 	return new Uint8Array(unescape(encodeURIComponent(s)));
 };

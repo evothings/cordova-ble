@@ -1,6 +1,4 @@
-cordova.define.remove("com.evothings.ble.BLE");
-cordova.define("com.evothings.ble.BLE", function(require, exports, module) {
-var exports = module.exports;
+
 var exec = cordova.require('cordova/exec');
 
 /** Starts scanning for devices.
@@ -225,4 +223,3 @@ exports.fromUtf8 = function(arrayBuf) {
 exports.toUtf8 = function(s) {
 	return new Uint8Array(unescape(encodeURIComponent(s)));
 };
-});

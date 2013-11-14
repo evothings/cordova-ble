@@ -14,11 +14,11 @@
 	<platform name="android">
 		<config-file target="res/xml/config.xml" parent="/*">
 			<feature name="BLE" >
-				<param name="android-package" value="com.evothings.ble.BLE"/>
+				<param name="android-package" value="com.evothings.BLE"/>
 			</feature>
 		</config-file>
 
-		<source-file src="src/android/BLE.java" target-dir="src/com/evothings/ble" />
+		<source-file src="src/android/BLE.java" target-dir="src/com/evothings" />
 	</platform>
 
 <!--

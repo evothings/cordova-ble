@@ -1,6 +1,4 @@
-cordova.define.remove("com.evothings.ble.BLE");
-cordova.define("com.evothings.ble.BLE", function(require, exports, module) {
-var exports = module.exports;
+
 var exec = cordova.require('cordova/exec');
 
 /** @module com.evothings.ble */
@@ -328,4 +326,3 @@ exports.fromUtf8 = function(a) {
 exports.toUtf8 = function(s) {
 	return new Uint8Array(unescape(encodeURIComponent(s)));
 };
-});

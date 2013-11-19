@@ -3,7 +3,7 @@
 	id="com.evothings.ble"
 	version="0.0.1">
 	<engines>
-		<engine name="cordova" version=">=3.0.0" />
+		<engine name="cordova" version=">=3.1.0" />
 	</engines>
 
 	<name>Evothings BLE API</name>
@@ -16,6 +16,10 @@
 			<feature name="BLE" >
 				<param name="android-package" value="com.evothings.BLE"/>
 			</feature>
+		</config-file>
+		<config-file target="AndroidManifest.xml" parent="/manifest">
+			<uses-permission android:name="android.permission.BLUETOOTH" />
+			<uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
 		</config-file>
 
 		<source-file src="src/android/BLE.java" target-dir="src/com/evothings" />

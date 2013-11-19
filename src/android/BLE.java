@@ -62,6 +62,12 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		callbackContext.sendPluginResult(r);
 	}
 
+	private void keepCallback(final CallbackContext callbackContext, byte[] message) {
+		PluginResult r = new PluginResult(PluginResult.Status.OK, message);
+		r.setKeepCallback(true);
+		callbackContext.sendPluginResult(r);
+	}
+
 	private void startScan(final CordovaArgs args, final CallbackContext callbackContext) {
 		//try {
 			BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
@@ -237,6 +243,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 				try {
 					gh.mCurrentOpContext = callbackContext;
 					BluetoothGattCharacteristic c = gh.mCharacteristics.get(args.getInt(1));
+					System.out.println("writeCharacteristic("+args.getInt(0)+", "+args.getInt(1)+", "+args.getString(2)+")");
 					c.setValue(args.getArrayBuffer(2));
 					if(!gh.mGatt.writeCharacteristic(c)) {
 						gh.mCurrentOpContext = null;
@@ -376,7 +383,8 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		HashMap<Integer, BluetoothGattService> mServices;
 		HashMap<Integer, BluetoothGattCharacteristic> mCharacteristics;
 		HashMap<Integer, BluetoothGattDescriptor> mDescriptors;
-		HashMap<BluetoothGattCharacteristic, CallbackContext> mNotifications;
+		HashMap<BluetoothGattCharacteristic, CallbackContext> mNotifications =
+			new HashMap<BluetoothGattCharacteristic, CallbackContext>();
 
 		GattHandler(int h, CallbackContext cc) {
 			mHandle = h;
@@ -489,11 +497,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		@Override
 		public void onCharacteristicChanged(BluetoothGatt g, BluetoothGattCharacteristic c) {
 			CallbackContext cc = mNotifications.get(c);
-			try {
-				keepCallback(cc, new String(c.getValue(), "ISO-8859-1"));
-			} catch(UnsupportedEncodingException e) {
-				cc.error(e.toString());
-			}
+			keepCallback(cc, c.getValue());
 		}
 	};
 }

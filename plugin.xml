@@ -9,6 +9,7 @@
 	<name>Evothings BLE API</name>
 
 	<js-module src="ble.js" name="BLE">
+		<clobbers target="BLE" />
 	</js-module>
 
 	<platform name="android">

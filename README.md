@@ -1,10 +1,10 @@
-Introduction to Bluetooth Low Energy programming with Cordova
-==============================================================
+Using BLE from Cordova
+======================
 This text assumes you're familiar with Cordova and its plugin architecture.
 
 Bluetooth Low Energy
 ====================
-Bluetooth is a short-range wireless communication system. It uses the 2.4-2.5 Ghz spectrum. Maximum range with regular equipment is between 10 and 100 meters. Special antennae may extend this range.
+Bluetooth Low Energy is a short-range wireless communication system. It uses the 2.4-2.5 Ghz spectrum. Maximum range with regular equipment is between 10 and 100 meters. Special antennae may extend this range.
 
 Each Bluetooth device has a unique 6-byte address. Bluetooth operates on a client-server basis. A device may act as client, or server, or both. Clients discover server devices by broadcasting a "device discovery" signal and listening for responses. Once discovered, client apps may remember the server's address. A client can establish a connection to a server. The two devices can then start communicating.
 

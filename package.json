@@ -1,0 +1,11 @@
+{
+    "version": "0.0.1",
+    "name": "com.evothings.ble",
+    "cordova_name": "Bluetooth Low Energy (BLE) API",
+    "engines": [
+        {
+            "name": "cordova",
+            "version": ">=3.1.0"
+        }
+    ]
+}

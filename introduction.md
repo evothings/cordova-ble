@@ -1,8 +1,9 @@
-=Introduction to Bluetooth Low Energy programming with Cordova=
+# Introduction to Bluetooth Low Energy programming with Cordova
 
 This text assumes you're familiar with Cordova and its plugin architecture.
 
-==Bluetooth Low Energy==
+## Bluetooth Low Energy
+
 Bluetooth is a short-range wireless communication system.
 It uses the 2.4-2.5 Ghz spectrum.
 Maximum range with regular equipment is between 10 and 100 meters.
@@ -33,7 +34,7 @@ Clients may request *notification* on characteristics.
 This will cause the server to send messages whenever the characteristic's value changes.
 
 
-==Cordova BLE Plugin==
+## Cordova BLE Plugin
 
 The plugin has functions that allows your app to act as a BLE client.
 You can:

@@ -154,8 +154,16 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		}
 	}
 
-	private void characteristics(final CordovaArgs args, final CallbackContext callbackContext) throws JSONException {
+	private void characteristics(
+		final CordovaArgs args,
+		final CallbackContext callbackContext) throws JSONException {
+
 		final GattHandler gh = mGatt.get(args.getInt(0));
+
+		if (null == gh) return;
+		if (null == gh.mServices) return;
+		if (null == gh.mServices.get(args.getInt(1))) return;
+
 		for(BluetoothGattCharacteristic c : gh.mServices.get(args.getInt(1)).getCharacteristics()) {
 			if(gh.mCharacteristics == null)
 				gh.mCharacteristics = new HashMap<Integer, BluetoothGattCharacteristic>();

@@ -1,8 +1,4 @@
-# Introduction to Bluetooth Low Energy programming with Cordova
-
-This text assumes you're familiar with Cordova and its plugin architecture.
-
-## Bluetooth Low Energy
+## Introduction to Bluetooth Low Energy
 
 Bluetooth is a short-range wireless communication system.
 It uses the 2.4-2.5 Ghz spectrum.
@@ -32,18 +28,3 @@ The most common one is 0x2901, which indicates a read-only UTF-8 string that hol
 
 Clients may request *notification* on characteristics.
 This will cause the server to send messages whenever the characteristic's value changes.
-
-
-## Cordova BLE Plugin
-
-The plugin has functions that allows your app to act as a BLE client.
-You can:
-* scan for devices
-* connect to them
-* list services, characteristics and descriptors
-* read and write characteristics and descriptors
-* request notification
-* poll RSSI (signal strength)
-
-Refer to the reference documentation for details.
-Refer to the example applications for examples. :}

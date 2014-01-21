@@ -72,7 +72,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		//try {
 			BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
 			if(!adapter.startLeScan(this)) {
-				callbackContext.error("startLeScan failed.");
+				callbackContext.error("startScan failed");
 				return;
 			}
 			mScanCallbackContext = callbackContext;
@@ -87,7 +87,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			return;
 		}
 		try {
-			System.out.println("onLeScan "+device.getAddress()+" "+rssi+" "+device.getName());
+			//System.out.println("onLeScan "+device.getAddress()+" "+rssi+" "+device.getName());
 			JSONObject o = new JSONObject();
 			o.put("address", device.getAddress());
 			o.put("rssi", rssi);

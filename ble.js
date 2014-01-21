@@ -4,32 +4,49 @@ var exec = cordova.require('cordova/exec');
 /** @module com.evothings.ble */
 
 /** Starts scanning for devices.
-* <p>Found devices and errors will be reported to the supplied callbacks.
-* <p>Will keep scanning indefinitely until you call stopScan().
+* <p>Found devices and errors will be reported to the supplied callbacks.</p>
+* <p>Will keep scanning indefinitely until you call stopScan().</p>
 * To conserve energy, call stopScan() as soon as you've found the device you're looking for.
-* <p>Calling this function while scanning is in progress has no effect?
+* <p>Calling this function while scanning is in progress has no effect?</p>
 *
-* @param {scanCallback} win
-* @param {failCallback} fail
+* @param {scanCallback} win @see scanCallback
+* @param {failCallback} fail @see failCallback
+*
+* @example
+*	evothings.ble.startScan(
+*		function(device)
+*		{
+*			console.log('BLE startScan found device named: ' + device.name);
+*		},
+*		function(errorCode)
+*		{
+*			console.log('BLE startScan error: ' + errorCode);
+*		}
+*	);
 */
 exports.startScan = function(win, fail) {
 	exec(win, fail, 'BLE', 'startScan', []);
 };
 
-/** This function is called when a new device is discovered.
+/** This function is a parameter to startScan and is called when a new device is discovered.
 * @callback scanCallback
-* @param {string} address - Has the form xx:xx:xx:xx:xx:xx, where x are hexadecimal characters.
-* @param {number} rssi - A negative integer, the signal strength in decibels.
-* @param {string} name - The device's name, or nil.
-* @param {string} scanRecord - A string of bytes. Its meaning is device-specific.
+* @param device {object}
+* @details Object fields:
+* @property {string} address - Has the form xx:xx:xx:xx:xx:xx, where x are hexadecimal characters.
+* @property {number} rssi - A negative integer, the signal strength in decibels.
+* @property {string} name - The device's name, or nil.
+* @property {string} scanRecord - A string of bytes. Its meaning is device-specific.
 */
 
-/** This function is called when an operation fails.
+/** This function is a general fail callback function and is called when an operation fails.
 * @callback failCallback
 * @param {string} errorString - A human-readable string that describes the error that occurred.
 */
 
 /** Stops scanning for devices.
+*
+* @example
+*	evothings.ble.stopScan();
 */
 exports.stopScan = function() {
 	exec(null, null, 'BLE', 'stopScan', []);

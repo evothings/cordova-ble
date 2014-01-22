@@ -11,7 +11,7 @@ You can:
 * poll RSSI (signal strength)
 
 To build documentation, run this command:
-jsdoc -c conf.json ble.js
+jsdoc -l -c conf.json ble.js
 
 See [this](introduction.md) for a general introduction to BLE programming.
 

@@ -1,4 +1,6 @@
 
+// This line causes a jsdoc error.
+// Use the option -l to ignore it.
 var exec = cordova.require('cordova/exec');
 
 /** @module com.evothings.ble */
@@ -13,16 +15,16 @@ var exec = cordova.require('cordova/exec');
 * @param {failCallback} fail
 *
 * @example
-*	evothings.ble.startScan(
-*		function(device)
-*		{
-*			console.log('BLE startScan found device named: ' + device.name);
-*		},
-*		function(errorCode)
-*		{
-*			console.log('BLE startScan error: ' + errorCode);
-*		}
-*	);
+evothings.ble.startScan(
+	function(device)
+	{
+		console.log('BLE startScan found device named: ' + device.name);
+	},
+	function(errorCode)
+	{
+		console.log('BLE startScan error: ' + errorCode);
+	}
+);
 */
 exports.startScan = function(win, fail) {
 	exec(win, fail, 'BLE', 'startScan', []);
@@ -51,7 +53,7 @@ exports.startScan = function(win, fail) {
 /** Stops scanning for devices.
 *
 * @example
-*	evothings.ble.stopScan();
+evothings.ble.stopScan();
 */
 exports.stopScan = function() {
 	exec(null, null, 'BLE', 'stopScan', []);

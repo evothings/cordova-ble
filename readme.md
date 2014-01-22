@@ -10,6 +10,9 @@ You can:
 * request notification
 * poll RSSI (signal strength)
 
+To build documentation, run this command:
+jsdoc -c conf.json ble.js
+
 See [this](introduction.md) for a general introduction to BLE programming.
 
 See the reference documentation ([source code](https://github.com/evothings/cordova-ble/blob/master/ble.js)) for details.

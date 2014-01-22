@@ -9,8 +9,8 @@ var exec = cordova.require('cordova/exec');
 * To conserve energy, call stopScan() as soon as you've found the device you're looking for.
 * <p>Calling this function while scanning is in progress has no effect?</p>
 *
-* @param {scanCallback} win @see scanCallback
-* @param {failCallback} fail @see failCallback
+* @param {scanCallback} win
+* @param {failCallback} fail
 *
 * @example
 *	evothings.ble.startScan(
@@ -28,17 +28,22 @@ exports.startScan = function(win, fail) {
 	exec(win, fail, 'BLE', 'startScan', []);
 };
 
-/** This function is a parameter to startScan and is called when a new device is discovered.
+/** This function is a parameter to startScan() and is called when a new device is discovered.
 * @callback scanCallback
-* @param device {object}
-* @details Object fields:
-* @property {string} address - Has the form xx:xx:xx:xx:xx:xx, where x are hexadecimal characters.
+* @param {Device} device
+*/
+
+/** Describes a BLE device.
+* @typedef {Object} Device
+//* @property {string} address - Has the form xx:xx:xx:xx:xx:xx, where x are hexadecimal characters.
+* @property {string} address - Uniquely identifies the device. Pass this to connect().
+* The form of the address depends on the host platform.
 * @property {number} rssi - A negative integer, the signal strength in decibels.
 * @property {string} name - The device's name, or nil.
 * @property {string} scanRecord - A string of bytes. Its meaning is device-specific.
 */
 
-/** This function is a general fail callback function and is called when an operation fails.
+/** This function is called when an operation fails.
 * @callback failCallback
 * @param {string} errorString - A human-readable string that describes the error that occurred.
 */

@@ -30,8 +30,8 @@
 	// after startScan has finished.
 	CDVPluginResult* result = [CDVPluginResult
 		resultWithStatus: CDVCommandStatus_NO_RESULT];
-    [result setKeepCallbackAsBool: YES];
-    [self.commandDelegate
+		[result setKeepCallbackAsBool: YES];
+		[self.commandDelegate
 		sendPluginResult: result
 		callbackId: self.callbackId];
 
@@ -46,8 +46,8 @@
 	// Clear callback on the JS side.
 	CDVPluginResult* result = [CDVPluginResult
 		resultWithStatus: CDVCommandStatus_NO_RESULT];
-    [result setKeepCallbackAsBool: NO];
-    [self.commandDelegate
+		[result setKeepCallbackAsBool: NO];
+		[self.commandDelegate
 		sendPluginResult: result
 		callbackId: self.callbackId];
 
@@ -56,8 +56,6 @@
 
 - (void) pluginInitialize
 {
-    NSLog(@"pluginInitialize");
-
 	self.scanIsWaiting = NO;
 
 	self.central = [[CBCentralManager alloc]
@@ -103,13 +101,13 @@
 	2014-01-21 18:48:20.441 EvoThings[329:60b] Received periferal :<CBPeripheral: 0x14d9e450 identifier = DD9B2ED5-01B4-8795-0040-B87F3F197C72, Name = "n73", state = disconnected>
 
 	2014-01-21 18:48:20.444 EvoThings[329:60b] Ad data :{
-    kCBAdvDataChannel = 38;
-    kCBAdvDataIsConnectable = 1;
-    kCBAdvDataLocalName = n73;
-    kCBAdvDataServiceUUIDs =     (
-        "Unknown (<bec26202 a8d84a94 80fc9ac1 de37daa6>)"
-    );
-    kCBAdvDataTxPowerLevel = 0;
+		kCBAdvDataChannel = 38;
+		kCBAdvDataIsConnectable = 1;
+		kCBAdvDataLocalName = n73;
+		kCBAdvDataServiceUUIDs =     (
+				"Unknown (<bec26202 a8d84a94 80fc9ac1 de37daa6>)"
+		);
+		kCBAdvDataTxPowerLevel = 0;
 }
 */
 }
@@ -129,23 +127,23 @@
 
 - (void) returnScanInfoForPeriperhal: (CBPeripheral *)peripheral RSSI: (NSNumber *)RSSI
 {
-    // Create an info object.
-    NSMutableDictionary* info = [NSMutableDictionary dictionaryWithCapacity:4];
+	// Create an info object.
+	NSMutableDictionary* info = [NSMutableDictionary dictionaryWithCapacity:4];
 
 	// TODO: Investigate if the UUID contains the physical 6-byte address
 	// of the device. Then convert it to the format specified by the API.
 	// The UUID will likely need to be kept for use with iOS BLE functions.
-    [info setValue: [peripheral.identifier UUIDString] forKey: @"address"];
-    [info setValue: RSSI forKey: @"rssi"];
-    [info setValue: peripheral.name forKey: @"name"];
-    [info setValue: @"" forKey: @"scanRecord"];
+	[info setValue: [peripheral.identifier UUIDString] forKey: @"address"];
+	[info setValue: RSSI forKey: @"rssi"];
+	[info setValue: peripheral.name forKey: @"name"];
+	[info setValue: @"" forKey: @"scanRecord"];
 
 	// Send back data to JS.
-    CDVPluginResult* result = [CDVPluginResult
+	CDVPluginResult* result = [CDVPluginResult
 		resultWithStatus: CDVCommandStatus_OK
 		messageAsDictionary: info];
-    [result setKeepCallbackAsBool: YES];
-    [self.commandDelegate
+	[result setKeepCallbackAsBool: YES];
+	[self.commandDelegate
 		sendPluginResult: result
 		callbackId: self.callbackId];
 }

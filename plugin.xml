@@ -3,11 +3,10 @@
 	id="com.evothings.ble"
 	version="0.0.1">
 
-	<!-- Think this section isn't needed. Other plugins don't have it.
+	<!-- This plugin requires Cordova version 3.1.0 or newer. -->
 	<engines>
-		<engine name="cordova" version=">=3.3.0" />
+		<engine name="cordova" version=">=3.1.0" />
 	</engines>
-	-->
 
 	<name>Evothings BLE API</name>
 
@@ -29,17 +28,17 @@
 		<source-file src="src/android/BLE.java" target-dir="src/com/evothings" />
 	</platform>
 
-    <platform name="ios">
-        <config-file target="config.xml" parent="/*">
-            <feature name="BLE">
-                <param name="ios-package" value="BLE"/>
-            </feature>
-        </config-file>
+	<platform name="ios">
+		<config-file target="config.xml" parent="/*">
+			<feature name="BLE">
+				<param name="ios-package" value="BLE"/>
+			</feature>
+		</config-file>
 
 		<framework src="CoreBluetooth.framework" />
 
-        <header-file src="src/ios/BLE.h" />
-	    <source-file src="src/ios/BLE.m" />
-    </platform>
+		<header-file src="src/ios/BLE.h" />
+		<source-file src="src/ios/BLE.m" />
+	</platform>
 
 </plugin>

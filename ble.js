@@ -335,7 +335,7 @@ exports.reset = function(win, fail) {
 	exec(win, fail, 'BLE', 'reset', []);
 };
 
-/** Converts an ArrayBuffer containing a UTF-8 data to a JavaScript String.
+/** Converts an ArrayBuffer containing UTF-8 data to a JavaScript String.
 * @param {ArrayBuffer} a
 * @returns string
 */
@@ -343,7 +343,7 @@ exports.fromUtf8 = function(a) {
 	return decodeURIComponent(escape(String.fromCharCode.apply(null, new Uint8Array(a))));
 };
 
-/** Converts a JavaScript String to an Uint8Array containing a UTF-8 data.
+/** Converts a JavaScript String to an Uint8Array containing UTF-8 data.
 * @param {string} s
 * @returns Uint8Array
 */

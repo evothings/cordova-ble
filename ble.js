@@ -32,11 +32,11 @@ exports.startScan = function(win, fail) {
 
 /** This function is a parameter to startScan() and is called when a new device is discovered.
 * @callback scanCallback
-* @param {Device} device
+* @param {DeviceInfo} device
 */
 
-/** Describes a BLE device.
-* @typedef {Object} Device
+/** Info about a BLE device.
+* @typedef {Object} DeviceInfo
 //* @property {string} address - Has the form xx:xx:xx:xx:xx:xx, where x are hexadecimal characters.
 * @property {string} address - Uniquely identifies the device. Pass this to connect().
 * The form of the address depends on the host platform.
@@ -63,6 +63,18 @@ exports.stopScan = function() {
 * @param {string} address - From scanCallback.
 * @param {connectCallback} win
 * @param {failCallback} fail
+* @example
+evothings.ble.connect(
+	address,
+	function(info)
+	{
+		console.log('BLE connect status for device: ' + info.device + ' state: ' + info.state);
+	},
+	function(errorCode)
+	{
+		console.log('BLE connect error: ' + errorCode);
+	}
+);
 */
 exports.connect = function(address, win, fail) {
 	exec(win, fail, 'BLE', 'connect', [address]);
@@ -70,8 +82,13 @@ exports.connect = function(address, win, fail) {
 
 /** Will be called whenever the device's connection state changes.
 * @callback connectCallback
-* @param {number} device - Handle to the device. Save it for other function calls.
-* @param {number} state - One of the {@link connectionState} keys.
+* @param {ConnectInfo} info
+*/
+
+/** Info about connection events and state.
+* @typedef {Object} ConnectInfo
+* @property {number} device - Handle to the device. Save it for other function calls.
+* @property {number} state - One of the {@link connectionState} keys.
 */
 
 /** A number-string map describing possible connection states.
@@ -90,6 +107,8 @@ exports.connectionState = {
 * <p>Frees any native resources associated with the device.
 * <p>Causes STATE_DISCONNECTING and STATE_DISCONNECTED callbacks to the function passed to connect().
 * @param {number} device - A handle from {@link connectCallback}.
+* @example
+evothings.ble.close(device);
 */
 exports.close = function(device) {
 	exec(null, null, 'BLE', 'close', [device]);
@@ -99,6 +118,18 @@ exports.close = function(device) {
 * @param {number} device - A handle from {@link connectCallback}.
 * @param {rssiCallback} win
 * @param {failCallback} fail
+* @example
+evothings.ble.rssi(
+	device,
+	function(rssi)
+	{
+		console.log('BLE rssi: ' + rssi);
+	},
+	function(errorCode)
+	{
+		console.log('BLE rssi error: ' + errorCode);
+	}
+);
 */
 exports.rssi = function(device, win, fail) {
 	exec(win, fail, 'BLE', 'rssi', [device]);

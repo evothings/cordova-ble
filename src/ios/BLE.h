@@ -22,21 +22,28 @@
 #import <CoreBluetooth/CBService.h>
 #import <Cordova/CDVPlugin.h>
 
-@interface BLE : CDVPlugin <CBPeripheralDelegate,CBCentralManagerDelegate>
+@interface BLE : CDVPlugin <CBCentralManagerDelegate, CBPeripheralDelegate>
 
-/* TODO: Should (strong, nonatomic) be used?
+/* TODO: Should (strong, nonatomic) be used? Like this:
 @property (strong, nonatomic) NSString* callbackId;
 @property (strong, nonatomic) CBCentralManager* central;
 @property (strong, nonatomic) CBPeripheral* activePeripheral;
 @property (assign, nonatomic) BOOL scanIsWaiting;
 */
 
-@property NSString* callbackId;
 @property CBCentralManager* central;
-//@property CBPeripheral* activePeripheral;
+@property NSMutableDictionary* peripherals;
 @property BOOL scanIsWaiting;
+@property NSString* scanCallbackId;
+@property NSString* connectCallbackId;
+@property NSString* rssiCallbackId;
+@property NSString* servicesCallbackId;
 
-- (void)startScan: (CDVInvokedUrlCommand*)command;
-- (void)stopScan: (CDVInvokedUrlCommand*)command;
+- (void) startScan: (CDVInvokedUrlCommand*)command;
+- (void) stopScan: (CDVInvokedUrlCommand*)command;
+- (void) connect: (CDVInvokedUrlCommand*)command;
+- (void) close: (CDVInvokedUrlCommand*)command;
+- (void) rssi: (CDVInvokedUrlCommand*)command;
+- (void) services: (CDVInvokedUrlCommand*)command;
 
 @end

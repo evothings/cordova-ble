@@ -99,6 +99,71 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 @end
 
+//////////////////////////////////////////////////////////////////
+//                      Class MyQueue                           //
+//////////////////////////////////////////////////////////////////
+
+@implementation MyQueue
+
+- (MyQueue*) init
+{
+	self.array = [NSMutableArray array];
+	return self;
+}
+
+- (void) enqueue: (id)item
+{
+	[self.array addObject: item];
+}
+
+- (id) dequeue
+{
+    id item = nil;
+    if ([self.array count] != 0)
+	{
+        item = [self.array objectAtIndex: 0];
+        [self.array removeObjectAtIndex: 0];
+    }
+    return item;
+}
+
+- (id) first
+{
+    id item = nil;
+    if ([self.array count] != 0)
+	{
+        item = [self.array objectAtIndex: 0];
+    }
+    return item;
+}
+
+- (BOOL) isEmpty
+{
+	return 0 == [self.array count];
+}
+
+@end
+
+//////////////////////////////////////////////////////////////////
+//                     Class MyCommand                          //
+//////////////////////////////////////////////////////////////////
+
+// 	id b = ^{ NSLog(@"Hello"); };
+//	((MyFun)b)();
+
+@implementation MyCommand
+
+- (MyCommand*) init
+{
+	return self;
+}
+
+- (void) doBlock
+{
+	(self.block)();
+}
+
+@end
 
 //////////////////////////////////////////////////////////////////
 //                     Class MyPeriperal                        //
@@ -106,18 +171,24 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 @implementation MyPeripheral
 
+/****************************************************************/
+/*                       Class Methods                          */
+/****************************************************************/
+
 + (MyPeripheral*) withBLE: (BLE*) ble
 	periperal: (CBPeripheral*) peripheral
 {
+	// Create instance.
 	MyPeripheral* my = [MyPeripheral new];
 
+	// Set handle and connect with associated objects.
 	my.handle = [ble nextHandle];
 	my.ble = ble;
 	my.peripheral = peripheral;
 	peripheral.delegate = my;
 	[peripheral setMyPerhiperal: my];
 
-	// Store in dictionary.
+	// Store in central dictionary.
 	[ble.peripherals
 		setObject: my
 		forKey: my.handle];
@@ -125,12 +196,17 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	return my;
 }
 
+/****************************************************************/
+/*                      Instance Methods                        */
+/****************************************************************/
+
 - (MyPeripheral*) init
 {
 	self.objects = [NSMutableDictionary dictionary];
+	self.commands = [MyQueue new];
+	self.characteristicsCallbacks = [NSMutableDictionary dictionary];
 	return self;
 }
-
 
 - (void) addObject: (id)obj withHandle: (id)handle
 {
@@ -147,171 +223,68 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	[self.objects removeObjectForKey: handle];
 }
 
-- (void) addCallbackId: (id)callbackId withSignature: (NSString*)signature forObject: (id)obj
+- (void) addCommandForCallbackId: (NSString*)callbackId withBlock: (MyCommandBlock)block
 {
-	NSString* key = [NSString
-		stringWithFormat: @"CallbackKey:%i:%@/",
-		[obj hash], signature];
-	[self
-		addObject: callbackId
-		withHandle: key];
+	// Create command object.
+	MyCommand* command = [MyCommand new];
+	command.callbackId = callbackId;
+	command.block = block;
+
+	// If command queue is empty start the command now.
+	BOOL startNow = [self.commands isEmpty];
+	[self.commands enqueue: command];
+	if (startNow)
+	{
+		[command doBlock];
+	}
 }
 
-- (id) getCallbackIdWithSignature: (NSString*)signature forObject: (id)obj
+- (NSString*) getActiveCallbackId
 {
-	NSString* key = [NSString
-		stringWithFormat: @"CallbackKey:%i:%@/",
-		[obj hash], signature];
-	return [self getObjectWithHandle: key];
+	MyCommand* command = [self.commands first];
+	return command.callbackId;
 }
 
-- (void) clearCallbackIdWithSignature: (NSString*)signature forObject: (id)obj
+- (void) clearActiveCommand
 {
-	NSString* key = [NSString
-		stringWithFormat: @"CallbackKey:%i:%@/",
-		[obj hash], signature];
-	[self removeObjectWithHandle: key];
+	// Remove the active command.
+	[self.commands dequeue];
+
+	// If there is a next command start it.
+	if (![self.commands isEmpty])
+	{
+		MyCommand* command = [self.commands first];
+		[command doBlock];
+	}
 }
 
-/**
- * From interface CBPeripheralDelegate.
- * Called when RSSI value has been read from device.
- */
-- (void) peripheralDidUpdateRSSI: (CBPeripheral *)peripheral
-	error: (NSError *)error
+- (void) addCallbackForCharacteristic: (CBCharacteristic*)characteristic
+	callbackId: (NSString*)callbackId
+	isNotifyingCallback: (BOOL) notify
 {
-	if (nil == error)
-	{
-		// Success. Send back data to JS.
-		[self.ble
-			returnInt: [peripheral.RSSI intValue]
-			forCallback: [self getCallbackIdWithSignature: @"rssi" forObject: self]
-			keepCallback: NO];
-	}
-	else
-	{
-		[self.ble
-			returnErrorMessage: [error localizedDescription]
-			forCallback: [self getCallbackIdWithSignature: @"rssi" forObject: self]];
-	}
+	// Create callback info.
+	MyCallbackInfo* callback = [MyCallbackInfo new];
+	callback.callbackId = callbackId;
+	callback.isNotifyingCallback = notify;
 
-	[self clearCallbackIdWithSignature: @"rssi" forObject: self];
+	// Save callback for this characteristic. UUID is used as key.
+	self.characteristicsCallbacks[characteristic.UUID] = callback;
 }
 
-/**
- * From interface CBPeripheralDelegate.
- * Called when services have been read from device.
- */
-- (void) peripheral: (CBPeripheral *)peripheral
-	didDiscoverServices: (NSError *)error
+// Note: Removes callback object if not notifying callback.
+- (NSString*) getCallbackIdForCharacteristic: (CBCharacteristic*)characteristic
 {
-	if (nil == error)
+	MyCallbackInfo* callback = self.characteristicsCallbacks[characteristic.UUID];
+	if (!callback.isNotifyingCallback)
 	{
-		//NSLog(@"found services: %@", peripheral.services);
-
-		// Create array with Service objects.
-		NSMutableArray* array = [NSMutableArray array];
-		for (CBService* service in peripheral.services)
-		{
-			id handle = [self.ble nextHandle];
-			[self addObject: service withHandle: handle];
-			[array addObject: [self
-				createServiceObject: service
-				withHandle: handle]];
-		}
-
-		// Send back data to JS.
-		[self.ble
-			returnArray: array
-			forCallback: [self getCallbackIdWithSignature: @"services" forObject: self]
-			keepCallback: NO];
+		[self removeCallbackForCharacteristic: characteristic];
 	}
-	else
-	{
-		[self.ble
-			returnErrorMessage: [error localizedDescription]
-			forCallback: [self getCallbackIdWithSignature: @"services" forObject: self]];
-	}
-
-	[self clearCallbackIdWithSignature: @"services" forObject: self];
+	return callback.callbackId;
 }
 
-- (void)peripheral: (CBPeripheral *)peripheral
-	didDiscoverCharacteristicsForService: (CBService *)service
-	error:(NSError *)error
+- (void) removeCallbackForCharacteristic: (CBCharacteristic*)characteristic
 {
-	if (nil == error)
-	{
-		// Create array with Service objects.
-		NSMutableArray* array = [NSMutableArray array];
-		for (CBCharacteristic* characteristic in service.characteristics)
-		{
-			id handle = [self.ble nextHandle];
-			[self addObject: characteristic withHandle: handle];
-			[array addObject: [self
-				createCharacteristicObject: characteristic
-				withHandle: handle]];
-		}
-
-		// Send back data to JS.
-		[self.ble
-			returnArray: array
-			forCallback: [self
-				getCallbackIdWithSignature: @"characteristics"
-				forObject: service]
-			keepCallback: NO];
-	}
-	else
-	{
-		[self.ble
-			returnErrorMessage: [error localizedDescription]
-			forCallback: [self
-				getCallbackIdWithSignature: @"characteristics"
-				forObject: service]];
-	}
-
-	[self
-		clearCallbackIdWithSignature: @"characteristics"
-		forObject: service];
-}
-
-- (void)peripheral: (CBPeripheral *)peripheral didDiscoverDescriptorsForCharacteristic: (CBCharacteristic *)characteristic error: (NSError *)error
-{
-	NSLog(@"found descriptors: %@", characteristic.descriptors);
-
-	if (nil == error)
-	{
-		// Create array with Descriptor objects.
-		NSMutableArray* array = [NSMutableArray array];
-		for (CBDescriptor* descriptor in characteristic.descriptors)
-		{
-			id handle = [self.ble nextHandle];
-			[self addObject: descriptor withHandle: handle];
-			[array addObject: [self
-				createDescriptorObject: descriptor
-				withHandle: handle]];
-		}
-
-		// Send back data to JS.
-		[self.ble
-			returnArray: array
-			forCallback: [self
-				getCallbackIdWithSignature: @"descriptors"
-				forObject: characteristic]
-			keepCallback: NO];
-	}
-	else
-	{
-		[self.ble
-			returnErrorMessage: [error localizedDescription]
-			forCallback: [self
-				getCallbackIdWithSignature: @"descriptors"
-				forObject: characteristic]];
-	}
-
-	[self
-		clearCallbackIdWithSignature: @"descriptors"
-		forObject: characteristic];
+	[self.characteristicsCallbacks removeObjectForKey: characteristic.UUID];
 }
 
 - (NSDictionary*) createServiceObject: (CBService*)service
@@ -341,8 +314,6 @@ static int MyPerhiperalAssociatedObjectKey = 42;
    CBCharacteristicPropertyNotifyEncryptionRequired = 0x100,
    CBCharacteristicPropertyIndicateEncryptionRequired = 0x200,
 */
-	CBCharacteristicProperties cprop = characteristic.properties;
-
 /*
 	1: 'PERMISSION_READ'
 	2: 'PERMISSION_READ_ENCRYPTED',
@@ -353,13 +324,6 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	128: 'PERMISSION_WRITE_SIGNED',
 	256: 'PERMISSION_WRITE_SIGNED_MITM',
 */
-	// TODO: Add permission values.
-	int permissions = 0;
-	if (CBCharacteristicPropertyRead & cprop)
-		permissions |= 1; // PERMISSION_READ
-	if (CBCharacteristicPropertyWrite & cprop)
-		permissions |= 4; // PERMISSION_WRITE
-
 /*
 	1: 'PROPERTY_BROADCAST',
 	2: 'PROPERTY_READ',
@@ -370,22 +334,49 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	64: 'PROPERTY_SIGNED_WRITE',
 	128: 'PROPERTY_EXTENDED_PROPS',
 */
-	// TODO: Add property values.
-	int properties = 0;
-	if (characteristic.isBroadcasted)
-		properties |= 1; // PROPERTY_BROADCAST
-	if (CBCharacteristicPropertyRead & cprop)
-		properties |= 2; // PROPERTY_READ
-	if (CBCharacteristicPropertyWrite & cprop)
-		properties |= 8; // PROPERTY_WRITE
-
 /*
 	1: 'WRITE_TYPE_NO_RESPONSE',
 	2: 'WRITE_TYPE_DEFAULT',
 	4: 'WRITE_TYPE_SIGNED',
 */
-	// TODO: Set writeType.
+
+	CBCharacteristicProperties cprop = characteristic.properties;
+
+	// Permission values.
+	// Note: Not all permission values can be mapped on iOS.
+	int permissions = 0;
+	if (CBCharacteristicPropertyRead & cprop)
+		permissions |= 1; // PERMISSION_READ
+	if (CBCharacteristicPropertyWrite & cprop)
+		permissions |= 16; // PERMISSION_WRITE
+
+	// Property values.
+	int properties = 0;
+	if (CBCharacteristicPropertyBroadcast & cprop)
+		properties |= 1; // PROPERTY_BROADCAST
+	if (CBCharacteristicPropertyRead & cprop)
+		properties |= 2; // PROPERTY_READ
+	if (CBCharacteristicPropertyWriteWithoutResponse & cprop)
+		properties |= 4; // PROPERTY_WRITE_NO_RESPONSE
+	if (CBCharacteristicPropertyWrite & cprop)
+		properties |= 8; // PROPERTY_WRITE
+	if (CBCharacteristicPropertyNotify & cprop)
+		properties |= 16; // PROPERTY_NOTIFY
+	if (CBCharacteristicPropertyIndicate & cprop)
+		properties |= 32; // PROPERTY_INDICATE
+	if (CBCharacteristicPropertyAuthenticatedSignedWrites & cprop)
+		properties |= 64; // PROPERTY_SIGNED_WRITE
+	if (CBCharacteristicPropertyExtendedProperties & cprop)
+		properties |= 128; // PROPERTY_EXTENDED_PROPS
+
+	// Set writeType.
 	int writeType = 0;
+	if (CBCharacteristicPropertyWriteWithoutResponse & cprop)
+		writeType |= 1; // WRITE_TYPE_NO_RESPONSE
+	if (CBCharacteristicPropertyAuthenticatedSignedWrites & cprop)
+		writeType |= 4; // WRITE_TYPE_SIGNED
+	if (0 == writeType)
+		writeType = 2; // WRITE_TYPE_DEFAULT
 
 	return @{
 		@"handle" : handle,
@@ -399,17 +390,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 - (NSDictionary*) createDescriptorObject: (CBDescriptor*)descriptor
 	withHandle: (NSNumber*)handle
 {
-/*
-	1: 'PERMISSION_READ'
-	2: 'PERMISSION_READ_ENCRYPTED',
-	4: 'PERMISSION_READ_ENCRYPTED_MITM',
-	16: 'PERMISSION_WRITE',
-	32: 'PERMISSION_WRITE_ENCRYPTED',
-	64: 'PERMISSION_WRITE_ENCRYPTED_MITM',
-	128: 'PERMISSION_WRITE_SIGNED',
-	256: 'PERMISSION_WRITE_SIGNED_MITM',
-*/
-	// TODO: Add permission values.
+	// Note: Permissions for descriptors are not available on iOS.
 	int permissions = 0;
 
 	return @{
@@ -417,6 +398,164 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 		@"uuid" : [[descriptor UUID] uuidString],
 		@"permission" : [NSNumber numberWithInt: permissions]
 	};
+}
+
+/****************************************************************/
+/*               Implemented Interface Methods                  */
+/****************************************************************/
+
+/**
+ * From interface CBPeripheralDelegate.
+ * Called when RSSI value has been read from device.
+ */
+- (void) peripheralDidUpdateRSSI: (CBPeripheral *)peripheral
+	error: (NSError *)error
+{
+	if (nil == error)
+	{
+		// Success. Send back data to JS.
+		[self.ble
+			sendInt: [peripheral.RSSI intValue]
+			forCallback: [self getActiveCallbackId]
+			keepCallback: NO];
+	}
+	else
+	{
+		[self.ble
+			sendErrorMessage: [error localizedDescription]
+			forCallback: [self getActiveCallbackId]];
+	}
+
+	[self clearActiveCommand];
+}
+
+/**
+ * From interface CBPeripheralDelegate.
+ * Called when services have been read from device.
+ */
+- (void) peripheral: (CBPeripheral *)peripheral
+	didDiscoverServices: (NSError *)error
+{
+	if (nil == error)
+	{
+		//NSLog(@"found services: %@", peripheral.services);
+
+		// Create array with Service objects.
+		NSMutableArray* array = [NSMutableArray array];
+		for (CBService* service in peripheral.services)
+		{
+			id handle = [self.ble nextHandle];
+			[self addObject: service withHandle: handle];
+			[array addObject: [self
+				createServiceObject: service
+				withHandle: handle]];
+		}
+
+		// Send back data to JS.
+		[self.ble
+			sendArray: array
+			forCallback: [self getActiveCallbackId]
+			keepCallback: NO];
+	}
+	else
+	{
+		[self.ble
+			sendErrorMessage: [error localizedDescription]
+			forCallback: [self getActiveCallbackId]];
+	}
+
+	[self clearActiveCommand];
+}
+
+- (void)peripheral: (CBPeripheral *)peripheral
+	didDiscoverCharacteristicsForService: (CBService *)service
+	error:(NSError *)error
+{
+	if (nil == error)
+	{
+		// Create array with Service objects.
+		NSMutableArray* array = [NSMutableArray array];
+		for (CBCharacteristic* characteristic in service.characteristics)
+		{
+			id handle = [self.ble nextHandle];
+			[self addObject: characteristic withHandle: handle];
+			[array addObject: [self
+				createCharacteristicObject: characteristic
+				withHandle: handle]];
+		}
+
+		// Send back data to JS.
+		[self.ble
+			sendArray: array
+			forCallback: [self getActiveCallbackId]
+			keepCallback: NO];
+	}
+	else
+	{
+		[self.ble
+			sendErrorMessage: [error localizedDescription]
+			forCallback: [self getActiveCallbackId]];
+	}
+
+	[self clearActiveCommand];
+}
+
+- (void)peripheral: (CBPeripheral *)peripheral didDiscoverDescriptorsForCharacteristic: (CBCharacteristic *)characteristic error: (NSError *)error
+{
+	NSLog(@"found descriptors: %@", characteristic.descriptors);
+
+	if (nil == error)
+	{
+		// Create array with Descriptor objects.
+		NSMutableArray* array = [NSMutableArray array];
+		for (CBDescriptor* descriptor in characteristic.descriptors)
+		{
+			id handle = [self.ble nextHandle];
+			[self addObject: descriptor withHandle: handle];
+			[array addObject: [self
+				createDescriptorObject: descriptor
+				withHandle: handle]];
+		}
+
+		// Send back data to JS.
+		[self.ble
+			sendArray: array
+			forCallback: [self getActiveCallbackId]
+			keepCallback: NO];
+	}
+	else
+	{
+		[self.ble
+			sendErrorMessage: [error localizedDescription]
+			forCallback: [self getActiveCallbackId]];
+	}
+	
+	[self clearActiveCommand];
+}
+
+// Note: Called both on read and notify!
+- (void) peripheral: (CBPeripheral *)peripheral
+	didUpdateValueForCharacteristic: (CBCharacteristic *)characteristic
+	error: (NSError *)error
+{
+	NSString* callbackId = [self getCallbackIdForCharacteristic: characteristic];
+	// TODO: Check that callback id != nil.
+
+	if (nil == error)
+	{
+		// Send back data to JS.
+		NSData* buffer = characteristic.value;
+		[self.ble
+			sendBuffer: buffer
+			forCallback: callbackId
+			keepCallback: NO];
+	}
+	else
+	{
+		[self.ble
+			sendErrorMessage: [error localizedDescription]
+			forCallback: callbackId];
+	}
 }
 
 @end
@@ -427,14 +566,14 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 @implementation BLE
 
-/****************************************************************/
-/*                   BLE plugin API Methods                     */
-/****************************************************************/
-
 //////////////////////////////////////////////////////////////////
 // TODO: Guard against parallel invocations of API calls.       //
 // The API can only handle one scan, connect, etc call at once. //
 //////////////////////////////////////////////////////////////////
+
+/****************************************************************/
+/*                   BLE plugin API Methods                     */
+/****************************************************************/
 
 /**
  * BLE API call: startScan
@@ -456,7 +595,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	[self.central stopScan];
 
 	// Clear callback on the JS side.
-	[self returnNoResultClearCallback: self.scanCallbackId];
+	[self sendNoResultClearCallback: self.scanCallbackId];
 
 	self.scanCallbackId = nil;
 }
@@ -474,7 +613,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	{
 		// Pass back error message.
 		[self
-			returnErrorMessage: @"connect: no device address given"
+			sendErrorMessage: @"connect: no device address given"
 			forCallback: command.callbackId];
 		return;
 	}
@@ -488,7 +627,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	{
 		// Pass back error message.
 		[self
-			returnErrorMessage: @"connect: device with given address not found"
+			sendErrorMessage: @"connect: device with given address not found"
 			forCallback: command.callbackId];
 		return;
 	}
@@ -500,7 +639,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	{
 		// Pass back error message.
 		[self
-			returnErrorMessage: @"connect: device not found"
+			sendErrorMessage: @"connect: device not found"
 			forCallback: command.callbackId];
 		return;
 	}
@@ -510,21 +649,20 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 		withBLE: self
 		periperal: peripheral];
 
+	// Save Cordova callback id.
+	myPeripheral.connectCallbackId = command.callbackId;
+
+	// Send 'connecting' state to JS side.
+	[self
+		sendConnectionState: @1 // STATE_CONNECTING
+		forMyPeriperhal: myPeripheral];
+
 	// Connect. Result is given in methods:
 	//   centralManager:didConnectPeripheral:
 	//   centralManager:didDisconnectPeripheral:error:
-	[myPeripheral
-		addCallbackId: command.callbackId
-		withSignature: @"connect"
-		forObject: myPeripheral];
 	[self.central
 		connectPeripheral: peripheral
 		options: nil];
-
-	// Send connection state to JS side.
-	[self
-		returnConnectionState: @1 // STATE_CONNECTING
-		forMyPeriperhal: myPeripheral];
 }
 
 /**
@@ -535,14 +673,14 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
+	// Send 'disconnecting' state to JS side.
+	[self
+		sendConnectionState: @3 // STATE_DISCONNECTING
+		forMyPeriperhal: myPeripheral];
+
 	// Disconnect. Result is given in method:
 	//   centralManager:didDisconnectPeripheral:error:
 	[self.central cancelPeripheralConnection: myPeripheral.peripheral];
-
-	// Send disconnecting state to JS side.
-	[self
-		returnConnectionState: @3 // STATE_DISCONNECTING
-		forMyPeriperhal: myPeripheral];
 }
 
 /**
@@ -553,15 +691,14 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
-	// Save callbackId.
-	[myPeripheral
-		addCallbackId: command.callbackId
-		withSignature: @"rssi"
-		forObject: myPeripheral];
-
 	// Read RSSI. Result is given in callback method:
 	//   peripheralDidUpdateRSSI:error:
-	[myPeripheral.peripheral readRSSI];
+	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
+	[myPeripheral
+		addCommandForCallbackId: command.callbackId
+		withBlock: ^{
+			[peripheral readRSSI];
+		}];
 }
 
 /**
@@ -572,15 +709,14 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
-	// Save callbackId.
-	[myPeripheral
-		addCallbackId: command.callbackId
-		withSignature: @"services"
-		forObject: myPeripheral];
-
 	// Read services. Result is given in callback method:
 	//   peripheral:didDiscoverServices:
-	[myPeripheral.peripheral discoverServices: nil];
+	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
+	[myPeripheral
+		addCommandForCallbackId: command.callbackId
+		withBlock: ^{
+			[peripheral discoverServices: nil];
+		}];
 }
 
 - (void) characteristics: (CDVInvokedUrlCommand*)command
@@ -592,7 +728,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	if (nil == serviceHandle)
 	{
 		[self
-			returnErrorMessage: @"no service handle given"
+			sendErrorMessage: @"no service handle given"
 			forCallback: command.callbackId];
 		return;
 	}
@@ -601,20 +737,21 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	if (nil == serviceHandle)
 	{
 		[self
-			returnErrorMessage: @"service not found"
+			sendErrorMessage: @"service not found"
 			forCallback: command.callbackId];
 		return;
 	}
 
 	// Result is delivered in:
 	//	peripheral:didDiscoverCharacteristicsForService:
+	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
 	[myPeripheral
-		addCallbackId: command.callbackId
-		withSignature: @"characteristics"
-		forObject: service];
-	[myPeripheral.peripheral
-		discoverCharacteristics: nil
-		forService: service];
+		addCommandForCallbackId: command.callbackId
+		withBlock: ^{
+			[peripheral
+				discoverCharacteristics: nil
+				forService: service];
+			}];
 }
 
 - (void) descriptors: (CDVInvokedUrlCommand*)command
@@ -626,7 +763,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	if (nil == characteristicHandle)
 	{
 		[self
-			returnErrorMessage: @"no characteristic handle given"
+			sendErrorMessage: @"no characteristic handle given"
 			forCallback: command.callbackId];
 		return;
 	}
@@ -636,31 +773,87 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	if (nil == characteristic)
 	{
 		[self
-			returnErrorMessage: @"characteristic not found"
+			sendErrorMessage: @"characteristic not found"
 			forCallback: command.callbackId];
 		return;
 	}
 
 	// Result is delivered in:
 	//	peripheral:didDiscoverCharacteristicsForService:
+	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
 	[myPeripheral
-		addCallbackId: command.callbackId
-		withSignature: @"descriptors"
-		forObject: characteristic];
-	[myPeripheral.peripheral
-		discoverDescriptorsForCharacteristic: characteristic];
+		addCommandForCallbackId: command.callbackId
+		withBlock: ^{
+			[peripheral discoverDescriptorsForCharacteristic: characteristic];
+		}];
 }
 
 - (void) readCharacteristic: (CDVInvokedUrlCommand*)command
 {
 	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
+	
+	NSString* characteristicHandle = [command.arguments objectAtIndex: 1];
+	if (nil == characteristicHandle)
+	{
+		[self
+			sendErrorMessage: @"no characteristic handle given"
+			forCallback: command.callbackId];
+		return;
+	}
+
+	CBCharacteristic* characteristic =
+		[myPeripheral getObjectWithHandle: characteristicHandle];
+	if (nil == characteristic)
+	{
+		[self
+			sendErrorMessage: @"characteristic not found"
+			forCallback: command.callbackId];
+		return;
+	}
+
+	// Result is delivered in:
+	//	peripheral:didUpdateValueForCharacteristic:error:
+	[myPeripheral
+		addCallbackForCharacteristic: characteristic
+		callbackId: command.callbackId
+		isNotifyingCallback: NO];
+	[myPeripheral.peripheral readValueForCharacteristic: characteristic];
 }
 
 - (void) readDescriptor: (CDVInvokedUrlCommand*)command
 {
 	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
+	if (nil == myPeripheral) return; // Error.	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
+	
+	NSString* descriptorHandle = [command.arguments objectAtIndex: 1];
+	if (nil == descriptorHandle)
+	{
+		[self
+			sendErrorMessage: @"no descriptor handle given"
+			forCallback: command.callbackId];
+		return;
+	}
+
+	CBDescriptor* descriptor =
+		[myPeripheral getObjectWithHandle: descriptorHandle];
+	if (nil == descriptor)
+	{
+		[self
+			sendErrorMessage: @"descriptor not found"
+			forCallback: command.callbackId];
+		return;
+	}
+
+	// Result is delivered in:
+	//	peripheral:didUpdateValueForDescriptor:error:
+	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
+	[myPeripheral
+		addCommandForCallbackId: command.callbackId
+		withBlock: ^{
+			[peripheral readValueForDescriptor: descriptor];
+		}];
 }
 
 - (void) writeCharacteristic: (CDVInvokedUrlCommand*)command
@@ -726,7 +919,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 {
 	[self
-		returnScanInfoForPeriperhal: peripheral
+		sendScanInfoForPeriperhal: peripheral
 		RSSI: RSSI];
 }
 
@@ -755,36 +948,22 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	NSLog(@"didConnectPeripheral: %@", peripheral);
 
 	[self
-		returnConnectionState: @2 // STATE_CONNECTED
+		sendConnectionState: @2 // STATE_CONNECTED
 		forMyPeriperhal: [peripheral getMyPerhiperal]];
 }
 
-// TODO: Call error callback?
-// Refactor duplicated code.
 - (void)centralManager: (CBCentralManager *)central
 	didFailToConnectPeripheral: (CBPeripheral *)peripheral
 	error: (NSError *)error
 {
 	NSLog(@"didFailToConnectPeripheral: %@", peripheral);
 
-	MyPeripheral* myPeripheral = [peripheral getMyPerhiperal];
-
+	// Lazy code reuse.
+	// TODO: Call error callback instead?
 	[self
-		returnConnectionState: @0 // STATE_DISCONNECTED
-		forMyPeriperhal: myPeripheral];
-
-	// Clear callback on the JS side.
-	[self returnNoResultClearCallback: [myPeripheral
-		getCallbackIdWithSignature: @"connect"
-		forObject: myPeripheral]];
-
-	// Remove from dictionary and clean up.
-	[self.peripherals removeObjectForKey: myPeripheral.handle];
-	[myPeripheral
-		clearCallbackIdWithSignature: @"connect"
-		forObject: myPeripheral];
-	myPeripheral.peripheral = nil;
-	myPeripheral.ble = nil;
+		centralManager: central
+		didDisconnectPeripheral: peripheral
+		error: error];
 }
 
 /**
@@ -795,28 +974,27 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	didDisconnectPeripheral: (CBPeripheral *)peripheral
 	error: (NSError *)error
 {
+
 	MyPeripheral* myPeripheral = [peripheral getMyPerhiperal];
 
+	// Send disconnected state to JS.
 	[self
-		returnConnectionState: @0 // STATE_DISCONNECTED
+		sendConnectionState: @0 // STATE_DISCONNECTED
 		forMyPeriperhal: myPeripheral];
 
 	// Clear callback on the JS side.
-	[self returnNoResultClearCallback: [myPeripheral
-		getCallbackIdWithSignature: @"connect"
-		forObject: myPeripheral]];
+	[self sendNoResultClearCallback: myPeripheral.connectCallbackId];
 
 	// Remove from dictionary and clean up.
 	[self.peripherals removeObjectForKey: myPeripheral.handle];
-	[myPeripheral
-		clearCallbackIdWithSignature: @"connect"
-		forObject: myPeripheral];
 	myPeripheral.peripheral = nil;
+	[peripheral setMyPerhiperal: nil];
 	myPeripheral.ble = nil;
+	myPeripheral.connectCallbackId = nil;
 }
 
 /****************************************************************/
-/*                      Internal Methods                        */
+/*                      Instance Methods                        */
 /****************************************************************/
 
 - (NSNumber*) nextHandle
@@ -854,7 +1032,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	if (nil == deviceHandle)
 	{
 		[self
-			returnErrorMessage: @"no device handle given"
+			sendErrorMessage: @"no device handle given"
 			forCallback: command.callbackId];
 		return nil;
 	}
@@ -863,7 +1041,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	if (nil == myPeripheral)
 	{
 		[self
-			returnErrorMessage: @"device not found"
+			sendErrorMessage: @"device not found"
 			forCallback: command.callbackId];
 		return nil;
 	}
@@ -874,7 +1052,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 /**
  * Internal helper method.
  */
-- (void) returnScanInfoForPeriperhal: (CBPeripheral *)peripheral
+- (void) sendScanInfoForPeriperhal: (CBPeripheral *)peripheral
 	RSSI: (NSNumber *)RSSI
 {
 	// Create an info object.
@@ -889,7 +1067,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 	// Send back data to JS.
 	[self
-		returnDictionary: info
+		sendDictionary: info
 		forCallback: self.scanCallbackId
 		keepCallback: YES];
 }
@@ -897,7 +1075,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 /**
  * Internal helper method.
  */
-- (void) returnConnectionState: (NSNumber *)state
+- (void) sendConnectionState: (NSNumber *)state
 	forMyPeriperhal: (MyPeripheral *)myPeripheral
 {
 	// Create an info object.
@@ -910,10 +1088,8 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 	// Send back data to JS.
 	[self
-		returnDictionary: info
-		forCallback: [myPeripheral
-			getCallbackIdWithSignature: @"connect"
-			forObject: myPeripheral]
+		sendDictionary: info
+		forCallback: myPeripheral.connectCallbackId
 		keepCallback: YES];
 }
 
@@ -922,7 +1098,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
  * Tell Cordova to clear the callback function associated
  * with the given callback id.
  */
-- (void) returnNoResultClearCallback: (NSString*)callbackId
+- (void) sendNoResultClearCallback: (NSString*)callbackId
 {
 	// Clear callback on the JS side.
 	CDVPluginResult* result = [CDVPluginResult
@@ -937,7 +1113,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
  * Helper method.
  * Send back an error message to Cordova.
  */
-- (void) returnErrorMessage: (NSString*)errorMessage
+- (void) sendErrorMessage: (NSString*)errorMessage
 	forCallback: (NSString*)callbackId
 {
 	CDVPluginResult* result = [CDVPluginResult
@@ -952,7 +1128,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
  * Helper method.
  * Send back a dictionary object to Cordova.
  */
-- (void) returnDictionary: (NSDictionary*)dictionary
+- (void) sendDictionary: (NSDictionary*)dictionary
 	forCallback: (NSString*)callbackId
 	keepCallback: (BOOL) keep
 {
@@ -969,7 +1145,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
  * Helper method.
  * Send back an array to Cordova.
  */
-- (void) returnArray: (NSArray*)array
+- (void) sendArray: (NSArray*)array
 	forCallback: (NSString*)callbackId
 	keepCallback: (BOOL) keep
 {
@@ -986,13 +1162,30 @@ static int MyPerhiperalAssociatedObjectKey = 42;
  * Helper method.
  * Send back an int value to Cordova.
  */
-- (void) returnInt: (int)value
+- (void) sendInt: (int)value
 	forCallback: (NSString*)callbackId
 	keepCallback: (BOOL) keep
 {
 	CDVPluginResult* result = [CDVPluginResult
 		resultWithStatus: CDVCommandStatus_OK
 		messageAsInt: value];
+	[result setKeepCallbackAsBool: keep];
+	[self.commandDelegate
+		sendPluginResult: result
+		callbackId: callbackId];
+}
+
+/**
+ * Helper method.
+ * Send back a byte buffer to Cordova.
+ */
+- (void) sendBuffer: (NSData*)buffer
+	forCallback: (NSString*)callbackId
+	keepCallback: (BOOL) keep
+{
+	CDVPluginResult* result = [CDVPluginResult
+		resultWithStatus: CDVCommandStatus_OK
+		messageAsArrayBuffer: buffer];
 	[result setKeepCallbackAsBool: keep];
 	[self.commandDelegate
 		sendPluginResult: result

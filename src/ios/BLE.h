@@ -23,6 +23,39 @@
 #import <Cordova/CDVPlugin.h>
 
 //////////////////////////////////////////////////////////////////
+//                      Class MyQueue                           //
+//////////////////////////////////////////////////////////////////
+
+@interface MyQueue : NSObject
+
+@property NSMutableArray* array;
+
+- (MyQueue*) init;
+- (void) enqueue: (id)item;
+- (id) dequeue;
+- (id) first;
+- (BOOL) isEmpty;
+
+@end
+
+//////////////////////////////////////////////////////////////////
+//                     Class MyCommand                          //
+//////////////////////////////////////////////////////////////////
+
+typedef void (^MyCommandBlock)(void);
+
+@interface MyCommand : NSObject
+
+@property NSString* callbackId;
+@property (strong, nonatomic) MyCommandBlock block;
+//@property int type; // COMMAND_SERVICES, COMMAND_CHARACTERISTICS,...
+
+- (MyCommand*) init;
+- (void) doBlock;
+
+@end
+
+//////////////////////////////////////////////////////////////////
 //                          Class BLE                           //
 //////////////////////////////////////////////////////////////////
 
@@ -58,20 +91,34 @@
 - (void) disableNotification: (CDVInvokedUrlCommand*)command;
 - (void) reset: (CDVInvokedUrlCommand*)command;
 
-// Internal API.
+// Instance methods.
 - (NSNumber*) nextHandle;
-- (void) returnNoResultClearCallback: (NSString*)callbackId;
-- (void) returnErrorMessage: (NSString*)errorMessage
+- (void) sendNoResultClearCallback: (NSString*)callbackId;
+- (void) sendErrorMessage: (NSString*)errorMessage
 	forCallback: (NSString*)callbackId;
-- (void) returnDictionary: (NSDictionary*)dictionary
+- (void) sendDictionary: (NSDictionary*)dictionary
 	forCallback: (NSString*)callbackId
 	keepCallback: (BOOL) keep;
-- (void) returnArray: (NSArray*)array
+- (void) sendArray: (NSArray*)array
 	forCallback: (NSString*)callbackId
 	keepCallback: (BOOL) keep;
-- (void) returnInt: (int)value
+- (void) sendInt: (int)value
 	forCallback: (NSString*)callbackId
 	keepCallback: (BOOL) keep;
+- (void) sendBuffer: (NSData*)buffer
+	forCallback: (NSString*)callbackId
+	keepCallback: (BOOL) keep;
+
+@end
+
+//////////////////////////////////////////////////////////////////
+//                   Class MyCallbackInfo                       //
+//////////////////////////////////////////////////////////////////
+
+@interface MyCallbackInfo : NSObject
+
+@property NSString* callbackId;
+@property BOOL isNotifyingCallback;
 
 @end
 
@@ -84,13 +131,10 @@
 @property NSNumber* handle;
 @property CBPeripheral* peripheral;
 @property BLE* ble;
-@property NSMutableDictionary* objects;
-/*@property NSString* connectCallbackId;
-@property NSString* rssiCallbackId;
-@property NSString* servicesCallbackId;
-@property NSString* characteristicsCallbackId;
-@property NSString* descriptorsCallbackId;*/
-
+@property NSMutableDictionary* objects; // Handle to object table
+@property NSString* connectCallbackId;
+@property MyQueue* commands; // Contains MyCommand objects
+@property NSMutableDictionary* characteristicsCallbacks; // Contains MyCallbackInfo objects
 
 + (MyPeripheral*) withBLE: (BLE*) ble periperal: (CBPeripheral*) peripheral;
 
@@ -98,9 +142,11 @@
 - (void) addObject: (id)obj withHandle: (id)handle;
 - (id) getObjectWithHandle: (id)handle;
 - (void) removeObjectWithHandle: (id)handle;
-- (void) addCallbackId: (id)callbackId
-	withSignature: (NSString*)signature forObject: (id)obj;
-- (id) getCallbackIdWithSignature: (NSString*)signature forObject: (id)obj;
-- (void) clearCallbackIdWithSignature: (NSString*)signature forObject: (id)obj;
+- (void) addCommandForCallbackId: (NSString*)callbackId withBlock: (MyCommandBlock)block;
+- (NSString*) getActiveCallbackId;
+- (void) clearActiveCommand;
+- (void) addCallbackForCharacteristic: (CBCharacteristic*)characteristic
+	callbackId: (NSString*)callbackId
+	isNotifyingCallback: (BOOL) notify;
 
 @end

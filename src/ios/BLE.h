@@ -91,8 +91,11 @@ typedef void (^MyCommandBlock)(void);
 - (void) disableNotification: (CDVInvokedUrlCommand*)command;
 - (void) reset: (CDVInvokedUrlCommand*)command;
 
-// Instance methods.
+// Increment and get the value of a handle counter.
 - (NSNumber*) nextHandle;
+
+// Methods that send results back to JavaScript.
+- (void) sendOkClearCallback: (NSString*)callbackId;
 - (void) sendNoResultClearCallback: (NSString*)callbackId;
 - (void) sendErrorMessage: (NSString*)errorMessage
 	forCallback: (NSString*)callbackId;
@@ -118,7 +121,7 @@ typedef void (^MyCommandBlock)(void);
 @interface MyCallbackInfo : NSObject
 
 @property NSString* callbackId;
-@property BOOL isNotifyingCallback;
+@property BOOL isNotificationCallback;
 
 @end
 
@@ -136,17 +139,45 @@ typedef void (^MyCommandBlock)(void);
 @property MyQueue* commands; // Contains MyCommand objects
 @property NSMutableDictionary* characteristicsCallbacks; // Contains MyCallbackInfo objects
 
+// Class method (constructor).
 + (MyPeripheral*) withBLE: (BLE*) ble periperal: (CBPeripheral*) peripheral;
 
+// Initialising.
 - (MyPeripheral*) init;
+
+// Handle table for objects (like CBService, CBCharacteristic, and CBDEscriptor).
 - (void) addObject: (id)obj withHandle: (id)handle;
 - (id) getObjectWithHandle: (id)handle;
 - (void) removeObjectWithHandle: (id)handle;
+
+// Handling of queued command objects (operations). For many operations
+// a queue of commands is used to make async operations send the result
+// to the correct Cordova callback id.
 - (void) addCommandForCallbackId: (NSString*)callbackId withBlock: (MyCommandBlock)block;
 - (NSString*) getActiveCallbackId;
-- (void) clearActiveCommand;
+- (void) clearActiveCommandAndContinue;
+
+// Charactristics have their own callback managements, since a notification
+// heeds to keep the callback "open". Moreover, the result of reading a
+// characteristic as well as from a notification is develivered in the
+// same iOS callback method. Thus both read and notification operations
+// need to be handled.
 - (void) addCallbackForCharacteristic: (CBCharacteristic*)characteristic
 	callbackId: (NSString*)callbackId
-	isNotifyingCallback: (BOOL) notify;
+	isNotificationCallback: (BOOL) notify;
+- (NSString*) getCallbackIdForCharacteristic: (CBCharacteristic*)characteristic;
+- (void) removeCallbackForCharacteristic: (CBCharacteristic*)characteristic;
 
+// Helper method that looks up an object by using the handle given in a parameter
+// from a JS call.
+- (id) getObjectFromCommand: (CDVInvokedUrlCommand*)command atIndex: (NSUInteger) index;
+
+// Helper methods that create data structures for JavaScript objects.
+- (NSDictionary*) createServiceObject: (CBService*)service
+	withHandle: (NSNumber*)handle;
+- (NSDictionary*) createCharacteristicObject: (CBCharacteristic*)characteristic
+	withHandle: (NSNumber*)handle;
+- (NSDictionary*) createDescriptorObject: (CBDescriptor*)descriptor
+	withHandle: (NSNumber*)handle;
+	
 @end

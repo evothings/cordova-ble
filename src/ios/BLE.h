@@ -42,13 +42,24 @@
 //                     Class MyCommand                          //
 //////////////////////////////////////////////////////////////////
 
+// These are operation types used in by the MyCommand class.
+const int OPERATION_RSSI = 1;
+const int OPERATION_SERVICES = 2;
+const int OPERATION_CHARACTERISTICS = 3;
+const int OPERATION_DESCRIPTORS = 4;
+const int OPERATION_READ_DESCRIPTOR = 5;
+const int OPERATION_WRITE_CHARACTERISTIC = 6;
+const int OPERATION_WRITE_DESCRIPTOR = 7;
+
+// Block type used by commands.
 typedef void (^MyCommandBlock)(void);
 
 @interface MyCommand : NSObject
 
 @property NSString* callbackId;
 @property (strong, nonatomic) MyCommandBlock block;
-//@property int type; // COMMAND_SERVICES, COMMAND_CHARACTERISTICS,...
+@property int type; // Operation type.
+@property (weak, nonatomic) id obj; // Object in the operation.
 
 - (MyCommand*) init;
 - (void) doBlock;
@@ -153,9 +164,14 @@ typedef void (^MyCommandBlock)(void);
 // Handling of queued command objects (operations). For many operations
 // a queue of commands is used to make async operations send the result
 // to the correct Cordova callback id.
-- (void) addCommandForCallbackId: (NSString*)callbackId withBlock: (MyCommandBlock)block;
+- (void) addCommandForCallbackId: (NSString*)callbackId
+	forObject: (id)obj
+	operation: (int)type
+	withBlock: (MyCommandBlock)block;
 - (NSString*) getActiveCallbackId;
 - (void) clearActiveCommandAndContinue;
+- (void) assertCommandAvailable;
+- (void) assertCommandHasObject: (id)obj andType: (int)type;
 
 // Charactristics have their own callback managements, since a notification
 // heeds to keep the callback "open". Moreover, the result of reading a

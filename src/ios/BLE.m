@@ -227,11 +227,16 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	[self.objects removeObjectForKey: handle];
 }
 
-- (void) addCommandForCallbackId: (NSString*)callbackId withBlock: (MyCommandBlock)block
+- (void) addCommandForCallbackId: (NSString*)callbackId
+	forObject: (id)obj
+	operation: (int)type
+	withBlock: (MyCommandBlock)block
 {
 	// Create command object.
 	MyCommand* command = [MyCommand new];
 	command.callbackId = callbackId;
+	command.obj = obj;
+	command.type = type;
 	command.block = block;
 
 	// If command queue is empty start the command now.
@@ -265,6 +270,13 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 - (void) assertCommandAvailable
 {
 	assert(![self.commands isEmpty]);
+}
+
+- (void) assertCommandHasObject: (id)obj andType: (int)type
+{
+	MyCommand* command = [self.commands first];
+	assert(command.obj == obj);
+	assert(command.type == type);
 }
 
 - (void) addCallbackForCharacteristic: (CBCharacteristic*)characteristic
@@ -446,6 +458,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	NSLog(@"peripheralDidUpdateRSSI debug log: %@", peripheral);
 
 	[self assertCommandAvailable];
+	[self assertCommandHasObject: peripheral andType: OPERATION_RSSI];
 
 	if (nil == error)
 	{
@@ -475,6 +488,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	NSLog(@"didDiscoverServices debug log: %@", peripheral);
 
 	[self assertCommandAvailable];
+	[self assertCommandHasObject: peripheral andType: OPERATION_SERVICES];
 
 	if (nil == error)
 	{
@@ -512,6 +526,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	error:(NSError *)error
 {
 	[self assertCommandAvailable];
+	[self assertCommandHasObject: service andType: OPERATION_CHARACTERISTICS];
 
 	if (nil == error)
 	{
@@ -542,9 +557,12 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	[self clearActiveCommandAndContinue];
 }
 
-- (void)peripheral: (CBPeripheral *)peripheral didDiscoverDescriptorsForCharacteristic: (CBCharacteristic *)characteristic error: (NSError *)error
+- (void)peripheral: (CBPeripheral *)peripheral
+	didDiscoverDescriptorsForCharacteristic: (CBCharacteristic *)characteristic
+	error: (NSError *)error
 {
 	[self assertCommandAvailable];
+	[self assertCommandHasObject: characteristic andType: OPERATION_DESCRIPTORS];
 
 	if (nil == error)
 	{
@@ -616,6 +634,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	error:(NSError *)error
 {
 	[self assertCommandAvailable];
+	[self assertCommandHasObject: descriptor andType: OPERATION_READ_DESCRIPTOR];
 
 	if (nil == error)
 	{
@@ -663,6 +682,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	error:(NSError *)error
 {
 	[self assertCommandAvailable];
+	[self assertCommandHasObject: characteristic andType: OPERATION_WRITE_CHARACTERISTIC];
 
 	if (nil == error)
 	{
@@ -684,6 +704,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	error: (NSError *)error
 {
 	[self assertCommandAvailable];
+	[self assertCommandHasObject: descriptor andType: OPERATION_WRITE_DESCRIPTOR];
 
 	if (nil == error)
 	{
@@ -789,9 +810,11 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 		return;
 	}
 
+	NSLog(@"*** Checking that periheral is not connected yet");
 	// Check that periheral is not connected yet.
 	if (nil != [peripheral getMyPerhiperal])
 	{
+		NSLog(@"*** Periheral was already connected");
 		// Pass back error message.
 		[self
 			sendErrorMessage: @"device already connected"
@@ -853,6 +876,8 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
 	[myPeripheral
 		addCommandForCallbackId: command.callbackId
+		forObject: peripheral
+		operation: OPERATION_RSSI
 		withBlock: ^{
 			[peripheral readRSSI];
 		}];
@@ -873,6 +898,8 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
 	[myPeripheral
 		addCommandForCallbackId: command.callbackId
+		forObject: peripheral
+		operation: OPERATION_SERVICES
 		withBlock: ^{
 			[peripheral discoverServices: nil];
 		}];
@@ -893,6 +920,8 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
 	[myPeripheral
 		addCommandForCallbackId: command.callbackId
+		forObject: service
+		operation: OPERATION_CHARACTERISTICS
 		withBlock: ^{
 			[peripheral
 				discoverCharacteristics: nil
@@ -915,6 +944,8 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
 	[myPeripheral
 		addCommandForCallbackId: command.callbackId
+		forObject: characteristic
+		operation: OPERATION_DESCRIPTORS
 		withBlock: ^{
 			[peripheral discoverDescriptorsForCharacteristic: characteristic];
 		}];
@@ -952,6 +983,8 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
 	[myPeripheral
 		addCommandForCallbackId: command.callbackId
+		forObject: descriptor
+		operation: OPERATION_READ_DESCRIPTOR
 		withBlock: ^{
 			[peripheral readValueForDescriptor: descriptor];
 		}];
@@ -1001,6 +1034,8 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
 	[myPeripheral
 		addCommandForCallbackId: command.callbackId
+		forObject: characteristic
+		operation: OPERATION_WRITE_CHARACTERISTIC
 		withBlock: ^{
 			[peripheral
 				writeValue: data
@@ -1031,6 +1066,8 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
 	[myPeripheral
 		addCommandForCallbackId: command.callbackId
+		forObject: descriptor
+		operation: OPERATION_WRITE_DESCRIPTOR
 		withBlock: ^{
 			[peripheral
 				writeValue: data
@@ -1170,6 +1207,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	didDisconnectPeripheral: (CBPeripheral *)peripheral
 	error: (NSError *)error
 {
+	NSLog(@"didDisconnectPeripheral: %@", peripheral);
 
 	MyPeripheral* myPeripheral = [peripheral getMyPerhiperal];
 
@@ -1279,7 +1317,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	// The UUID is used as the address of the device (the 6-byte BLE address
 	// does not seem to be directly available on iOS).
 	NSDictionary* info = @{
-		@"device" : myPeripheral.handle,
+		@"deviceHandle" : myPeripheral.handle,
 		@"state" : state
 	};
 
@@ -1408,3 +1446,15 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 }
 
 @end
+
+/*
+Here is how to make an alert box, if it should be needed:
+UIAlertView *alert = [[UIAlertView alloc]
+	initWithTitle: @"No network connection"
+    message:@"You must be connected to the internet to use this app."
+    delegate:nil
+    cancelButtonTitle:@"OK"
+    otherButtonTitles:nil];
+[alert show];
+http://stackoverflow.com/questions/5763581/uialertview-button-action/5763609#5763609
+*/

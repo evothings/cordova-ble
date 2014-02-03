@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+	<meta name="viewport" content="user-scalable=yes, initial-scale=2"/>
+    <title>EvoThings BLE Test</title>
+	<script src="libs/jquery/jquery.js"></script>
+	<script src="cordova.js"></script>
+</head>
+<body>
+
+<div>
+	<h1>EvoThings BLE Test</h1>
+
+	<button onclick="testBLE()">Test BLE</button>
+
+	<div id="test-log">
+	
+	<div>
+</div>
+
+<script>
+var testLogData = '';
+
+var foundDevices = {};
+
+function testLog(message)
+{
+	testLogData += message + '/n';
+	console.log(message);
+}
+
+function testBLE()
+{
+	console.log('testBLE');
+	// Scan and start first test.
+	testScan();
+}
+
+function stopScan()
+{
+	evothings.ble.stopScan();
+	foundDevices = {};
+}
+
+function testScan()
+{
+	stopScan();
+
+	evothings.ble.startScan(
+		function(device)
+		{
+			// Run the test suite once per device.
+			if (!foundDevices[device.address])
+			{
+				// Mark device as found.
+				foundDevices[device.address] = true;
+
+				// Start first test.
+				testConnectClose(device.address, 0);
+			}
+		},
+		function(errorCode)
+		{
+			testLog('[FAIL: testConnectClose] startScan error: ' + errorCode);
+		}
+	);
+}
+
+// Connect and close 10 times.
+function testConnectClose(address, counter)
+{
+	console.log('test connect to address: ' + address + ' counter: ' + counter);
+	evothings.ble.connect(
+		address,
+		function(info)
+		{
+			if (info.state == 2) // Connected
+			{
+				if (counter < 10)
+				{
+					evothings.ble.close(info.deviceHandle);
+				}
+				else
+				{
+					testLog('[PASS: testConnectClose]');
+
+					//stopScan();
+
+					// Run next test.
+					testRSSI(info.deviceHandle, 0);
+				}
+			}
+			else if (info.state == 0) // Disconnected
+			{
+				if (counter < 10)
+				{
+					// Connect again.
+					testConnectClose(address, counter + 1);
+					// setTimeout(function() { testConnectClose(address, counter + 1); }, 1000);
+				}
+			}
+		},
+		function(errorCode)
+		{
+			testLog('[FAIL: testConnectClose_Connect] error: ' + errorCode);
+		}
+	);
+}
+
+function testRSSI(deviceHandle, counter)
+{
+	evothings.ble.rssi(
+		deviceHandle,
+		function(rssi)
+		{
+			console.log('testRSSI rssi: ' + rssi + ' counter: ' + counter);
+			
+			if (counter < 10)
+			{
+				// Read RSSI again, but use a delay.
+				setTimeout(function() {testRSSI(deviceHandle, counter + 1);}, 1000);
+			}
+			else
+			{
+				testLog('[PASS: testRSSI]');
+
+				// Run next test.
+				// TODO: Implement.
+
+				// End test.
+				stopScan();
+			}
+
+		},
+		function(errorCode)
+		{
+			testLog('[FAIL testRSSI] error: ' + errorCode);
+		});
+}
+
+
+function getServices(deviceHandle)
+{
+	evothings.ble.services(
+		deviceHandle,
+		function(services)
+		{
+			for (var i=0; i<services.length; i++)
+			{
+				var service = services[i];
+				console.log('BLE service: ');
+				console.log('  ' + service.handle);
+				console.log('  ' + service.uuid);
+				console.log('  ' + service.serviceType);
+
+				getCharacteristics(deviceHandle, service.handle)
+			}
+		},
+		function(errorCode)
+		{
+			console.log('BLE services error: ' + errorCode);
+		})
+}
+
+function getCharacteristics(deviceHandle, serviceHandle)
+{
+	evothings.ble.characteristics(
+		deviceHandle,
+		serviceHandle,
+		function(characteristics)
+		{
+			console.log('found characteristics: ' + characteristics.length);
+			for (var i = 0; i < characteristics.length; i++)
+			{
+				var characteristic = characteristics[i];
+				readCharacteristic(deviceHandle, characteristic.handle)
+				getDescriptors(deviceHandle, characteristic.handle)
+			}
+		}
+	)
+}
+
+function getDescriptors(deviceHandle, characteristicHandle)
+{
+	evothings.ble.descriptors(
+		deviceHandle,
+		characteristicHandle,
+		function(descriptors)
+		{
+			console.log('found descriptors: ' + descriptors.length);
+			for (var i = 0; i < descriptors.length; i++)
+			{
+				var descriptor = descriptors[i];
+				console.log('descriptor.uuid: ' + descriptor.uuid)
+				readDescriptor(deviceHandle, descriptor.handle)
+			}
+		}
+	)
+}
+
+function readCharacteristic(deviceHandle, characteristicHandle)
+{
+	evothings.ble.readCharacteristic(
+		deviceHandle,
+		characteristicHandle,
+		function(data)
+		{
+			console.log('characteristic value: ' + evothings.ble.fromUtf8(data));
+		},
+		function(errorCode)
+		{
+			console.log('ERROR readCharacteristic: ' + errorCode);
+		}
+	)
+}
+
+function readDescriptor(deviceHandle, descriptorHandle)
+{
+	console.log('readDescriptor: ' + descriptorHandle);
+	evothings.ble.readDescriptor(
+		deviceHandle,
+		descriptorHandle,
+		function(data)
+		{
+			console.log('descriptor value: ' + evothings.ble.fromUtf8(data));
+		},
+		function(errorCode)
+		{
+			console.log('ERROR readDescriptor: ' + errorCode);
+		}
+	)
+}
+
+document.addEventListener('deviceready', onDeviceReady, false)
+
+function onDeviceReady()
+{
+	console.log('device ready');
+}
+</script>
+
+</body>
+</html>

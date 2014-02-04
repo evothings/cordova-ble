@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.io.UnsupportedEncodingException;
+import android.util.Base64;
 
 public class BLE extends CordovaPlugin implements LeScanCallback {
 	private CallbackContext mScanCallbackContext;
@@ -92,11 +93,9 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			o.put("address", device.getAddress());
 			o.put("rssi", rssi);
 			o.put("name", device.getName());
-			o.put("scanRecord", new String(scanRecord, "ISO-8859-1"));
+			o.put("scanRecord", Base64.encodeToString(scanRecord, Base64.NO_WRAP));
 			keepCallback(mScanCallbackContext, o);
 		} catch(JSONException e) {
-			mScanCallbackContext.error(e.toString());
-		} catch(UnsupportedEncodingException e) {
 			mScanCallbackContext.error(e.toString());
 		}
 	}

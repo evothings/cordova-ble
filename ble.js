@@ -45,7 +45,7 @@ exports.startScan = function(win, fail) {
 * The form of the address depends on the host platform.
 * @property {number} rssi - A negative integer, the signal strength in decibels.
 * @property {string} name - The device's name, or nil.
-* @property {string} scanRecord - A string of bytes. Its meaning is device-specific.
+* @property {string} scanRecord - Base64-encoded binary data. Its meaning is device-specific.
 */
 
 /** This function is called when an operation fails.

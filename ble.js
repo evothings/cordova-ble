@@ -45,7 +45,7 @@ exports.startScan = function(win, fail) {
 * The form of the address depends on the host platform.
 * @property {number} rssi - A negative integer, the signal strength in decibels.
 * @property {string} name - The device's name, or nil.
-* @property {string} scanRecord - Base64-encoded binary data. Its meaning is device-specific.
+* @property {string} scanRecord - Base64-encoded binary data. Its meaning is device-specific. Not available on iOS.
 */
 
 /** This function is called when an operation fails.
@@ -112,6 +112,10 @@ exports.connectionState = {
 /** Close the connection to a remote device.
 * <p>Frees any native resources associated with the device.
 * <p>Causes STATE_DISCONNECTING and STATE_DISCONNECTED callbacks to the function passed to connect().
+
+// The two above lines are mutually exclusive; can't cause callbacks once the resources are freed.
+// Currently, this function does NOT free any resources.
+
 * @param {number} deviceHandle - A handle from {@link connectCallback}.
 * @example
 evothings.ble.close(deviceHandle);

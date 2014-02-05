@@ -36,6 +36,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		if("startScan".equals(action)) { startScan(args, callbackContext); return true; }
 		else if("stopScan".equals(action)) { stopScan(args, callbackContext); return true; }
 		else if("connect".equals(action)) { connect(args, callbackContext); return true; }
+		else if("close".equals(action)) { close(args, callbackContext); return true; }
 		else if("rssi".equals(action)) { rssi(args, callbackContext); return true; }
 		else if("services".equals(action)) { services(args, callbackContext); return true; }
 		else if("characteristics".equals(action)) { characteristics(args, callbackContext); return true; }
@@ -121,6 +122,17 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		}
 	}
 
+	private void close(final CordovaArgs args, final CallbackContext callbackContext) {
+		try {
+			GattHandler gh = mGatt.get(args.getInt(0));
+			gh.mGatt.disconnect();
+			//gh.mGatt.close();
+			//mGatt.remove(args.getInt(0));
+		} catch(JSONException e) {
+			callbackContext.error(e.toString());
+		}
+	}
+
 	private void rssi(final CordovaArgs args, final CallbackContext callbackContext) {
 		try {
 			GattHandler gh = mGatt.get(args.getInt(0));
@@ -155,6 +167,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 
 	private void characteristics(final CordovaArgs args, final CallbackContext callbackContext) throws JSONException {
 		final GattHandler gh = mGatt.get(args.getInt(0));
+		JSONArray a = new JSONArray();
 		for(BluetoothGattCharacteristic c : gh.mServices.get(args.getInt(1)).getCharacteristics()) {
 			if(gh.mCharacteristics == null)
 				gh.mCharacteristics = new HashMap<Integer, BluetoothGattCharacteristic>();
@@ -167,15 +180,16 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			o.put("permissions", c.getPermissions());
 			o.put("properties", c.getProperties());
 			o.put("writeType", c.getWriteType());
-			o.put("descriptorCount", c.getDescriptors().size());
 
 			gh.mNextHandle++;
-			keepCallback(callbackContext, o);
+			a.put(o);
 		}
+		callbackContext.success(a);
 	}
 
 	private void descriptors(final CordovaArgs args, final CallbackContext callbackContext) throws JSONException {
 		final GattHandler gh = mGatt.get(args.getInt(0));
+		JSONArray a = new JSONArray();
 		for(BluetoothGattDescriptor d : gh.mCharacteristics.get(args.getInt(1)).getDescriptors()) {
 			if(gh.mDescriptors == null)
 				gh.mDescriptors = new HashMap<Integer, BluetoothGattDescriptor>();
@@ -188,8 +202,9 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			o.put("permissions", d.getPermissions());
 
 			gh.mNextHandle++;
-			keepCallback(callbackContext, o);
+			a.put(o);
 		}
+		callbackContext.success(a);
 	}
 
 	private void readCharacteristic(final CordovaArgs args, final CallbackContext callbackContext) throws JSONException {
@@ -404,7 +419,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			if(status == BluetoothGatt.GATT_SUCCESS) {
 				try {
 					JSONObject o = new JSONObject();
-					o.put("device", mHandle);
+					o.put("deviceHandle", mHandle);
 					o.put("state", newState);
 					keepCallback(mConnectContext, o);
 				} catch(JSONException e) {
@@ -426,6 +441,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		public void onServicesDiscovered(BluetoothGatt g, int status) {
 			if(status == BluetoothGatt.GATT_SUCCESS) {
 				List<BluetoothGattService> services = g.getServices();
+				JSONArray a = new JSONArray();
 				for(BluetoothGattService s : services) {
 					// give the service a handle.
 					if(mServices == null)
@@ -438,15 +454,14 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 						o.put("handle", mNextHandle);
 						o.put("uuid", s.getUuid().toString());
 						o.put("type", s.getType());
-						o.put("characteristicCount", s.getCharacteristics().size());
-						o.put("serviceCount", services.size());
 
 						mNextHandle++;
-						keepCallback(mCurrentOpContext, o);
+						a.put(o);
 					} catch(JSONException e) {
 						assert(false);
 					}
 				}
+				mCurrentOpContext.success(a);
 			} else {
 				mCurrentOpContext.error(status);
 			}

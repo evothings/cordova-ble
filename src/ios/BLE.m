@@ -1296,7 +1296,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	NSDictionary* info = @{
 		@"address" : [peripheral.identifier UUIDString],
 		@"rssi" : RSSI,
-		@"name" : peripheral.name,
+		@"name" : (peripheral.name != nil) ? peripheral.name : @"undefined",
 		@"scanRecord" : @""
 	};
 

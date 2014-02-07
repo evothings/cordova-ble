@@ -13,7 +13,7 @@ You can:
 To build documentation, run this command:
 jsdoc -l -c conf.json ble.js
 
-The iOS implementation is currently incomplete. Only startScan() and stopScan() work.
+This plugin is implemented on Android and iOS.
 
 See [this](introduction.md) for a general introduction to BLE programming.
 

@@ -493,5 +493,10 @@ exports.fromUtf8 = function(a) {
 * @returns Uint8Array
 */
 exports.toUtf8 = function(s) {
-	return new Uint8Array(unescape(encodeURIComponent(s)));
+	var strUtf8 = unescape(encodeURIComponent(s));
+	var ab = new Uint8Array(strUtf8.length);
+	for (var i = 0; i < strUtf8.length; i++) {
+		ab[i] = strUtf8.charCodeAt(i);
+	}
+	return ab;
 };

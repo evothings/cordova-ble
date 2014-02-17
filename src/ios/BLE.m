@@ -999,7 +999,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	if (nil == characteristic) return; // Error.
 
 	NSData* data = [command.arguments objectAtIndex: 2];
-	if (nil == nil)
+	if (nil == data)
 	{
 		[self
 			sendErrorMessage: @"missing data argument"
@@ -1053,7 +1053,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	if (nil == descriptor) return; // Error.
 
 	NSData* data = [command.arguments objectAtIndex: 2];
-	if (nil == nil)
+	if (nil == data)
 	{
 		[self
 			sendErrorMessage: @"missing data argument"

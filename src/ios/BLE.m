@@ -1009,11 +1009,11 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 	// Determine allowed write type.
 	CBCharacteristicWriteType writeType;
-	if (CBCharacteristicPropertyWrite | characteristic.properties)
+	if (CBCharacteristicPropertyWrite & characteristic.properties)
 	{
 		writeType = CBCharacteristicWriteWithResponse;
 	}
-	else if (CBCharacteristicPropertyWriteWithoutResponse | characteristic.properties)
+	else if (CBCharacteristicPropertyWriteWithoutResponse & characteristic.properties)
 	{
 		writeType = CBCharacteristicWriteWithoutResponse;
 

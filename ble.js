@@ -468,7 +468,8 @@ exports.testCharConversion = function(i, win) {
 /** Resets the device's Bluetooth system.
 * This is useful on some buggy devices where BLE functions stops responding until reset.
 * Available on Android 4.3+. This function takes 3-5 seconds to reset BLE.
-* Not available on iOS (does nothing if called).
+* On iOS this function stops any ongoing scan operation and disconnects
+* all connected devices.
 *
 * @param {emptyCallback} win
 * @param {failCallback} fail

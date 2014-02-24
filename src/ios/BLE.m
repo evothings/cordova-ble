@@ -118,23 +118,23 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 - (id) dequeue
 {
-    id item = nil;
-    if ([self.array count] != 0)
+	id item = nil;
+	if ([self.array count] != 0)
 	{
-        item = [self.array objectAtIndex: 0];
-        [self.array removeObjectAtIndex: 0];
-    }
-    return item;
+		item = [self.array objectAtIndex: 0];
+		[self.array removeObjectAtIndex: 0];
+	}
+	return item;
 }
 
 - (id) first
 {
-    id item = nil;
-    if ([self.array count] != 0)
+	id item = nil;
+	if ([self.array count] != 0)
 	{
-        item = [self.array objectAtIndex: 0];
-    }
-    return item;
+		item = [self.array objectAtIndex: 0];
+	}
+	return item;
 }
 
 - (BOOL) isEmpty
@@ -347,16 +347,16 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	withHandle: (NSNumber*)handle
 {
 /*
-   CBCharacteristicPropertyBroadcast = 0x01,
-   CBCharacteristicPropertyRead = 0x02,
-   CBCharacteristicPropertyWriteWithoutResponse = 0x04,
-   CBCharacteristicPropertyWrite = 0x08,
-   CBCharacteristicPropertyNotify = 0x10,
-   CBCharacteristicPropertyIndicate = 0x20,
-   CBCharacteristicPropertyAuthenticatedSignedWrites = 0x40,
-   CBCharacteristicPropertyExtendedProperties = 0x80,
-   CBCharacteristicPropertyNotifyEncryptionRequired = 0x100,
-   CBCharacteristicPropertyIndicateEncryptionRequired = 0x200,
+	CBCharacteristicPropertyBroadcast = 0x01,
+	CBCharacteristicPropertyRead = 0x02,
+	CBCharacteristicPropertyWriteWithoutResponse = 0x04,
+	CBCharacteristicPropertyWrite = 0x08,
+	CBCharacteristicPropertyNotify = 0x10,
+	CBCharacteristicPropertyIndicate = 0x20,
+	CBCharacteristicPropertyAuthenticatedSignedWrites = 0x40,
+	CBCharacteristicPropertyExtendedProperties = 0x80,
+	CBCharacteristicPropertyNotifyEncryptionRequired = 0x100,
+	CBCharacteristicPropertyIndicateEncryptionRequired = 0x200,
 */
 /*
 	1: 'PERMISSION_READ'
@@ -424,7 +424,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 	return @{
 		@"handle" : handle,
-		@"uuid" : [[characteristic UUID] uuidString],
+		@"uuid" : [characteristic.UUID uuidString],
 		@"permission" : [NSNumber numberWithInt: permissions],
 		@"property" : [NSNumber numberWithInt: properties],
 		@"writeType" : [NSNumber numberWithInt: writeType]
@@ -439,7 +439,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 	return @{
 		@"handle" : handle,
-		@"uuid" : [[descriptor UUID] uuidString],
+		@"uuid" : [descriptor.UUID uuidString],
 		@"permission" : [NSNumber numberWithInt: permissions]
 	};
 }
@@ -455,8 +455,6 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 - (void) peripheralDidUpdateRSSI: (CBPeripheral *)peripheral
 	error: (NSError *)error
 {
-	NSLog(@"peripheralDidUpdateRSSI debug log: %@", peripheral);
-
 	[self assertCommandAvailable];
 	[self assertCommandHasObject: peripheral andType: OPERATION_RSSI];
 
@@ -485,15 +483,11 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 - (void) peripheral: (CBPeripheral *)peripheral
 	didDiscoverServices: (NSError *)error
 {
-	NSLog(@"didDiscoverServices debug log: %@", peripheral);
-
 	[self assertCommandAvailable];
 	[self assertCommandHasObject: peripheral andType: OPERATION_SERVICES];
 
 	if (nil == error)
 	{
-		//NSLog(@"found services: %@", peripheral.services);
-
 		// Create array with Service objects.
 		NSMutableArray* array = [NSMutableArray array];
 		for (CBService* service in peripheral.services)
@@ -589,7 +583,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 			sendErrorMessage: [error localizedDescription]
 			forCallback: [self getActiveCallbackId]];
 	}
-	
+
 	[self clearActiveCommandAndContinue];
 }
 
@@ -607,7 +601,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	// This error should not cause any harm and should be safe to ignore.
 	if (nil == callbackId)
 	{
-		// Printing a log message so we can see if this should happen.
+		// Print a log message so we can see if this ever happens.
 		NSLog(@"Callback id for characteristic not found: %@", characteristic);
 		return; // Error
 	}
@@ -768,8 +762,6 @@ static int MyPerhiperalAssociatedObjectKey = 42;
  */
 - (void) connect: (CDVInvokedUrlCommand*)command
 {
-	NSLog(@"*** connect debug log");
-
 	// The connect address is in the first argument.
 	NSString* address = [command.arguments objectAtIndex: 0];
 
@@ -790,7 +782,6 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 	if ([pheriperals count] < 1)
 	{
-		NSLog(@"*** connect error: device with given address not found");
 		// Pass back error message.
 		[self
 			sendErrorMessage: @"device with given address not found"
@@ -810,11 +801,12 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 		return;
 	}
 
-	NSLog(@"*** Checking that periheral is not connected yet");
 	// Check that periheral is not connected yet.
 	if (nil != [peripheral getMyPerhiperal])
 	{
+		// Debug log that could be useful.
 		NSLog(@"*** Periheral was already connected");
+
 		// Pass back error message.
 		[self
 			sendErrorMessage: @"device already connected"
@@ -866,8 +858,6 @@ static int MyPerhiperalAssociatedObjectKey = 42;
  */
 - (void) rssi: (CDVInvokedUrlCommand*)command
 {
-	NSLog(@"*** rssi debug log");
-
 	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
@@ -888,8 +878,6 @@ static int MyPerhiperalAssociatedObjectKey = 42;
  */
 - (void) services: (CDVInvokedUrlCommand*)command
 {
-	NSLog(@"*** services debug log");
-
 	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
@@ -907,8 +895,6 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 - (void) characteristics: (CDVInvokedUrlCommand*)command
 {
-	NSLog(@"*** characteristics debug log");
-
 	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
@@ -931,8 +917,6 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 - (void) descriptors: (CDVInvokedUrlCommand*)command
 {
-	NSLog(@"*** descriptors debug log");
-
 	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
@@ -1111,7 +1095,28 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 - (void) reset: (CDVInvokedUrlCommand*)command
 {
-	// TODO: Is there a way to reset BLE on iOS?
+	// Stop scanning.
+	[self.central stopScan];
+
+	// Remove MyPeripheral and disconnect its associated peripheral.
+	for (id key in self.peripherals)
+	{
+		// Get MyPeripheral and its CBPeripheral.
+		MyPeripheral* myPeripheral = [self.peripherals objectForKey: key];
+		CBPeripheral* peripheral = myPeripheral.peripheral;
+
+		// Set references to nil.
+		[peripheral setMyPerhiperal: nil];
+		myPeripheral.peripheral = nil;
+		myPeripheral.ble = nil;
+		myPeripheral.connectCallbackId = nil;
+
+		// Remove MyPeripheral from the plugin dictionary.
+		[self.peripherals removeObjectForKey: myPeripheral.handle];
+
+		// Disconnect the CBPeripheral.
+		[self.central cancelPeripheralConnection: peripheral];
+	}
 
 	// Just call the success callback for now.
 	[self sendOkClearCallback: command.callbackId];
@@ -1149,8 +1154,6 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	RSSI: (NSNumber *)RSSI
 
 {
-	NSLog(@"didDiscoverPeripheral: %@", peripheral);
-
 	[self
 		sendScanInfoForPeriperhal: peripheral
 		RSSI: RSSI];
@@ -1178,8 +1181,6 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 - (void) centralManager: (CBCentralManager *)central
 	didConnectPeripheral: (CBPeripheral *)peripheral
 {
-	NSLog(@"didConnectPeripheral: %@", peripheral);
-
 	[self
 		sendConnectionState: @2 // STATE_CONNECTED
 		forMyPeriperhal: [peripheral getMyPerhiperal]];
@@ -1189,10 +1190,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	didFailToConnectPeripheral: (CBPeripheral *)peripheral
 	error: (NSError *)error
 {
-	NSLog(@"didFailToConnectPeripheral: %@", peripheral);
-
-	// Lazy code reuse.
-	// TODO: Call error callback instead?
+	// Lazy code reuse. TODO: Call error callback instead?
 	[self
 		centralManager: central
 		didDisconnectPeripheral: peripheral
@@ -1207,9 +1205,8 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	didDisconnectPeripheral: (CBPeripheral *)peripheral
 	error: (NSError *)error
 {
-	NSLog(@"didDisconnectPeripheral: %@", peripheral);
-
 	MyPeripheral* myPeripheral = [peripheral getMyPerhiperal];
+	if (nil == myPeripheral) return; // Already removed by reset or error.
 
 	// Send disconnected state to JS.
 	[self
@@ -1251,9 +1248,11 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 	self.scanIsWaiting = NO;
 
+	NSDictionary* options = @{CBCentralManagerScanOptionAllowDuplicatesKey: @YES};
+
 	[self.central
 		scanForPeripheralsWithServices: nil
-		options: nil];
+		options: options];
 
 	return 0;
 }

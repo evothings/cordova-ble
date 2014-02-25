@@ -150,9 +150,9 @@ exports.rssi = function(deviceHandle, win, fail) {
 * @param {number} rssi - A negative integer, the signal strength in decibels.
 */
 
-/** Fetch a remote device's services and iterate through them.
+/** Fetch information about a remote device's services.
 * @param {number} deviceHandle - A handle from {@link connectCallback}.
-* @param {serviceCallback} win - Called with array of {Service} objects.
+* @param {serviceCallback} win - Called with array of {@link Service} objects.
 * @param {failCallback} fail
 * @example
 evothings.ble.services(
@@ -179,7 +179,7 @@ exports.services = function(deviceHandle, win, fail) {
 
 /**
 * @callback serviceCallback
-* @param {Array} services - Array of {Service} objects.
+* @param {Array} services - Array of {@link Service} objects.
 */
 
 /** Describes a GATT service.
@@ -187,8 +187,6 @@ exports.services = function(deviceHandle, win, fail) {
 * @property {number} handle
 * @property {string} uuid - Formatted according to RFC 4122, all lowercase.
 * @property {serviceType} type
-//* @property {number} characteristicCount - The number of characteristics in the service.
-//* @property {number} serviceCount - The number of services in the device. This value is the same for all services in a device.
 */
 
 /** A number-string map describing possible service types.
@@ -201,10 +199,10 @@ exports.serviceType = {
 	1: 'SERVICE_TYPE_SECONDARY',
 };
 
-/** Iterate through a service's characteristics.
+/** Fetch information about a service's characteristics.
 * @param {number} deviceHandle - A handle from {@link connectCallback}.
 * @param {number} serviceHandle - A handle from {@link serviceCallback}.
-* @param {characteristicCallback} win - Called with array of {Characteristic} objects.
+* @param {characteristicCallback} win - Called with array of {@link Characteristic} objects.
 * @param {failCallback} fail
 * @example
 evothings.ble.characteristics(
@@ -229,7 +227,7 @@ exports.characteristics = function(deviceHandle, serviceHandle, win, fail) {
 
 /**
 * @callback characteristicCallback
-* @param {Array} characteristics - Array of {Characteristic} objects.
+* @param {Array} characteristics - Array of {@link Characteristic} objects.
 */
 
 /** Describes a GATT characteristic.
@@ -239,7 +237,6 @@ exports.characteristics = function(deviceHandle, serviceHandle, win, fail) {
 * @property {permission} permissions - Bitmask of zero or more permission flags.
 * @property {property} properties - Bitmask of zero or more property flags.
 * @property {writeType} writeType
-//* @property {number} descriptorCount - The number of descriptors in the descriptor.
 */
 
 /** A number-string map describing possible permission flags.
@@ -285,10 +282,10 @@ exports.writeType = {
 	4: 'WRITE_TYPE_SIGNED',
 };
 
-/** Iterate through a characteristic's descriptors.
+/** Fetch information about a characteristic's descriptors.
 * @param {number} deviceHandle - A handle from {@link connectCallback}.
 * @param {number} characteristicHandle - A handle from {@link characteristicCallback}.
-* @param {descriptorCallback} win - Called with array of {Descriptor} objects.
+* @param {descriptorCallback} win - Called with array of {@link Descriptor} objects.
 * @param {failCallback} fail
 * @example
 evothings.ble.descriptors(
@@ -313,7 +310,7 @@ exports.descriptors = function(deviceHandle, characteristicHandle, win, fail) {
 
 /**
 * @callback descriptorCallback
-* @param {Array} descriptors - Array of {Descriptor} objects.
+* @param {Array} descriptors - Array of {@link Descriptor} objects.
 */
 
 /** Describes a GATT descriptor.
@@ -499,4 +496,97 @@ exports.toUtf8 = function(s) {
 		ab[i] = strUtf8.charCodeAt(i);
 	}
 	return ab;
+};
+
+
+/** Fetch information about a remote device's services,
+* as well as its associated characteristics and descriptors.
+*
+* This function is an easy-to-use wrapper of the low-level functions
+* ble.services(), ble.characteristics() and ble.descriptors().
+*
+* @param {number} deviceHandle - A handle from {@link connectCallback}.
+* @param {serviceCallback} win - Called with array of {@link Service} objects.
+* Those Service objects each have an additional field "characteristics", which is an array of {@link Characteristic} objects.
+* Those Characteristic objects each have an additional field "descriptors", which is an array of {@link Descriptor} objects.
+* @param {failCallback} fail
+*/
+exports.readAllServiceData = function(deviceHandle, win, fail)
+{
+	// Array of populated services.
+	var serviceArray = [];
+
+	// Counter that tracks the number of info items read.
+	// This value is incremented and decremented when reading.
+	// When value is back to zero, all items are read.
+	var readCounter = 0;
+
+	// Read services for device.
+	ble.services(deviceHandle, function(services)
+	{
+		readCounter += services.length;
+		for (var serviceIndex in services)
+		{
+			var service = services[serviceIndex];
+			serviceArray.push(service);
+			service.characteristics = [];
+
+			// Read characteristics for service.
+			ble.characteristics(deviceHandle, service.handle, function(characteristics)
+			{
+				--readCounter;
+				readCounter += characteristics.length;
+				for (var characteristicIndex in characteristics)
+				{
+					var characteristic = characteristics[characteristicIndex];
+					service.characteristics.push(characteristic);
+					characteristic.descriptors = [];
+
+					// Read descriptors for characteristic.
+					ble.descriptors(deviceHandle, characteristic.handle, function(descriptors)
+					{
+						--readCounter;
+						for (var descriptorIndex in descriptors)
+						{
+							var descriptor = descriptors[descriptorIndex];
+							characteristic.descriptors.push(descriptor);
+						}
+						if (0 == readCounter)
+						{
+							// Everything is read.
+							win(serviceArray);
+						}
+					},
+					function(errorCode)
+					{
+						console.log('descriptors error: ' + errorCode);
+						fail(errorCode);
+					});
+					// End of read descriptors.
+				}
+				if (0 == readCounter)
+				{
+					// Everything is read.
+					win(serviceArray);
+				}
+			},
+			function(errorCode)
+			{
+				console.log('characteristics error: ' + errorCode);
+				fail(errorCode);
+			});
+			// End of read characteristics.
+		}
+		if (0 == readCounter)
+		{
+			// Everything is read.
+			win(serviceArray);
+		}
+	},
+	function(errorCode)
+	{
+		console.log('services error: ' + errorCode);
+		fail(errorCode);
+	});
+	// End of read services.
 };

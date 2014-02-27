@@ -33,32 +33,45 @@
 
 @implementation CBUUID (StringExtraction)
 
+/**
+ * Get the UUID formatted as a string. This method takes into
+ * consideration the use of the Bluetooth Base UUID, see:
+ *   Bluetooth Core specification Version 4, Volume 3, Part B, Section 2.5.1
+ *   Bluetooth Core specification Version 4, Volume 3, Part F, Section 3.2.1
+ * For example, the 2-byte UUID:
+ *   1800
+ * becomes this 16-byte UUID when using the Base UUID:
+ *   00001800-0000-1000-8000-00805f9b34fb
+ */
 - (NSString *) uuidString
 {
 	NSData* data = [self data];
 
-	NSUInteger bytesToConvert = [data length];
+	NSUInteger uuidNumBytes = [data length];
 	const unsigned char* uuidBytes = [data bytes];
+
 	NSMutableString* outputString = [NSMutableString stringWithCapacity: 16];
 
-	for (NSUInteger currentByteIndex = 0;
-		currentByteIndex < bytesToConvert;
-		currentByteIndex++)
+	if (2 == uuidNumBytes)
 	{
-		switch (currentByteIndex)
-		{
-			case 3:
-			case 5:
-			case 7:
-			case 9:
-				[outputString appendFormat:@"%02x-",
-					uuidBytes[currentByteIndex]];
-				break;
-			default:
-				[outputString appendFormat:@"%02x",
-					uuidBytes[currentByteIndex]];
-				break;
-		}
+		// Apply the Bluetooth Base UUID to 2-byte UUID:
+		[outputString
+			appendFormat: @"0000%02x%02x-0000-1000-8000-00805f9b34fb",
+			uuidBytes[0], uuidBytes[1]];
+	}
+	else if (16 == uuidNumBytes)
+	{
+		// Format full 16-byte UUID.
+		[outputString
+			appendFormat: @"%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+			uuidBytes[0], uuidBytes[1], uuidBytes[2], uuidBytes[3],
+			uuidBytes[4], uuidBytes[5], uuidBytes[6], uuidBytes[7],
+			uuidBytes[8], uuidBytes[9], uuidBytes[10], uuidBytes[11],
+			uuidBytes[12], uuidBytes[13], uuidBytes[14], uuidBytes[15]];
+	}
+	else if (16 == uuidNumBytes)
+	{
+		return nil; // Error.
 	}
 
 	return outputString;
@@ -337,7 +350,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	return @{
 		@"handle" : handle,
 		@"uuid" : [[service UUID] uuidString],
-		@"serviceType" : (service.isPrimary ?
+		@"type" : (service.isPrimary ?
 			@0 : // SERVICE_TYPE_PRIMARY
 			@1)  // SERVICE_TYPE_SECONDARY
 	};
@@ -543,9 +556,17 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	}
 	else
 	{
+		// Rather than returning an error, we return an empty array of characteristics.
+		NSMutableArray* array = [NSMutableArray array];
 		[self.ble
-			sendErrorMessage: [error localizedDescription]
-			forCallback: [self getActiveCallbackId]];
+			sendArray: array
+			forCallback: [self getActiveCallbackId]
+			keepCallback: NO];
+
+		// Old code that returned an error.
+		//[self.ble
+		//	sendErrorMessage: [error localizedDescription]
+		//	forCallback: [self getActiveCallbackId]];
 	}
 
 	[self clearActiveCommandAndContinue];
@@ -579,9 +600,17 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	}
 	else
 	{
+		// Rather than returning an error, we return an empty array of descriptors.
+		NSMutableArray* array = [NSMutableArray array];
 		[self.ble
-			sendErrorMessage: [error localizedDescription]
-			forCallback: [self getActiveCallbackId]];
+			sendArray: array
+			forCallback: [self getActiveCallbackId]
+			keepCallback: NO];
+
+		// Old code that returned an error.
+		//[self.ble
+		//	sendErrorMessage: [error localizedDescription]
+		//	forCallback: [self getActiveCallbackId]];
 	}
 
 	[self clearActiveCommandAndContinue];

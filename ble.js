@@ -522,72 +522,82 @@ exports.readAllServiceData = function(deviceHandle, win, fail)
 	// When value is back to zero, all items are read.
 	var readCounter = 0;
 
-	// Read services for device.
-	ble.services(deviceHandle, function(services)
+	var servicesCallbackFun = function()
 	{
-		readCounter += services.length;
-		for (var serviceIndex in services)
+		return function(services)
 		{
-			var service = services[serviceIndex];
-			serviceArray.push(service);
-			service.characteristics = [];
-
-			// Read characteristics for service.
-			ble.characteristics(deviceHandle, service.handle, function(characteristics)
+			readCounter += services.length;
+			for (var i = 0; i < services.length; ++i)
 			{
-				--readCounter;
-				readCounter += characteristics.length;
-				for (var characteristicIndex in characteristics)
-				{
-					var characteristic = characteristics[characteristicIndex];
-					service.characteristics.push(characteristic);
-					characteristic.descriptors = [];
+				var service = services[i];
+				serviceArray.push(service);
+				service.characteristics = [];
 
-					// Read descriptors for characteristic.
-					ble.descriptors(deviceHandle, characteristic.handle, function(descriptors)
+				// Read characteristics for service.
+				ble.characteristics(
+					deviceHandle,
+					service.handle,
+					characteristicsCallbackFun(service),
+					function(errorCode)
 					{
-						--readCounter;
-						for (var descriptorIndex in descriptors)
-						{
-							var descriptor = descriptors[descriptorIndex];
-							characteristic.descriptors.push(descriptor);
-						}
-						if (0 == readCounter)
-						{
-							// Everything is read.
-							win(serviceArray);
-						}
-					},
+						console.log('characteristics error: ' + errorCode);
+						fail(errorCode);
+					});
+			}
+		};
+	};
+
+	var characteristicsCallbackFun = function(service)
+	{
+		return function(characteristics)
+		{
+			--readCounter;
+			readCounter += characteristics.length;
+			for (var i = 0; i < characteristics.length; ++i)
+			{
+				var characteristic = characteristics[i];
+				service.characteristics.push(characteristic);
+				characteristic.descriptors = [];
+
+				// Read descriptors for characteristic.
+				ble.descriptors(
+					deviceHandle,
+					characteristic.handle,
+					descriptorsCallbackFun(characteristic),
 					function(errorCode)
 					{
 						console.log('descriptors error: ' + errorCode);
 						fail(errorCode);
 					});
-					// End of read descriptors.
-				}
-				if (0 == readCounter)
-				{
-					// Everything is read.
-					win(serviceArray);
-				}
-			},
-			function(errorCode)
-			{
-				console.log('characteristics error: ' + errorCode);
-				fail(errorCode);
-			});
-			// End of read characteristics.
-		}
-		if (0 == readCounter)
-		{
-			// Everything is read.
-			win(serviceArray);
-		}
-	},
-	function(errorCode)
+			}
+		};
+	};
+
+	var descriptorsCallbackFun = function(characteristic)
 	{
-		console.log('services error: ' + errorCode);
-		fail(errorCode);
-	});
-	// End of read services.
+		return function(descriptors)
+		{
+			--readCounter;
+			for (var i = 0; i < descriptors.length; ++i)
+			{
+				var descriptor = descriptors[i];
+				characteristic.descriptors.push(descriptor);
+			}
+			if (0 == readCounter)
+			{
+				// Everything is read.
+				win(serviceArray);
+			}
+		};
+	};
+
+	// Read services for device.
+	ble.services(
+		deviceHandle,
+		servicesCallbackFun(),
+		function(errorCode)
+		{
+			console.log('services error: ' + errorCode);
+			fail(errorCode);
+		});
 };

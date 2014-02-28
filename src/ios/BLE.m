@@ -69,7 +69,7 @@
 			uuidBytes[8], uuidBytes[9], uuidBytes[10], uuidBytes[11],
 			uuidBytes[12], uuidBytes[13], uuidBytes[14], uuidBytes[15]];
 	}
-	else if (16 == uuidNumBytes)
+	else
 	{
 		return nil; // Error.
 	}
@@ -314,6 +314,11 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 		[self removeCallbackForCharacteristic: characteristic];
 	}
 	return callback.callbackId;
+}
+
+- (MyCallbackInfo*) getCallbackForCharacteristic: (CBCharacteristic*)characteristic
+{
+	return self.characteristicsCallbacks[characteristic.UUID];
 }
 
 - (void) removeCallbackForCharacteristic: (CBCharacteristic*)characteristic
@@ -621,17 +626,18 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	didUpdateValueForCharacteristic: (CBCharacteristic *)characteristic
 	error: (NSError *)error
 {
-	NSString* callbackId = [self getCallbackIdForCharacteristic: characteristic];
+	MyCallbackInfo* callback = [self
+		getCallbackForCharacteristic: characteristic];
 
 	// Perhaps it might happen that the notification is disabled
 	// and the callback removed, but there is still a pending
 	// notification, that is sent after notification is disabled.
 	// Here we check for this case.
 	// This error should not cause any harm and should be safe to ignore.
-	if (nil == callbackId)
+	if (nil == callback)
 	{
 		// Print a log message so we can see if this ever happens.
-		NSLog(@"Callback id for characteristic not found: %@", characteristic);
+		NSLog(@"Callback for characteristic not found: %@", characteristic);
 		return; // Error
 	}
 
@@ -641,14 +647,14 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 		NSData* buffer = characteristic.value;
 		[self.ble
 			sendBuffer: buffer
-			forCallback: callbackId
-			keepCallback: NO];
+			forCallback: callback.callbackId
+			keepCallback: callback.isNotificationCallback];
 	}
 	else
 	{
 		[self.ble
 			sendErrorMessage: [error localizedDescription]
-			forCallback: callbackId];
+			forCallback: callback.callbackId];
 	}
 }
 
@@ -1057,6 +1063,10 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 		}];
 }
 
+// Note: Writing the value of a Client Configuration Descriptor (UUID = 2902)
+// does not work on iOS (application generates an exception). See this thread:
+// http://stackoverflow.com/questions/13561136/corebluetooth-writevaluefordescriptor-issue
+// In this case we do not write to the descriptor, see code below.
 - (void) writeDescriptor: (CDVInvokedUrlCommand*)command
 {
 	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
@@ -1074,18 +1084,42 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 		return;
 	}
 
-	// Result for write type CBCharacteristicWriteWithResponse is delivered in:
-	//	peripheral:didWriteValueForCharacteristic:error:
-	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
-	[myPeripheral
-		addCommandForCallbackId: command.callbackId
-		forObject: descriptor
-		operation: OPERATION_WRITE_DESCRIPTOR
-		withBlock: ^{
-			[peripheral
-				writeValue: data
-				forDescriptor: descriptor];
-		}];
+	// If UUID for descriptor is 2902 we should not write to the descriptor.
+	// iOS will throw an NSInternalInconsistencyException exception in this case.
+	NSData* uuidData = descriptor.UUID.data;
+	NSUInteger uuidNumBytes = [uuidData length];
+	const unsigned char* uuidBytes = [uuidData bytes];
+	bool isUUID2902 = false;
+	if (2 == uuidNumBytes)
+	{
+		isUUID2902 = 0x29 == uuidBytes[0] && 0x02 == uuidBytes[1];
+	}
+	else if (16 == uuidNumBytes)
+	{
+		isUUID2902 = 0x29 == uuidBytes[2] && 0x02 == uuidBytes[3];
+	}
+
+	if (isUUID2902)
+	{
+		// If the UUID is 2902 just send OK to JavaScript without
+		// writing to the descriptor.
+		[self sendOkClearCallback: command.callbackId];
+	}
+	else
+	{
+		// Result is delivered in:
+		//	peripheral:didWriteValueForDescriptor:error:
+		CBPeripheral* __weak peripheral = myPeripheral.peripheral;
+		[myPeripheral
+			addCommandForCallbackId: command.callbackId
+			forObject: descriptor
+			operation: OPERATION_WRITE_DESCRIPTOR
+			withBlock: ^{
+				[peripheral
+					writeValue: data
+					forDescriptor: descriptor];
+			}];
+	}
 }
 
 - (void) enableNotification: (CDVInvokedUrlCommand*)command
@@ -1115,10 +1149,17 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	CBCharacteristic* characteristic = [myPeripheral getObjectFromCommand: command atIndex: 1];
 	if (nil == characteristic) return; // Error.
 
+	// Turn off notification.
 	[myPeripheral.peripheral
 		setNotifyValue: NO
 		forCharacteristic: characteristic];
 
+	// Remove the callback from the JavaScript layer.
+	MyCallbackInfo* callback = [myPeripheral
+		getCallbackForCharacteristic: characteristic];
+	[self sendNoResultClearCallback: callback.callbackId];
+
+	// Remove the callback from the Objective-C layer.
 	[myPeripheral removeCallbackForCharacteristic: characteristic];
 }
 

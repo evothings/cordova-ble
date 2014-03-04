@@ -118,6 +118,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			assert(res == null);
 			mNextGattHandle++;
 		} catch(Exception e) {
+			e.printStackTrace();
 			callbackContext.error(e.toString());
 		}
 	}
@@ -129,6 +130,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			//gh.mGatt.close();
 			//mGatt.remove(args.getInt(0));
 		} catch(JSONException e) {
+			e.printStackTrace();
 			callbackContext.error(e.toString());
 		}
 	}
@@ -141,6 +143,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 				callbackContext.error("readRemoteRssi");
 			}
 		} catch(Exception e) {
+			e.printStackTrace();
 			callbackContext.error(e.toString());
 		}
 	}
@@ -161,6 +164,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			});
 			gh.process();
 		} catch(Exception e) {
+			e.printStackTrace();
 			callbackContext.error(e.toString());
 		}
 	}
@@ -220,6 +224,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 						gh.process();
 					}
 				} catch(JSONException e) {
+					e.printStackTrace();
 					callbackContext.error(e.toString());
 					gh.process();
 				}
@@ -241,6 +246,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 						gh.process();
 					}
 				} catch(JSONException e) {
+					e.printStackTrace();
 					callbackContext.error(e.toString());
 					gh.process();
 				}
@@ -265,6 +271,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 						gh.process();
 					}
 				} catch(JSONException e) {
+					e.printStackTrace();
 					callbackContext.error(e.toString());
 					gh.process();
 				}
@@ -288,6 +295,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 						gh.process();
 					}
 				} catch(JSONException e) {
+					e.printStackTrace();
 					callbackContext.error(e.toString());
 					gh.process();
 				}
@@ -423,6 +431,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 					o.put("state", newState);
 					keepCallback(mConnectContext, o);
 				} catch(JSONException e) {
+					e.printStackTrace();
 					assert(false);
 				}
 			} else {
@@ -458,6 +467,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 						mNextHandle++;
 						a.put(o);
 					} catch(JSONException e) {
+						e.printStackTrace();
 						assert(false);
 					}
 				}

@@ -882,7 +882,8 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
-	[self disconnectPeriperal: myPeripheral.peripheral];
+	// Disconnect the CBPeripheral.
+	[self freePeripheral: myPeripheral.peripheral disconnect: YES];
 }
 
 /**
@@ -1089,11 +1090,11 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	bool isUUID2902 = false;
 	if (2 == uuidNumBytes)
 	{
-		isUUID2902 = 0x29 == uuidBytes[0] && 0x02 == uuidBytes[1];
+		isUUID2902 = ((0x29 == uuidBytes[0]) && (0x02 == uuidBytes[1]));
 	}
 	else if (16 == uuidNumBytes)
 	{
-		isUUID2902 = 0x29 == uuidBytes[2] && 0x02 == uuidBytes[3];
+		isUUID2902 = ((0x29 == uuidBytes[2]) && (0x02 == uuidBytes[3]));
 	}
 
 	if (isUUID2902)
@@ -1169,13 +1170,12 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	for (id key in self.peripherals)
 	{
 		MyPeripheral* myPeripheral = [self.peripherals objectForKey: key];
-		[self disconnectPeriperal: myPeripheral.peripheral];
+		[self freePeripheral: myPeripheral.peripheral disconnect: YES];
 	}
 
 	// Just call the success callback for now.
 	[self sendOkClearCallback: command.callbackId];
 }
-
 
 /****************************************************************/
 /*               Implemented Interface Methods                  */
@@ -1244,7 +1244,17 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	didFailToConnectPeripheral: (CBPeripheral *)peripheral
 	error: (NSError *)error
 {
-	[self disconnectPeriperal: peripheral];
+	MyPeripheral* myPeripheral = [peripheral getMyPerhiperal];
+	if (nil == myPeripheral) return;
+
+	// Send connect failed to JS.
+	[self
+		sendErrorMessage: @"failed to connect"
+		forCallback: myPeripheral.connectCallbackId];
+
+	// Free allocated data. No need to disconnect,
+	// since connection failed.
+	[self freePeripheral: peripheral disconnect: NO];
 }
 
 /**
@@ -1255,27 +1265,24 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	didDisconnectPeripheral: (CBPeripheral *)peripheral
 	error: (NSError *)error
 {
-	// JS side already notified of the dicsonnect event.
-
-	/*
 	MyPeripheral* myPeripheral = [peripheral getMyPerhiperal];
-	if (nil == myPeripheral) return; // Already removed by reset or error.
+	if (nil == myPeripheral) return;
 
-	// Send disconnected state to JS.
-	[self
-		sendConnectionState: @0 // STATE_DISCONNECTED
-		forMyPeriperhal: myPeripheral];
+	// If the error object is non-nil the peripheral was
+	// disconnected by the system (and not by close).
+	// In this case, send STATE_DISCONNECTED to JS and
+	// free peripheral data.
+	if (nil != error)
+	{
+		// Send disconnected state to JS.
+		[self
+			sendConnectionState: @0 // STATE_DISCONNECTED
+			forMyPeriperhal: myPeripheral];
 
-	// Clear callback on the JS side.
-	[self sendNoResultClearCallback: myPeripheral.connectCallbackId];
-
-	// Remove from dictionary and clean up.
-	[self.peripherals removeObjectForKey: myPeripheral.handle];
-	myPeripheral.peripheral = nil;
-	[peripheral setMyPerhiperal: nil];
-	myPeripheral.ble = nil;
-	myPeripheral.connectCallbackId = nil;
-	*/
+		// Peripheral is already disconnected, but needs
+		// to be deallocated.
+		[self freePeripheral: peripheral disconnect: NO];
+	}
 }
 
 /****************************************************************/
@@ -1283,9 +1290,11 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 /****************************************************************/
 
 /**
- * Disconnect and free data associated with a periperal.
+ * Free data associated with a periperal. Disconnect the
+ * peripheral if the flag shouldDisconnect is true.
  */
-- (void) disconnectPeriperal: (CBPeripheral *)peripheral
+- (void) freePeripheral: (CBPeripheral *)peripheral
+	disconnect: (bool)shouldDisconnect
 {
 	MyPeripheral* myPeripheral = [peripheral getMyPerhiperal];
 	if (nil == myPeripheral)
@@ -1293,12 +1302,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 		return;
 	}
 
-	// Send disconnected state to JS.
-	[self
-		sendConnectionState: @0 // STATE_DISCONNECTED
-		forMyPeriperhal: myPeripheral];
-
-	// Clear callback on the JS side.
+	// Clear connect callback on the JS side.
 	[self sendNoResultClearCallback: myPeripheral.connectCallbackId];
 
 	// Remove from dictionary.
@@ -1310,8 +1314,11 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	myPeripheral.ble = nil;
 	myPeripheral.connectCallbackId = nil;
 
-	// Disconnect the CBPeripheral.
-	[self.central cancelPeripheralConnection: peripheral];
+	// Optionally disconnect the peripheral.
+	if (shouldDisconnect)
+	{
+		[self.central cancelPeripheralConnection: peripheral];
+	}
 }
 
 - (NSNumber*) nextHandle

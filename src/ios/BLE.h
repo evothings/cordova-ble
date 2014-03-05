@@ -102,8 +102,10 @@ typedef void (^MyCommandBlock)(void);
 - (void) disableNotification: (CDVInvokedUrlCommand*)command;
 - (void) reset: (CDVInvokedUrlCommand*)command;
 
-// Disconnect and free data associated with peripheral.
-- (void) disconnectPeriperal: (CBPeripheral*)peripheral;
+// Free data associated with a periperal. Disconnect the
+// peripheral if the flag shouldDisconnect is true.
+- (void) freePeripheral: (CBPeripheral *)peripheral
+	disconnect: (bool)shouldDisconnect;
 
 // Increment and get the value of a handle counter.
 - (NSNumber*) nextHandle;

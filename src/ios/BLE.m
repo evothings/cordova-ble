@@ -69,7 +69,7 @@
 			uuidBytes[8], uuidBytes[9], uuidBytes[10], uuidBytes[11],
 			uuidBytes[12], uuidBytes[13], uuidBytes[14], uuidBytes[15]];
 	}
-	else if (16 == uuidNumBytes)
+	else
 	{
 		return nil; // Error.
 	}
@@ -316,6 +316,11 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	return callback.callbackId;
 }
 
+- (MyCallbackInfo*) getCallbackForCharacteristic: (CBCharacteristic*)characteristic
+{
+	return self.characteristicsCallbacks[characteristic.UUID];
+}
+
 - (void) removeCallbackForCharacteristic: (CBCharacteristic*)characteristic
 {
 	[self.characteristicsCallbacks removeObjectForKey: characteristic.UUID];
@@ -520,6 +525,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	}
 	else
 	{
+
 		[self.ble
 			sendErrorMessage: [error localizedDescription]
 			forCallback: [self getActiveCallbackId]];
@@ -621,17 +627,18 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	didUpdateValueForCharacteristic: (CBCharacteristic *)characteristic
 	error: (NSError *)error
 {
-	NSString* callbackId = [self getCallbackIdForCharacteristic: characteristic];
+	MyCallbackInfo* callback = [self
+		getCallbackForCharacteristic: characteristic];
 
 	// Perhaps it might happen that the notification is disabled
 	// and the callback removed, but there is still a pending
 	// notification, that is sent after notification is disabled.
 	// Here we check for this case.
 	// This error should not cause any harm and should be safe to ignore.
-	if (nil == callbackId)
+	if (nil == callback)
 	{
 		// Print a log message so we can see if this ever happens.
-		NSLog(@"Callback id for characteristic not found: %@", characteristic);
+		NSLog(@"BLE.m: Callback for characteristic not found: %@", characteristic);
 		return; // Error
 	}
 
@@ -641,14 +648,14 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 		NSData* buffer = characteristic.value;
 		[self.ble
 			sendBuffer: buffer
-			forCallback: callbackId
-			keepCallback: NO];
+			forCallback: callback.callbackId
+			keepCallback: callback.isNotificationCallback];
 	}
 	else
 	{
 		[self.ble
 			sendErrorMessage: [error localizedDescription]
-			forCallback: callbackId];
+			forCallback: callback.callbackId];
 	}
 }
 
@@ -830,38 +837,41 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 		return;
 	}
 
-	// Check that periheral is not connected yet.
+	// Check if periheral is already connected.
 	if (nil != [peripheral getMyPerhiperal])
 	{
-		// Debug log that could be useful.
-		NSLog(@"*** Periheral was already connected");
+		// Debug log.
+		NSLog(@"BLE.m: Periheral was already connected");
 
 		// Pass back error message.
 		[self
 			sendErrorMessage: @"device already connected"
 			forCallback: command.callbackId];
-		return;
 	}
+	else
+	{
+		// Not connected yet.
 
-	// Create custom peripheral object.
-	MyPeripheral* myPeripheral = [MyPeripheral
-		withBLE: self
-		periperal: peripheral];
+		// Create custom peripheral object.
+		MyPeripheral* myPeripheral = [MyPeripheral
+			withBLE: self
+			periperal: peripheral];
 
-	// Save Cordova callback id.
-	myPeripheral.connectCallbackId = command.callbackId;
+		// Save Cordova callback id.
+		myPeripheral.connectCallbackId = command.callbackId;
 
-	// Send 'connecting' state to JS side.
-	[self
-		sendConnectionState: @1 // STATE_CONNECTING
-		forMyPeriperhal: myPeripheral];
+		// Send 'connecting' state to JS side.
+		[self
+			sendConnectionState: @1 // STATE_CONNECTING
+			forMyPeriperhal: myPeripheral];
 
-	// Connect. Result is given in methods:
-	//   centralManager:didConnectPeripheral:
-	//   centralManager:didDisconnectPeripheral:error:
-	[self.central
-		connectPeripheral: peripheral
-		options: nil];
+		// Connect. Result is given in methods:
+		//   centralManager:didConnectPeripheral:
+		//   centralManager:didDisconnectPeripheral:error:
+		[self.central
+			connectPeripheral: peripheral
+			options: nil];
+	}
 }
 
 /**
@@ -872,14 +882,8 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
-	// Send 'disconnecting' state to JS side.
-	[self
-		sendConnectionState: @3 // STATE_DISCONNECTING
-		forMyPeriperhal: myPeripheral];
-
-	// Disconnect. Result is given in method:
-	//   centralManager:didDisconnectPeripheral:error:
-	[self.central cancelPeripheralConnection: myPeripheral.peripheral];
+	// Disconnect the CBPeripheral.
+	[self freePeripheral: myPeripheral.peripheral disconnect: YES];
 }
 
 /**
@@ -1057,6 +1061,10 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 		}];
 }
 
+// Note: Writing the value of a Client Configuration Descriptor (UUID = 2902)
+// does not work on iOS (application generates an exception). See this thread:
+// http://stackoverflow.com/questions/13561136/corebluetooth-writevaluefordescriptor-issue
+// In this case we do not write to the descriptor, see code below.
 - (void) writeDescriptor: (CDVInvokedUrlCommand*)command
 {
 	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
@@ -1074,18 +1082,42 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 		return;
 	}
 
-	// Result for write type CBCharacteristicWriteWithResponse is delivered in:
-	//	peripheral:didWriteValueForCharacteristic:error:
-	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
-	[myPeripheral
-		addCommandForCallbackId: command.callbackId
-		forObject: descriptor
-		operation: OPERATION_WRITE_DESCRIPTOR
-		withBlock: ^{
-			[peripheral
-				writeValue: data
-				forDescriptor: descriptor];
-		}];
+	// If UUID for descriptor is 2902 we should not write to the descriptor.
+	// iOS will throw an NSInternalInconsistencyException exception in this case.
+	NSData* uuidData = descriptor.UUID.data;
+	NSUInteger uuidNumBytes = [uuidData length];
+	const unsigned char* uuidBytes = [uuidData bytes];
+	bool isUUID2902 = false;
+	if (2 == uuidNumBytes)
+	{
+		isUUID2902 = ((0x29 == uuidBytes[0]) && (0x02 == uuidBytes[1]));
+	}
+	else if (16 == uuidNumBytes)
+	{
+		isUUID2902 = ((0x29 == uuidBytes[2]) && (0x02 == uuidBytes[3]));
+	}
+
+	if (isUUID2902)
+	{
+		// If the UUID is 2902 just send OK to JavaScript without
+		// writing to the descriptor.
+		[self sendOkClearCallback: command.callbackId];
+	}
+	else
+	{
+		// Result is delivered in:
+		//	peripheral:didWriteValueForDescriptor:error:
+		CBPeripheral* __weak peripheral = myPeripheral.peripheral;
+		[myPeripheral
+			addCommandForCallbackId: command.callbackId
+			forObject: descriptor
+			operation: OPERATION_WRITE_DESCRIPTOR
+			withBlock: ^{
+				[peripheral
+					writeValue: data
+					forDescriptor: descriptor];
+			}];
+	}
 }
 
 - (void) enableNotification: (CDVInvokedUrlCommand*)command
@@ -1115,10 +1147,17 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	CBCharacteristic* characteristic = [myPeripheral getObjectFromCommand: command atIndex: 1];
 	if (nil == characteristic) return; // Error.
 
+	// Turn off notification.
 	[myPeripheral.peripheral
 		setNotifyValue: NO
 		forCharacteristic: characteristic];
 
+	// Remove the callback from the JavaScript layer.
+	MyCallbackInfo* callback = [myPeripheral
+		getCallbackForCharacteristic: characteristic];
+	[self sendNoResultClearCallback: callback.callbackId];
+
+	// Remove the callback from the Objective-C layer.
 	[myPeripheral removeCallbackForCharacteristic: characteristic];
 }
 
@@ -1130,27 +1169,13 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	// Remove MyPeripheral and disconnect its associated peripheral.
 	for (id key in self.peripherals)
 	{
-		// Get MyPeripheral and its CBPeripheral.
 		MyPeripheral* myPeripheral = [self.peripherals objectForKey: key];
-		CBPeripheral* peripheral = myPeripheral.peripheral;
-
-		// Set references to nil.
-		[peripheral setMyPerhiperal: nil];
-		myPeripheral.peripheral = nil;
-		myPeripheral.ble = nil;
-		myPeripheral.connectCallbackId = nil;
-
-		// Remove MyPeripheral from the plugin dictionary.
-		[self.peripherals removeObjectForKey: myPeripheral.handle];
-
-		// Disconnect the CBPeripheral.
-		[self.central cancelPeripheralConnection: peripheral];
+		[self freePeripheral: myPeripheral.peripheral disconnect: YES];
 	}
 
 	// Just call the success callback for now.
 	[self sendOkClearCallback: command.callbackId];
 }
-
 
 /****************************************************************/
 /*               Implemented Interface Methods                  */
@@ -1219,11 +1244,17 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	didFailToConnectPeripheral: (CBPeripheral *)peripheral
 	error: (NSError *)error
 {
-	// Lazy code reuse. TODO: Call error callback instead?
+	MyPeripheral* myPeripheral = [peripheral getMyPerhiperal];
+	if (nil == myPeripheral) return;
+
+	// Send connect failed to JS.
 	[self
-		centralManager: central
-		didDisconnectPeripheral: peripheral
-		error: error];
+		sendErrorMessage: @"failed to connect"
+		forCallback: myPeripheral.connectCallbackId];
+
+	// Free allocated data. No need to disconnect,
+	// since connection failed.
+	[self freePeripheral: peripheral disconnect: NO];
 }
 
 /**
@@ -1235,27 +1266,60 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	error: (NSError *)error
 {
 	MyPeripheral* myPeripheral = [peripheral getMyPerhiperal];
-	if (nil == myPeripheral) return; // Already removed by reset or error.
+	if (nil == myPeripheral) return;
 
-	// Send disconnected state to JS.
-	[self
-		sendConnectionState: @0 // STATE_DISCONNECTED
-		forMyPeriperhal: myPeripheral];
+	// If the error object is non-nil the peripheral was
+	// disconnected by the system (and not by close).
+	// In this case, send STATE_DISCONNECTED to JS and
+	// free peripheral data.
+	if (nil != error)
+	{
+		// Send disconnected state to JS.
+		[self
+			sendConnectionState: @0 // STATE_DISCONNECTED
+			forMyPeriperhal: myPeripheral];
 
-	// Clear callback on the JS side.
-	[self sendNoResultClearCallback: myPeripheral.connectCallbackId];
-
-	// Remove from dictionary and clean up.
-	[self.peripherals removeObjectForKey: myPeripheral.handle];
-	myPeripheral.peripheral = nil;
-	[peripheral setMyPerhiperal: nil];
-	myPeripheral.ble = nil;
-	myPeripheral.connectCallbackId = nil;
+		// Peripheral is already disconnected, but needs
+		// to be deallocated.
+		[self freePeripheral: peripheral disconnect: NO];
+	}
 }
 
 /****************************************************************/
 /*                      Instance Methods                        */
 /****************************************************************/
+
+/**
+ * Free data associated with a periperal. Disconnect the
+ * peripheral if the flag shouldDisconnect is true.
+ */
+- (void) freePeripheral: (CBPeripheral *)peripheral
+	disconnect: (bool)shouldDisconnect
+{
+	MyPeripheral* myPeripheral = [peripheral getMyPerhiperal];
+	if (nil == myPeripheral)
+	{
+		return;
+	}
+
+	// Clear connect callback on the JS side.
+	[self sendNoResultClearCallback: myPeripheral.connectCallbackId];
+
+	// Remove from dictionary.
+	[self.peripherals removeObjectForKey: myPeripheral.handle];
+
+	// Set references to nil.
+	[peripheral setMyPerhiperal: nil];
+	myPeripheral.peripheral = nil;
+	myPeripheral.ble = nil;
+	myPeripheral.connectCallbackId = nil;
+
+	// Optionally disconnect the peripheral.
+	if (shouldDisconnect)
+	{
+		[self.central cancelPeripheralConnection: peripheral];
+	}
+}
 
 - (NSNumber*) nextHandle
 {

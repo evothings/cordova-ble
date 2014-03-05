@@ -102,6 +102,11 @@ typedef void (^MyCommandBlock)(void);
 - (void) disableNotification: (CDVInvokedUrlCommand*)command;
 - (void) reset: (CDVInvokedUrlCommand*)command;
 
+// Free data associated with a periperal. Disconnect the
+// peripheral if the flag shouldDisconnect is true.
+- (void) freePeripheral: (CBPeripheral *)peripheral
+	disconnect: (bool)shouldDisconnect;
+
 // Increment and get the value of a handle counter.
 - (NSNumber*) nextHandle;
 
@@ -173,14 +178,15 @@ typedef void (^MyCommandBlock)(void);
 - (void) assertCommandAvailable;
 - (void) assertCommandHasObject: (id)obj andType: (int)type;
 
-// Charactristics have their own callback managements, since a notification
-// heeds to keep the callback "open". Moreover, the result of reading a
+// Charactristics have their own callback management, since a notification
+// needs to keep the callback "open". Moreover, the result of reading a
 // characteristic as well as from a notification is develivered in the
 // same iOS callback method. Thus both read and notification operations
-// need to be handled.
+// need to be distinguished and handled.
 - (void) addCallbackForCharacteristic: (CBCharacteristic*)characteristic
 	callbackId: (NSString*)callbackId
 	isNotificationCallback: (BOOL) notify;
+- (MyCallbackInfo*) getCallbackForCharacteristic: (CBCharacteristic*)characteristic;
 - (NSString*) getCallbackIdForCharacteristic: (CBCharacteristic*)characteristic;
 - (void) removeCallbackForCharacteristic: (CBCharacteristic*)characteristic;
 

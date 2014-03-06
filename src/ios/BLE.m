@@ -1033,9 +1033,6 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	else if (CBCharacteristicPropertyWriteWithoutResponse & characteristic.properties)
 	{
 		writeType = CBCharacteristicWriteWithoutResponse;
-
-		// Send success callback without waiting for notification.
-		[self sendOkClearCallback: command.callbackId];
 	}
 	else
 	{
@@ -1059,6 +1056,18 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 				forCharacteristic: characteristic
 				type: writeType];
 		}];
+
+	// If the write operation will not generate a response,
+	// peripheral:didWriteValueForCharacteristic:error: will not
+	// be called, and we need to run the next command now.
+	if (CBCharacteristicPropertyWriteWithoutResponse & characteristic.properties)
+	{
+		// Run next command.
+		[myPeripheral clearActiveCommandAndContinue];
+
+		// Call success callback now since there will be no notification.
+		[self sendOkClearCallback: command.callbackId];
+	}
 }
 
 // Note: Writing the value of a Client Configuration Descriptor (UUID = 2902)

@@ -107,7 +107,10 @@ typedef void (^MyCommandBlock)(void);
 - (void) freePeripheral: (CBPeripheral *)peripheral
 	disconnect: (bool)shouldDisconnect;
 
-// Increment and get the value of a handle counter.
+// Stop scanning, disconnect and deallocate all connected peripherals.
+- (void) freePeripherals;
+
+// Increment and get the value of the handle counter.
 - (NSNumber*) nextHandle;
 
 // Methods that send results back to JavaScript.

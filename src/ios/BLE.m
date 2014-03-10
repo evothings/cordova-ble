@@ -1033,9 +1033,6 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	else if (CBCharacteristicPropertyWriteWithoutResponse & characteristic.properties)
 	{
 		writeType = CBCharacteristicWriteWithoutResponse;
-
-		// Send success callback without waiting for notification.
-		[self sendOkClearCallback: command.callbackId];
 	}
 	else
 	{
@@ -1059,6 +1056,18 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 				forCharacteristic: characteristic
 				type: writeType];
 		}];
+
+	// If the write operation will not generate a response,
+	// peripheral:didWriteValueForCharacteristic:error: will not
+	// be called, and we need to run the next command now.
+	if (CBCharacteristicPropertyWriteWithoutResponse & characteristic.properties)
+	{
+		// Run next command.
+		[myPeripheral clearActiveCommandAndContinue];
+
+		// Call success callback now since there will be no notification.
+		[self sendOkClearCallback: command.callbackId];
+	}
 }
 
 // Note: Writing the value of a Client Configuration Descriptor (UUID = 2902)
@@ -1163,15 +1172,8 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 - (void) reset: (CDVInvokedUrlCommand*)command
 {
-	// Stop scanning.
-	[self.central stopScan];
-
-	// Remove MyPeripheral and disconnect its associated peripheral.
-	for (id key in self.peripherals)
-	{
-		MyPeripheral* myPeripheral = [self.peripherals objectForKey: key];
-		[self freePeripheral: myPeripheral.peripheral disconnect: YES];
-	}
+	// Disconnect and deallocate all connected peripherals.
+	[self freePeripherals];
 
 	// Just call the success callback for now.
 	[self sendOkClearCallback: command.callbackId];
@@ -1196,6 +1198,15 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	self.peripherals = [NSMutableDictionary dictionary];
 
 	self.handleCounter = 0;
+}
+
+/**
+ * From interface CDVPlugin.
+ * Called when the WebView navigates or refreshes.
+ */
+- (void) onReset
+{
+	[self freePeripherals];
 }
 
 /**
@@ -1321,6 +1332,25 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	}
 }
 
+/**
+ * Stop scanning, disconnect and deallocate all connected peripherals.
+ */
+- (void) freePeripherals
+{
+	// Stop scanning.
+	[self.central stopScan];
+
+	// Remove MyPeripheral and disconnect its associated peripheral.
+	for (id key in self.peripherals)
+	{
+		MyPeripheral* myPeripheral = [self.peripherals objectForKey: key];
+		[self freePeripheral: myPeripheral.peripheral disconnect: YES];
+	}
+}
+
+/**
+ * Increment and get the value of the handle counter.
+ */
 - (NSNumber*) nextHandle
 {
 	return [NSNumber numberWithInt: ++(self.handleCounter)];

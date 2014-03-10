@@ -1172,15 +1172,8 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 - (void) reset: (CDVInvokedUrlCommand*)command
 {
-	// Stop scanning.
-	[self.central stopScan];
-
-	// Remove MyPeripheral and disconnect its associated peripheral.
-	for (id key in self.peripherals)
-	{
-		MyPeripheral* myPeripheral = [self.peripherals objectForKey: key];
-		[self freePeripheral: myPeripheral.peripheral disconnect: YES];
-	}
+	// Disconnect and deallocate all connected peripherals.
+	[self freePeripherals];
 
 	// Just call the success callback for now.
 	[self sendOkClearCallback: command.callbackId];
@@ -1205,6 +1198,15 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	self.peripherals = [NSMutableDictionary dictionary];
 
 	self.handleCounter = 0;
+}
+
+/**
+ * From interface CDVPlugin.
+ * Called when the WebView navigates or refreshes.
+ */
+- (void) onReset
+{
+	[self freePeripherals];
 }
 
 /**
@@ -1330,6 +1332,25 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	}
 }
 
+/**
+ * Stop scanning, disconnect and deallocate all connected peripherals.
+ */
+- (void) freePeripherals
+{
+	// Stop scanning.
+	[self.central stopScan];
+
+	// Remove MyPeripheral and disconnect its associated peripheral.
+	for (id key in self.peripherals)
+	{
+		MyPeripheral* myPeripheral = [self.peripherals objectForKey: key];
+		[self freePeripheral: myPeripheral.peripheral disconnect: YES];
+	}
+}
+
+/**
+ * Increment and get the value of the handle counter.
+ */
 - (NSNumber*) nextHandle
 {
 	return [NSNumber numberWithInt: ++(self.handleCounter)];

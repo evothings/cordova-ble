@@ -10,6 +10,7 @@ import android.content.*;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Iterator;
 import java.io.UnsupportedEncodingException;
 import android.util.Base64;
 
@@ -50,6 +51,30 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		else if("testCharConversion".equals(action)) { testCharConversion(args, callbackContext); return true; }
 		else if("reset".equals(action)) { reset(args, callbackContext); return true; }
 		return false;
+	}
+
+	/**
+	* Called when the WebView does a top-level navigation or refreshes.
+	*
+	* Plugins should stop any long-running processes and clean up internal state.
+	*
+	* Does nothing by default.
+	*
+	* Our version should stop any ongoing scan, and close any existing connections.
+	*/
+	@Override
+	public void onReset() {
+		if(mScanCallbackContext != null) {
+			BluetoothAdapter a = BluetoothAdapter.getDefaultAdapter();
+			a.stopLeScan(this);
+			mScanCallbackContext = null;
+		}
+		Iterator<GattHandler> itr = mGatt.values().iterator();
+		while(itr.hasNext()) {
+			GattHandler gh = itr.next();
+			gh.mGatt.close();
+		}
+		mGatt.clear();
 	}
 
 	private void keepCallback(final CallbackContext callbackContext, JSONObject message) {

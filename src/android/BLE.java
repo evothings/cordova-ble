@@ -69,12 +69,15 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			a.stopLeScan(this);
 			mScanCallbackContext = null;
 		}
-		Iterator<GattHandler> itr = mGatt.values().iterator();
-		while(itr.hasNext()) {
-			GattHandler gh = itr.next();
-			gh.mGatt.close();
+		if(mGatt != null) {
+			Iterator<GattHandler> itr = mGatt.values().iterator();
+			while(itr.hasNext()) {
+				GattHandler gh = itr.next();
+				if(gh.mGatt != null)
+					gh.mGatt.close();
+			}
+			mGatt.clear();
 		}
-		mGatt.clear();
 	}
 
 	private void keepCallback(final CallbackContext callbackContext, JSONObject message) {

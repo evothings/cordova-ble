@@ -18,6 +18,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 	private CallbackContext mScanCallbackContext;
 	private CallbackContext mResetCallbackContext;
 	private Context mContext;
+	private boolean mRegisteredReceiver = false;
 
 	int mNextGattHandle = 1;
 	HashMap<Integer, GattHandler> mGatt = null;
@@ -27,7 +28,10 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		super.initialize(cordova, webView);
 		mContext = webView.getContext();
 
-		mContext.registerReceiver(new BluetoothStateReceiver(), new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
+		if(!mRegisteredReceiver) {
+			mContext.registerReceiver(new BluetoothStateReceiver(), new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
+			mRegisteredReceiver = true;
+		}
 	}
 
 	@Override

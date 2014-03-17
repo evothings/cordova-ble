@@ -163,14 +163,23 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 	}
 
 	private void rssi(final CordovaArgs args, final CallbackContext callbackContext) {
+		GattHandler gh = null;
 		try {
-			GattHandler gh = mGatt.get(args.getInt(0));
+			gh = mGatt.get(args.getInt(0));
+			if(gh.mRssiContext != null) {
+				callbackContext.error("Previous call to rssi() not yet completed!");
+				return;
+			}
 			gh.mRssiContext = callbackContext;
 			if(!gh.mGatt.readRemoteRssi()) {
+				gh.mRssiContext = null;
 				callbackContext.error("readRemoteRssi");
 			}
 		} catch(Exception e) {
 			e.printStackTrace();
+			if(gh != null) {
+				gh.mRssiContext = null;
+			}
 			callbackContext.error(e.toString());
 		}
 	}

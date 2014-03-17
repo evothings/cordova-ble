@@ -111,10 +111,7 @@ exports.connectionState = {
 
 /** Close the connection to a remote device.
 * <p>Frees any native resources associated with the device.
-* <p>Causes STATE_DISCONNECTING and STATE_DISCONNECTED callbacks to the function passed to connect().
-
-// The two above lines are mutually exclusive; can't cause callbacks once the resources are freed.
-// Currently, this function does NOT free any resources.
+* <p>Does not cause any callbacks to the function passed to connect().
 
 * @param {number} deviceHandle - A handle from {@link connectCallback}.
 * @example

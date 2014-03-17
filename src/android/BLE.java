@@ -18,7 +18,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 	private CallbackContext mScanCallbackContext;
 	private CallbackContext mResetCallbackContext;
 	private Context mContext;
-
+	private BroadcastReceiver intentReceiver;
 	int mNextGattHandle = 1;
 	HashMap<Integer, GattHandler> mGatt = null;
 
@@ -27,7 +27,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		super.initialize(cordova, webView);
 		mContext = webView.getContext();
 
-		mContext.registerReceiver(new BluetoothStateReceiver(), new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
+		//mContext.registerReceiver(new BluetoothStateReceiver(), new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
 	}
 
 	@Override
@@ -35,6 +35,8 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		throws JSONException
 	{
 		if("startScan".equals(action)) { startScan(args, callbackContext); return true; }
+		else if("register".equals(action)) { register(args, callbackContext); return true; }
+		else if("unregister".equals(action)) { unregister(args, callbackContext); return true; }
 		else if("stopScan".equals(action)) { stopScan(args, callbackContext); return true; }
 		else if("connect".equals(action)) { connect(args, callbackContext); return true; }
 		else if("close".equals(action)) { close(args, callbackContext); return true; }
@@ -98,6 +100,21 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		callbackContext.sendPluginResult(r);
 	}
 
+	private void register(final CordovaArgs args, final CallbackContext callbackContext) {
+		if (intentReceiver != null)
+			return;
+		
+		intentReceiver = new BluetoothStateReceiver();
+		mContext.registerReceiver(intentReceiver, new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
+	}
+	
+	private void unregister(final CordovaArgs args, final CallbackContext callbackContext) {
+		if (intentReceiver != null)
+		{
+			mContext.unregisterReceiver(intentReceiver);
+			intentReceiver = null;
+		}
+	}
 	private void startScan(final CordovaArgs args, final CallbackContext callbackContext) {
 		//try {
 			BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();

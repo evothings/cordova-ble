@@ -1025,6 +1025,14 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	}
 
 	// Determine allowed write type.
+	//
+	// Note: A characteristic can have both flags
+	// CBCharacteristicWriteWithResponse and
+	// CBCharacteristicWriteWithoutResponse set!
+	// For example this is the case with RFduino.
+	// It is important to check the value of writeType
+	// below when determining if next command should
+	// be executed at once.
 	CBCharacteristicWriteType writeType;
 	if (CBCharacteristicPropertyWrite & characteristic.properties)
 	{
@@ -1060,7 +1068,13 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	// If the write operation will not generate a response,
 	// peripheral:didWriteValueForCharacteristic:error: will not
 	// be called, and we need to run the next command now.
-	if (CBCharacteristicPropertyWriteWithoutResponse & characteristic.properties)
+	//
+	// Note: Important to check against writeType here since a
+	// characteristic can have both these flags set:
+	// CBCharacteristicWriteWithResponse
+	// CBCharacteristicWriteWithoutResponse
+	// Therefore you cannot check against those flags.
+	if (writeType != CBCharacteristicWriteWithResponse)
 	{
 		// Run next command.
 		[myPeripheral clearActiveCommandAndContinue];

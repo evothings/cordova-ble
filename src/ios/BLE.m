@@ -785,12 +785,22 @@ static int MyPerhiperalAssociatedObjectKey = 42;
  */
 - (void) stopScan: (CDVInvokedUrlCommand*)command
 {
-	[self.central stopScan];
+	if (self.central.state != CBCentralManagerStatePoweredOn)
+	{
+		self.scanIsWaiting = NO;
+	}
+	else
+	{
+		// Call native stopScan only if BLE is powered on.
+		[self.central stopScan];
 
-	// Clear callback on the JS side.
-	[self sendNoResultClearCallback: self.scanCallbackId];
-
-	self.scanCallbackId = nil;
+		if (self.scanCallbackId)
+		{
+			// Clear JS scan callback if scan is in progress.
+			[self sendNoResultClearCallback: self.scanCallbackId];
+			self.scanCallbackId = nil;
+		}
+	}
 }
 
 /**
@@ -1437,10 +1447,13 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	};
 
 	// Send back data to JS.
-	[self
-		sendDictionary: info
-		forCallback: self.scanCallbackId
-		keepCallback: YES];
+	if (self.scanCallbackId)
+	{
+		[self
+			sendDictionary: info
+			forCallback: self.scanCallbackId
+			keepCallback: YES];
+	}
 }
 
 /**

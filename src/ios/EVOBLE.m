@@ -19,7 +19,7 @@
 
 #import <CoreFoundation/CoreFoundation.h>
 #import <objc/runtime.h>
-#import "BLE.h"
+#import "EVOBLE.h"
 
 //////////////////////////////////////////////////////////////////
 //                  Class Extension CBUUID                      //
@@ -83,42 +83,42 @@
 //               Class Extension CBPeripheral                   //
 //////////////////////////////////////////////////////////////////
 
-static int MyPerhiperalAssociatedObjectKey = 42;
+static int EVOPerhiperalAssociatedObjectKey = 42;
 
 @interface CBPeripheral (BLEPluginSupport)
 
-- (void) setMyPerhiperal: (MyPeripheral*)myPeripheral;
-- (MyPeripheral*) getMyPerhiperal;
+- (void) setMyPerhiperal: (EVOPeripheral*)myPeripheral;
+- (EVOPeripheral*) getMyPerhiperal;
 
 @end
 
 @implementation CBPeripheral (BLEPluginSupport)
 
-- (void) setMyPerhiperal: (MyPeripheral*)myPeripheral
+- (void) setMyPerhiperal: (EVOPeripheral*)myPeripheral
 {
 	objc_setAssociatedObject(
 		self,
-		&MyPerhiperalAssociatedObjectKey,
+		&EVOPerhiperalAssociatedObjectKey,
 		myPeripheral,
 		OBJC_ASSOCIATION_ASSIGN);
 }
 
-- (MyPeripheral*) getMyPerhiperal
+- (EVOPeripheral*) getMyPerhiperal
 {
 	return objc_getAssociatedObject(
 		self,
-		&MyPerhiperalAssociatedObjectKey);
+		&EVOPerhiperalAssociatedObjectKey);
 }
 
 @end
 
 //////////////////////////////////////////////////////////////////
-//                      Class MyQueue                           //
+//                      Class EVOQueue                          //
 //////////////////////////////////////////////////////////////////
 
-@implementation MyQueue
+@implementation EVOQueue
 
-- (MyQueue*) init
+- (EVOQueue*) init
 {
 	self.array = [NSMutableArray array];
 	return self;
@@ -158,12 +158,12 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 @end
 
 //////////////////////////////////////////////////////////////////
-//                     Class MyCommand                          //
+//                     Class EVOCommand                         //
 //////////////////////////////////////////////////////////////////
 
-@implementation MyCommand
+@implementation EVOCommand
 
-- (MyCommand*) init
+- (EVOCommand*) init
 {
 	return self;
 }
@@ -176,27 +176,27 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 @end
 
 //////////////////////////////////////////////////////////////////
-//                   Class MyCallbackInfo                       //
+//                   Class EVOCallbackInfo                      //
 //////////////////////////////////////////////////////////////////
 
-@implementation MyCallbackInfo
+@implementation EVOCallbackInfo
 @end
 
 //////////////////////////////////////////////////////////////////
-//                     Class MyPeriperal                        //
+//                     Class EVOPeriperal                       //
 //////////////////////////////////////////////////////////////////
 
-@implementation MyPeripheral
+@implementation EVOPeripheral
 
 /****************************************************************/
 /*                       Class Methods                          */
 /****************************************************************/
 
-+ (MyPeripheral*) withBLE: (BLE*) ble
++ (EVOPeripheral*) withBLE: (EVOBLE*) ble
 	periperal: (CBPeripheral*) peripheral
 {
 	// Create instance.
-	MyPeripheral* my = [MyPeripheral new];
+	EVOPeripheral* my = [EVOPeripheral new];
 
 	// Set handle and connect with associated objects.
 	my.handle = [ble nextHandle];
@@ -217,10 +217,10 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 /*                      Instance Methods                        */
 /****************************************************************/
 
-- (MyPeripheral*) init
+- (EVOPeripheral*) init
 {
 	self.objects = [NSMutableDictionary dictionary];
-	self.commands = [MyQueue new];
+	self.commands = [EVOQueue new];
 	self.characteristicsCallbacks = [NSMutableDictionary dictionary];
 	return self;
 }
@@ -243,10 +243,10 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 - (void) addCommandForCallbackId: (NSString*)callbackId
 	forObject: (id)obj
 	operation: (int)type
-	withBlock: (MyCommandBlock)block
+	withBlock: (EVOCommandBlock)block
 {
 	// Create command object.
-	MyCommand* command = [MyCommand new];
+	EVOCommand* command = [EVOCommand new];
 	command.callbackId = callbackId;
 	command.obj = obj;
 	command.type = type;
@@ -263,7 +263,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 - (NSString*) getActiveCallbackId
 {
-	MyCommand* command = [self.commands first];
+	EVOCommand* command = [self.commands first];
 	return command.callbackId;
 }
 
@@ -275,7 +275,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	// If there is a next command start it.
 	if (![self.commands isEmpty])
 	{
-		MyCommand* command = [self.commands first];
+		EVOCommand* command = [self.commands first];
 		[command doBlock];
 	}
 }
@@ -287,7 +287,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 - (void) assertCommandHasObject: (id)obj andType: (int)type
 {
-	MyCommand* command = [self.commands first];
+	EVOCommand* command = [self.commands first];
 	assert(command.obj == obj);
 	assert(command.type == type);
 }
@@ -297,7 +297,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	isNotificationCallback: (BOOL) notify
 {
 	// Create callback info.
-	MyCallbackInfo* callback = [MyCallbackInfo new];
+	EVOCallbackInfo* callback = [EVOCallbackInfo new];
 	callback.callbackId = callbackId;
 	callback.isNotificationCallback = notify;
 
@@ -308,7 +308,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 // Note: Removes callback object if not notifying callback.
 - (NSString*) getCallbackIdForCharacteristic: (CBCharacteristic*)characteristic
 {
-	MyCallbackInfo* callback = self.characteristicsCallbacks[characteristic.UUID];
+	EVOCallbackInfo* callback = self.characteristicsCallbacks[characteristic.UUID];
 	if (!callback.isNotificationCallback)
 	{
 		[self removeCallbackForCharacteristic: characteristic];
@@ -316,7 +316,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	return callback.callbackId;
 }
 
-- (MyCallbackInfo*) getCallbackForCharacteristic: (CBCharacteristic*)characteristic
+- (EVOCallbackInfo*) getCallbackForCharacteristic: (CBCharacteristic*)characteristic
 {
 	return self.characteristicsCallbacks[characteristic.UUID];
 }
@@ -474,7 +474,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	error: (NSError *)error
 {
 	[self assertCommandAvailable];
-	[self assertCommandHasObject: peripheral andType: OPERATION_RSSI];
+	[self assertCommandHasObject: peripheral andType: EVO_OPERATION_RSSI];
 
 	if (nil == error)
 	{
@@ -502,7 +502,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	didDiscoverServices: (NSError *)error
 {
 	[self assertCommandAvailable];
-	[self assertCommandHasObject: peripheral andType: OPERATION_SERVICES];
+	[self assertCommandHasObject: peripheral andType: EVO_OPERATION_SERVICES];
 
 	if (nil == error)
 	{
@@ -539,7 +539,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	error:(NSError *)error
 {
 	[self assertCommandAvailable];
-	[self assertCommandHasObject: service andType: OPERATION_CHARACTERISTICS];
+	[self assertCommandHasObject: service andType: EVO_OPERATION_CHARACTERISTICS];
 
 	if (nil == error)
 	{
@@ -583,7 +583,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	error: (NSError *)error
 {
 	[self assertCommandAvailable];
-	[self assertCommandHasObject: characteristic andType: OPERATION_DESCRIPTORS];
+	[self assertCommandHasObject: characteristic andType: EVO_OPERATION_DESCRIPTORS];
 
 	if (nil == error)
 	{
@@ -627,7 +627,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	didUpdateValueForCharacteristic: (CBCharacteristic *)characteristic
 	error: (NSError *)error
 {
-	MyCallbackInfo* callback = [self
+	EVOCallbackInfo* callback = [self
 		getCallbackForCharacteristic: characteristic];
 
 	// Perhaps it might happen that the notification is disabled
@@ -664,7 +664,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	error:(NSError *)error
 {
 	[self assertCommandAvailable];
-	[self assertCommandHasObject: descriptor andType: OPERATION_READ_DESCRIPTOR];
+	[self assertCommandHasObject: descriptor andType: EVO_OPERATION_READ_DESCRIPTOR];
 
 	if (nil == error)
 	{
@@ -712,7 +712,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	error:(NSError *)error
 {
 	[self assertCommandAvailable];
-	[self assertCommandHasObject: characteristic andType: OPERATION_WRITE_CHARACTERISTIC];
+	[self assertCommandHasObject: characteristic andType: EVO_OPERATION_WRITE_CHARACTERISTIC];
 
 	if (nil == error)
 	{
@@ -734,7 +734,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	error: (NSError *)error
 {
 	[self assertCommandAvailable];
-	[self assertCommandHasObject: descriptor andType: OPERATION_WRITE_DESCRIPTOR];
+	[self assertCommandHasObject: descriptor andType: EVO_OPERATION_WRITE_DESCRIPTOR];
 
 	if (nil == error)
 	{
@@ -757,7 +757,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 //                          Class BLE                           //
 //////////////////////////////////////////////////////////////////
 
-@implementation BLE
+@implementation EVOBLE
 
 //////////////////////////////////////////////////////////////////
 // TODO: Guard against parallel invocations of API calls.       //
@@ -863,7 +863,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 		// Not connected yet.
 
 		// Create custom peripheral object.
-		MyPeripheral* myPeripheral = [MyPeripheral
+		EVOPeripheral* myPeripheral = [EVOPeripheral
 			withBLE: self
 			periperal: peripheral];
 
@@ -889,7 +889,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
  */
 - (void) close: (CDVInvokedUrlCommand*)command
 {
-	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
+	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
 	// Disconnect the CBPeripheral.
@@ -901,7 +901,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
  */
 - (void) rssi: (CDVInvokedUrlCommand*)command
 {
-	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
+	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
 	// Read RSSI. Result is given in callback method:
@@ -910,7 +910,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	[myPeripheral
 		addCommandForCallbackId: command.callbackId
 		forObject: peripheral
-		operation: OPERATION_RSSI
+		operation: EVO_OPERATION_RSSI
 		withBlock: ^{
 			[peripheral readRSSI];
 		}];
@@ -921,7 +921,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
  */
 - (void) services: (CDVInvokedUrlCommand*)command
 {
-	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
+	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
 	// Read services. Result is given in callback method:
@@ -930,7 +930,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	[myPeripheral
 		addCommandForCallbackId: command.callbackId
 		forObject: peripheral
-		operation: OPERATION_SERVICES
+		operation: EVO_OPERATION_SERVICES
 		withBlock: ^{
 			[peripheral discoverServices: nil];
 		}];
@@ -938,7 +938,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 - (void) characteristics: (CDVInvokedUrlCommand*)command
 {
-	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
+	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
 	CBService* service = [myPeripheral getObjectFromCommand: command atIndex: 1];
@@ -950,7 +950,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	[myPeripheral
 		addCommandForCallbackId: command.callbackId
 		forObject: service
-		operation: OPERATION_CHARACTERISTICS
+		operation: EVO_OPERATION_CHARACTERISTICS
 		withBlock: ^{
 			[peripheral
 				discoverCharacteristics: nil
@@ -960,7 +960,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 - (void) descriptors: (CDVInvokedUrlCommand*)command
 {
-	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
+	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
 	CBCharacteristic* characteristic = [myPeripheral getObjectFromCommand: command atIndex: 1];
@@ -972,7 +972,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	[myPeripheral
 		addCommandForCallbackId: command.callbackId
 		forObject: characteristic
-		operation: OPERATION_DESCRIPTORS
+		operation: EVO_OPERATION_DESCRIPTORS
 		withBlock: ^{
 			[peripheral discoverDescriptorsForCharacteristic: characteristic];
 		}];
@@ -980,7 +980,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 - (void) readCharacteristic: (CDVInvokedUrlCommand*)command
 {
-	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
+	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
 	CBCharacteristic* characteristic = [myPeripheral getObjectFromCommand: command atIndex: 1];
@@ -999,7 +999,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 - (void) readDescriptor: (CDVInvokedUrlCommand*)command
 {
-	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
+	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
 	CBDescriptor* descriptor = [myPeripheral getObjectFromCommand: command atIndex: 1];
@@ -1011,7 +1011,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	[myPeripheral
 		addCommandForCallbackId: command.callbackId
 		forObject: descriptor
-		operation: OPERATION_READ_DESCRIPTOR
+		operation: EVO_OPERATION_READ_DESCRIPTOR
 		withBlock: ^{
 			[peripheral readValueForDescriptor: descriptor];
 		}];
@@ -1019,7 +1019,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 - (void) writeCharacteristic: (CDVInvokedUrlCommand*)command
 {
-	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
+	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
 	CBCharacteristic* characteristic = [myPeripheral getObjectFromCommand: command atIndex: 1];
@@ -1067,7 +1067,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	[myPeripheral
 		addCommandForCallbackId: command.callbackId
 		forObject: characteristic
-		operation: OPERATION_WRITE_CHARACTERISTIC
+		operation: EVO_OPERATION_WRITE_CHARACTERISTIC
 		withBlock: ^{
 			[peripheral
 				writeValue: data
@@ -1100,7 +1100,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 // In this case we do not write to the descriptor, see code below.
 - (void) writeDescriptor: (CDVInvokedUrlCommand*)command
 {
-	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
+	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
 	CBDescriptor* descriptor = [myPeripheral getObjectFromCommand: command atIndex: 1];
@@ -1144,7 +1144,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 		[myPeripheral
 			addCommandForCallbackId: command.callbackId
 			forObject: descriptor
-			operation: OPERATION_WRITE_DESCRIPTOR
+			operation: EVO_OPERATION_WRITE_DESCRIPTOR
 			withBlock: ^{
 				[peripheral
 					writeValue: data
@@ -1155,7 +1155,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 - (void) enableNotification: (CDVInvokedUrlCommand*)command
 {
-	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
+	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
 	CBCharacteristic* characteristic = [myPeripheral getObjectFromCommand: command atIndex: 1];
@@ -1174,7 +1174,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 
 - (void) disableNotification: (CDVInvokedUrlCommand*)command
 {
-	MyPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
+	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
 	CBCharacteristic* characteristic = [myPeripheral getObjectFromCommand: command atIndex: 1];
@@ -1186,7 +1186,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 		forCharacteristic: characteristic];
 
 	// Remove the callback from the JavaScript layer.
-	MyCallbackInfo* callback = [myPeripheral
+	EVOCallbackInfo* callback = [myPeripheral
 		getCallbackForCharacteristic: characteristic];
 	[self sendNoResultClearCallback: callback.callbackId];
 
@@ -1279,7 +1279,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	didFailToConnectPeripheral: (CBPeripheral *)peripheral
 	error: (NSError *)error
 {
-	MyPeripheral* myPeripheral = [peripheral getMyPerhiperal];
+	EVOPeripheral* myPeripheral = [peripheral getMyPerhiperal];
 	if (nil == myPeripheral) return;
 
 	// Send connect failed to JS.
@@ -1300,7 +1300,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	didDisconnectPeripheral: (CBPeripheral *)peripheral
 	error: (NSError *)error
 {
-	MyPeripheral* myPeripheral = [peripheral getMyPerhiperal];
+	EVOPeripheral* myPeripheral = [peripheral getMyPerhiperal];
 	if (nil == myPeripheral) return;
 
 	// If the error object is non-nil the peripheral was
@@ -1331,7 +1331,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 - (void) freePeripheral: (CBPeripheral *)peripheral
 	disconnect: (bool)shouldDisconnect
 {
-	MyPeripheral* myPeripheral = [peripheral getMyPerhiperal];
+	EVOPeripheral* myPeripheral = [peripheral getMyPerhiperal];
 	if (nil == myPeripheral)
 	{
 		return;
@@ -1367,7 +1367,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 	// Remove MyPeripheral and disconnect its associated peripheral.
 	for (id key in self.peripherals)
 	{
-		MyPeripheral* myPeripheral = [self.peripherals objectForKey: key];
+		EVOPeripheral* myPeripheral = [self.peripherals objectForKey: key];
 		[self freePeripheral: myPeripheral.peripheral disconnect: YES];
 	}
 }
@@ -1407,7 +1407,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 /**
  * Internal helper method.
  */
-- (MyPeripheral*) getPeripheralFromCommand: (CDVInvokedUrlCommand*)command
+- (EVOPeripheral*) getPeripheralFromCommand: (CDVInvokedUrlCommand*)command
 {
 	NSString* deviceHandle = [command.arguments objectAtIndex: 0];
 	if (nil == deviceHandle)
@@ -1418,7 +1418,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
 		return nil;
 	}
 
-	MyPeripheral* myPeripheral = self.peripherals[deviceHandle];
+	EVOPeripheral* myPeripheral = self.peripherals[deviceHandle];
 	if (nil == myPeripheral)
 	{
 		[self
@@ -1460,7 +1460,7 @@ static int MyPerhiperalAssociatedObjectKey = 42;
  * Internal helper method.
  */
 - (void) sendConnectionState: (NSNumber *)state
-	forMyPeriperhal: (MyPeripheral *)myPeripheral
+	forMyPeriperhal: (EVOPeripheral *)myPeripheral
 {
 	// Create an info object.
 	// The UUID is used as the address of the device (the 6-byte BLE address

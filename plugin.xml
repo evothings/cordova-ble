@@ -31,14 +31,14 @@
 	<platform name="ios">
 		<config-file target="config.xml" parent="/*">
 			<feature name="BLE">
-				<param name="ios-package" value="BLE"/>
+				<param name="ios-package" value="EVOBLE"/>
 			</feature>
 		</config-file>
 
 		<framework src="CoreBluetooth.framework" />
 
-		<header-file src="src/ios/BLE.h" />
-		<source-file src="src/ios/BLE.m" />
+		<header-file src="src/ios/EVOBLE.h" />
+		<source-file src="src/ios/EVOBLE.m" />
 	</platform>
 
 </plugin>

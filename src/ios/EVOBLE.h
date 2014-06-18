@@ -23,14 +23,14 @@
 #import <Cordova/CDVPlugin.h>
 
 //////////////////////////////////////////////////////////////////
-//                      Class MyQueue                           //
+//                      Class EVOQueue                          //
 //////////////////////////////////////////////////////////////////
 
-@interface MyQueue : NSObject
+@interface EVOQueue : NSObject
 
 @property NSMutableArray* array;
 
-- (MyQueue*) init;
+- (EVOQueue*) init;
 - (void) enqueue: (id)item;
 - (id) dequeue;
 - (id) first;
@@ -39,38 +39,38 @@
 @end
 
 //////////////////////////////////////////////////////////////////
-//                     Class MyCommand                          //
+//                     Class EVOCommand                         //
 //////////////////////////////////////////////////////////////////
 
-// These are operation types used in by the MyCommand class.
-const int OPERATION_RSSI = 1;
-const int OPERATION_SERVICES = 2;
-const int OPERATION_CHARACTERISTICS = 3;
-const int OPERATION_DESCRIPTORS = 4;
-const int OPERATION_READ_DESCRIPTOR = 5;
-const int OPERATION_WRITE_CHARACTERISTIC = 6;
-const int OPERATION_WRITE_DESCRIPTOR = 7;
+// These are operation types used in by the EVOCommand class.
+const int EVO_OPERATION_RSSI = 1;
+const int EVO_OPERATION_SERVICES = 2;
+const int EVO_OPERATION_CHARACTERISTICS = 3;
+const int EVO_OPERATION_DESCRIPTORS = 4;
+const int EVO_OPERATION_READ_DESCRIPTOR = 5;
+const int EVO_OPERATION_WRITE_CHARACTERISTIC = 6;
+const int EVO_OPERATION_WRITE_DESCRIPTOR = 7;
 
 // Block type used by commands.
-typedef void (^MyCommandBlock)(void);
+typedef void (^EVOCommandBlock)(void);
 
-@interface MyCommand : NSObject
+@interface EVOCommand : NSObject
 
 @property NSString* callbackId;
-@property (strong, nonatomic) MyCommandBlock block;
+@property (strong, nonatomic) EVOCommandBlock block;
 @property int type; // Operation type.
 @property (weak, nonatomic) id obj; // Object in the operation.
 
-- (MyCommand*) init;
+- (EVOCommand*) init;
 - (void) doBlock;
 
 @end
 
 //////////////////////////////////////////////////////////////////
-//                          Class BLE                           //
+//                        Class EVOBLE                          //
 //////////////////////////////////////////////////////////////////
 
-@interface BLE : CDVPlugin <CBCentralManagerDelegate>
+@interface EVOBLE : CDVPlugin <CBCentralManagerDelegate>
 
 /* TODO: Should (strong, nonatomic) be used? Like this:
 @property (strong, nonatomic) NSString* callbackId;
@@ -134,10 +134,10 @@ typedef void (^MyCommandBlock)(void);
 @end
 
 //////////////////////////////////////////////////////////////////
-//                   Class MyCallbackInfo                       //
+//                   Class EVOCallbackInfo                      //
 //////////////////////////////////////////////////////////////////
 
-@interface MyCallbackInfo : NSObject
+@interface EVOCallbackInfo : NSObject
 
 @property NSString* callbackId;
 @property BOOL isNotificationCallback;
@@ -145,24 +145,24 @@ typedef void (^MyCommandBlock)(void);
 @end
 
 //////////////////////////////////////////////////////////////////
-//                     Class MyPeriperal                        //
+//                     Class EVOPeriperal                       //
 //////////////////////////////////////////////////////////////////
 
-@interface MyPeripheral : NSObject <CBPeripheralDelegate>
+@interface EVOPeripheral : NSObject <CBPeripheralDelegate>
 
 @property NSNumber* handle;
 @property CBPeripheral* peripheral;
-@property BLE* ble;
+@property EVOBLE* ble;
 @property NSMutableDictionary* objects; // Handle to object table
 @property NSString* connectCallbackId;
-@property MyQueue* commands; // Contains MyCommand objects
-@property NSMutableDictionary* characteristicsCallbacks; // Contains MyCallbackInfo objects
+@property EVOQueue* commands; // Contains EVOCommand objects
+@property NSMutableDictionary* characteristicsCallbacks; // Contains EVOCallbackInfo objects
 
 // Class method (constructor).
-+ (MyPeripheral*) withBLE: (BLE*) ble periperal: (CBPeripheral*) peripheral;
++ (EVOPeripheral*) withBLE: (EVOBLE*) ble periperal: (CBPeripheral*) peripheral;
 
 // Initialising.
-- (MyPeripheral*) init;
+- (EVOPeripheral*) init;
 
 // Handle table for objects (like CBService, CBCharacteristic, and CBDEscriptor).
 - (void) addObject: (id)obj withHandle: (id)handle;
@@ -175,7 +175,7 @@ typedef void (^MyCommandBlock)(void);
 - (void) addCommandForCallbackId: (NSString*)callbackId
 	forObject: (id)obj
 	operation: (int)type
-	withBlock: (MyCommandBlock)block;
+	withBlock: (EVOCommandBlock)block;
 - (NSString*) getActiveCallbackId;
 - (void) clearActiveCommandAndContinue;
 - (void) assertCommandAvailable;
@@ -189,7 +189,7 @@ typedef void (^MyCommandBlock)(void);
 - (void) addCallbackForCharacteristic: (CBCharacteristic*)characteristic
 	callbackId: (NSString*)callbackId
 	isNotificationCallback: (BOOL) notify;
-- (MyCallbackInfo*) getCallbackForCharacteristic: (CBCharacteristic*)characteristic;
+- (EVOCallbackInfo*) getCallbackForCharacteristic: (CBCharacteristic*)characteristic;
 - (NSString*) getCallbackIdForCharacteristic: (CBCharacteristic*)characteristic;
 - (void) removeCallbackForCharacteristic: (CBCharacteristic*)characteristic;
 

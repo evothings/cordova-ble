@@ -1,13 +1,13 @@
 
 ## Cordova BLE Plugin
 
-The plugin has functions that allows your app to act as a BLE client.
+This plugin allows your app to act as a BLE client.
 You can:
 * scan for devices
 * connect to them
 * list services, characteristics and descriptors
 * read and write characteristics and descriptors
-* request notification
+* request notification of changes to the values of characteristics
 * poll RSSI (signal strength)
 
 To build documentation, run this command:

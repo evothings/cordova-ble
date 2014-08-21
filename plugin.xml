@@ -9,6 +9,10 @@
 	</engines>
 
 	<name>Evothings BLE API</name>
+	<description>This plugin allows your app to act as a Bluetooth Low Energy client.</description>
+	<author>Evothings</author>
+	<keywords>bluetooth,low energy,smart</keywords>
+	<license>Apache 2.0</license>
 
 	<js-module src="ble.js" name="BLE">
 		<clobbers target="evothings.ble" />

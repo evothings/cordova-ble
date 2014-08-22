@@ -531,7 +531,7 @@ exports.readAllServiceData = function(deviceHandle, win, fail)
 				service.characteristics = [];
 
 				// Read characteristics for service.
-				ble.characteristics(
+        exports.characteristics(
 					deviceHandle,
 					service.handle,
 					characteristicsCallbackFun(service),
@@ -557,7 +557,7 @@ exports.readAllServiceData = function(deviceHandle, win, fail)
 				characteristic.descriptors = [];
 
 				// Read descriptors for characteristic.
-				ble.descriptors(
+        exports.descriptors(
 					deviceHandle,
 					characteristic.handle,
 					descriptorsCallbackFun(characteristic),
@@ -589,7 +589,7 @@ exports.readAllServiceData = function(deviceHandle, win, fail)
 	};
 
 	// Read services for device.
-	ble.services(
+	exports.services(
 		deviceHandle,
 		servicesCallbackFun(),
 		function(errorCode)

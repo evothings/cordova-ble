@@ -20,3 +20,5 @@ See [this](introduction.md) for a general introduction to BLE programming.
 See the reference documentation ([source code](https://github.com/evothings/cordova-ble/blob/master/ble.js)) for details.
 
 See [EvoThingsExamples](https://github.com/evothings/EvoThingsExamples) for examples.
+
+This plugin is published as part of [Evothings Studio](https://github.com/evothings/EvoThingsStudio).

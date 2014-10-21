@@ -440,8 +440,8 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	return @{
 		@"handle" : handle,
 		@"uuid" : [characteristic.UUID uuidString],
-		@"permission" : [NSNumber numberWithInt: permissions],
-		@"property" : [NSNumber numberWithInt: properties],
+		@"permissions" : [NSNumber numberWithInt: permissions],
+		@"properties" : [NSNumber numberWithInt: properties],
 		@"writeType" : [NSNumber numberWithInt: writeType]
 	};
 }
@@ -455,7 +455,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	return @{
 		@"handle" : handle,
 		@"uuid" : [descriptor.UUID uuidString],
-		@"permission" : [NSNumber numberWithInt: permissions]
+		@"permissions" : [NSNumber numberWithInt: permissions]
 	};
 }
 

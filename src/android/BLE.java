@@ -23,6 +23,7 @@ import org.json.JSONObject;
 import android.bluetooth.*;
 import android.bluetooth.BluetoothAdapter.LeScanCallback;
 import android.content.*;
+import android.app.Activity;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -35,6 +36,8 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 	private CallbackContext mResetCallbackContext;
 	private Context mContext;
 	private boolean mRegisteredReceiver = false;
+	private Runnable mOnPowerOn;
+	private CallbackContext mPowerOnCallbackContext;
 
 	int mNextGattHandle = 1;
 	HashMap<Integer, GattHandler> mGatt = null;
@@ -100,6 +103,38 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		}
 	}
 
+	private void checkPowerState(BluetoothAdapter adapter, CallbackContext cc, Runnable onPowerOn) {
+		if(adapter == null) {
+			return;
+		}
+		if(adapter.getState() == BluetoothAdapter.STATE_ON) {
+			// Bluetooth is ON
+			onPowerOn.run();
+		} else {
+			mOnPowerOn = onPowerOn;
+			mPowerOnCallbackContext = cc;
+			Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+			cordova.startActivityForResult(this, enableBtIntent, 0);
+		}
+	}
+
+	@Override
+	public void onActivityResult(int requestCode, int resultCode, Intent intent) {
+		Runnable onPowerOn = mOnPowerOn;
+		CallbackContext cc = mPowerOnCallbackContext;
+		mOnPowerOn = null;
+		mPowerOnCallbackContext = null;
+		if(resultCode == Activity.RESULT_OK) {
+			onPowerOn.run();
+		} else {
+			if(resultCode == Activity.RESULT_CANCELED) {
+				cc.error("Bluetooth power-on canceled");
+			} else {
+				cc.error("Bluetooth power-on failed, code "+resultCode);
+			}
+		}
+	}
+
 	private void keepCallback(final CallbackContext callbackContext, JSONObject message) {
 		PluginResult r = new PluginResult(PluginResult.Status.OK, message);
 		r.setKeepCallback(true);
@@ -119,17 +154,18 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 	}
 
 	private void startScan(final CordovaArgs args, final CallbackContext callbackContext) {
-		//try {
-			BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-			if(!adapter.startLeScan(this)) {
-				callbackContext.error("Android function startLeScan failed");
-				return;
+		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+		final LeScanCallback self = this;
+		checkPowerState(adapter, callbackContext, new Runnable() {
+			@Override
+			public void run() {
+				if(!adapter.startLeScan(self)) {
+					callbackContext.error("Android function startLeScan failed");
+					return;
+				}
+				mScanCallbackContext = callbackContext;
 			}
-			mScanCallbackContext = callbackContext;
-		//}
-			/*catch(Exception e) {
-			callbackContext.error(e.toString());
-		}*/
+		});
 	}
 
 	public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord) {
@@ -156,19 +192,24 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 	}
 
 	private void connect(final CordovaArgs args, final CallbackContext callbackContext) {
-		try {
-			GattHandler gh = new GattHandler(mNextGattHandle, callbackContext);
-			gh.mGatt = BluetoothAdapter.getDefaultAdapter().
-				getRemoteDevice(args.getString(0)).connectGatt(mContext, true, gh);
-			if(mGatt == null)
-				mGatt = new HashMap<Integer, GattHandler>();
-			Object res = mGatt.put(mNextGattHandle, gh);
-			assert(res == null);
-			mNextGattHandle++;
-		} catch(Exception e) {
-			e.printStackTrace();
-			callbackContext.error(e.toString());
-		}
+		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+		checkPowerState(adapter, callbackContext, new Runnable() {
+			@Override
+			public void run() {
+				try {
+					GattHandler gh = new GattHandler(mNextGattHandle, callbackContext);
+					gh.mGatt = adapter.getRemoteDevice(args.getString(0)).connectGatt(mContext, true, gh);
+					if(mGatt == null)
+						mGatt = new HashMap<Integer, GattHandler>();
+					Object res = mGatt.put(mNextGattHandle, gh);
+					assert(res == null);
+					mNextGattHandle++;
+				} catch(Exception e) {
+					e.printStackTrace();
+					callbackContext.error(e.toString());
+				}
+			}
+		});
 	}
 
 	private void close(final CordovaArgs args, final CallbackContext callbackContext) {

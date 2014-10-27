@@ -1,24 +1,42 @@
-
 ## Cordova BLE Plugin
 
-This plugin allows your app to act as a BLE client.
-You can:
-* scan for devices
-* connect to them
-* list services, characteristics and descriptors
-* read and write characteristics and descriptors
-* request notification of changes to the values of characteristics
-* poll RSSI (signal strength)
+This plugin implements BLE support for Android and iOS. Enable your Cordova and PhoneGap mobile applications to communicate with all sorts of BLE devices.
 
-To build documentation, run this command:
-jsdoc -l -c conf.json ble.js
+Available functionality:
 
-This plugin is implemented on Android and iOS.
+* Scan for BLE devices
+* Establish connections
+* List services, characteristics and descriptors
+* Read and write the values of characteristics and descriptors
+* Request notification of changes to the values of characteristics
+* Poll RSSI (signal strength) of a device
 
-See [this](introduction.md) for a general introduction to BLE programming.
+### Use Evothings Studio for fast and easy BLE mobile app development
 
-See the reference documentation ([source code](https://github.com/evothings/cordova-ble/blob/master/ble.js)) for details.
+This plugin is used in Evothings Studio, and is compatible with Apache Cordova and PhoneGap.
 
-See [EvoThingsExamples](https://github.com/evothings/EvoThingsExamples) for examples.
+[Evothings Studio](http://evothings.com) is a development and prototyping tool for making Cordova/PhoneGap apps. With Evothings Studio the edit/run turn-around cycle is just a second or two, which is much faster compared to the traditional method of rebuilding the Cordova project for each update.
 
-This plugin is published as part of [Evothings Studio](https://github.com/evothings/EvoThingsStudio).
+[![Evothings Studio Workflow](http://evomedia.evothings.com/2013/11/illustration_ble_plugin.jpg)](http://evothings.com)
+
+See [Evothings Examples](http://evothings.com/doc/examples/examples.html) for comprehensive examples of mobile apps that communicate over Bluetooth Low Energy, and which you can use for your own projects to get quickly up and running.
+
+### Documentation
+
+Reference documentation is available in the [ble.js](https://github.com/evothings/cordova-ble/blob/master/ble.js) source file.
+
+To build the documentation using [jsdoc](https://github.com/jsdoc3/jsdoc), run this command:
+
+    jsdoc -l -c conf.json ble.js
+
+The file [introduction.md](introduction.md) contains a general introduction to BLE programming.
+
+### Getting started tutorial
+
+Read the [BLE app development tutorial](http://evothings.com/ble-app-development-explained/) to get started with your BLE mobile application.
+
+[![BLE Mobile App Development Video](http://evomedia.evothings.com/2013/11/youtube_ble_example_start.png)](http://www.youtube.com/watch?v=A7uxNS_0QOI)
+
+### Download Evothings Studio
+
+[Download Evothings Studio now](http://evothings.com/download/) - it is fun and easy to get started. And it is all open source!

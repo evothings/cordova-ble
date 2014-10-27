@@ -11,10 +11,10 @@
 	"plugins": [],
 	"templates": {
 		"cleverLinks": false,
-		"monospaceLinks": false,
+		"monospaceLinks": false
 	},
 	"opts": {
 		"encoding": "utf8",
-		"lenient": false,
+		"lenient": false
 	}
 }

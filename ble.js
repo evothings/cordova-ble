@@ -46,7 +46,18 @@ exports.startScan = function(win, fail) {
 * @property {number} rssi - A negative integer, the signal strength in decibels.
 * @property {string} name - The device's name, or nil.
 * @property {string} scanRecord - Base64-encoded binary data. Its meaning is device-specific. Not available on iOS.
+* @property {AdvertisementData} advertisementData - Object containing some of the data from the scanRecord. Available only on iOS.
 */
+
+/** Information extracted from a scanRecord. Some or all of the fields may be undefined. This varies between BLE devices.
+ * Depending on OS version and BLE device, additional fields, not documented here, may be present.
+ * @typedef {Object} AdvertisementData
+ * @property {string} kCBAdvDataLocalName - The device's name. Equal to DeviceInfo.name.
+ * @property {number} kCBAdvDataChannel - A positive integer, the BLE channel on which the device listens for connections. Ignore this number.
+ * @property {boolean} kCBAdvDataIsConnectable - True if the device accepts connections. False if it doesn't.
+ * @property {array} kCBAdvDataServiceUUIDs - Array of strings, the UUIDs of services advertised by the device. Formatted according to RFC 4122, all lowercase.
+ * @property {string} kCBAdvDataManufacturerData - Base-64-encoded binary data. This field is used by BLE devices to advertise custom data that don't fit into any of the other fields.
+ */
 
 /** This function is called when an operation fails.
 * @callback failCallback

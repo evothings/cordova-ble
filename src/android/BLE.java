@@ -537,10 +537,12 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		}
 		@Override
 		public void onReadRemoteRssi(BluetoothGatt g, int rssi, int status) {
+			CallbackContext c = mRssiContext;
+			mRssiContext = null;
 			if(status == BluetoothGatt.GATT_SUCCESS) {
-				mRssiContext.success(rssi);
+				c.success(rssi);
 			} else {
-				mRssiContext.error(status);
+				c.error(status);
 			}
 		}
 		@Override

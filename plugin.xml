@@ -4,9 +4,10 @@
 	id="com.evothings.ble"
 	version="0.0.1">
 
-	<!-- This plugin requires Cordova version 3.1.0 or newer. -->
+	<!-- This plugin requires Cordova version >= 3.1.0 and < 4.0.0. -->
 	<engines>
 		<engine name="cordova" version=">=3.1.0" />
+		<engine name="cordova" version="<4.0.0" />
 	</engines>
 
 	<name>Evothings BLE API</name>

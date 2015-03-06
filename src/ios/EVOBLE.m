@@ -1287,8 +1287,9 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	// Some objects in advertisementData don't support CDVJSONSerializing.
 	// To fix that, we make a deep copy of advertisementData and
 	// prepareForJson those objects.
-
-	NSObject* newData = [self prepareForJson:advertisementData];
+	// Since we call prepareForJson: with an NSDictionary we will get
+	// back an NSDictionary, so this type cast should be safe.
+	NSDictionary* newData = (NSDictionary*) [self prepareForJson:advertisementData];
 
 	[self
 		sendScanInfoForPeriperhal: peripheral

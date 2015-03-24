@@ -11,7 +11,7 @@ var exec = cordova.require('cordova/exec');
 /** Starts scanning for devices.
 * <p>Found devices and errors will be reported to the supplied callbacks.</p>
 * <p>Will keep scanning indefinitely until you call stopScan().</p>
-* To conserve energy, call stopScan() as soon as you've found the device you're looking for.
+* To conserve energy, call {@link com.evothings.ble.stopScan} as soon as you've found the device you're looking for.
 * <p>Calling this function while scanning is in progress has no effect?</p>
 *
 * @param {scanCallback} win
@@ -328,10 +328,6 @@ exports.descriptors = function(deviceHandle, characteristicHandle, win, fail) {
 * @property {permission} permissions - Bitmask of zero or more permission flags.
 */
 
-// TODO: What is read* ?
-// read*: fetch and return value in one op.
-// values should be cached on the JS side, if at all.
-
 /**
 * @callback dataCallback
 * @param {ArrayBuffer} data
@@ -609,3 +605,170 @@ exports.readAllServiceData = function(deviceHandle, win, fail)
 			fail(errorCode);
 		});
 };
+
+
+/** @module com.evothings.ble.server */
+
+/** Starts the GATT server.
+* There can be only one server. If this function is called while the server is still running, the call will fail.
+* Once this function succeeds, the server may be stopped by calling stopGattServer.
+*
+* @param {GattSettings} settings
+* @param {emptyCallback} win
+* @param {failCallback} fail
+*/
+exports.startGattServer = function(settings, win, fail) {
+	exec(win, fail, 'BLE', 'startGattServer', [settings]);
+};
+
+// GattSettings
+/** Describes a GATT server.
+* @typedef {Object} GattSettings
+* @property {Array} services - An array of GattService objects.
+* @property {connectionStateChangeCallback} onConnectionStateChange
+*/
+
+/** Describes a GATT service.
+* @typedef {Object} GattService
+* @property {string} uuid - Formatted according to RFC 4122, all lowercase.
+* @property {serviceType} type
+* @property {Array} characteristics - An array of GattCharacteristic objects.
+*/
+
+/** Describes a GATT characteristic.
+* @typedef {Object} GattCharacteristic
+* @property {int} handle - Optional. Used in notify(). If set, must be unique among all other GattCharacteristic handles.
+* @property {string} uuid - Formatted according to RFC 4122, all lowercase.
+* @property {permission} permissions - Bitmask of zero or more permission flags.
+* @property {property} properties - Bitmask of zero or more property flags.
+* @property {writeType} writeType
+* @property {readRequestCallback} onReadRequest
+* @property {writeRequestCallback} onWriteRequest
+* @property {Array} descriptors - An array of GattDescriptor objects.
+*/
+
+/** Describes a GATT descriptor.
+* @typedef {Object} GattDescriptor
+* @property {string} uuid - Formatted according to RFC 4122, all lowercase.
+* @property {permission} permissions - Bitmask of zero or more permission flags.
+* @property {readRequestCallback} onReadRequest
+* @property {writeRequestCallback} onWriteRequest
+*/
+
+
+// GattServer callbacks
+/** This function is a part of GattSettings and is called when a remote device connects to, or disconnects from, your server.
+* @callback connectionStateChangeCallback
+* @param {int} deviceHandle - Will be used in other callbacks.
+* @param {boolean} connected - If true, the device just connected, and the handle is now valid for use in close() and other functions.
+* If false, it just disconnected, and the handle is now invalid for use in close() and other functions.
+*/
+
+/** Called when a remote device asks to read a characteristic or descriptor.
+* You must call sendResponse() to complete the request.
+* @callback readRequestCallback
+* @param {int} deviceHandle
+* @param {int} requestId
+*/
+
+/** Called when a remote device asks to write a characteristic or descriptor.
+* You must call sendResponse() to complete the request.
+* @callback writeRequestCallback
+* @param {int} deviceHandle
+* @param {int} requestId
+* @param {ArrayBuffer} data
+*/
+
+
+/** Stops the GATT server.
+* This stops any active advertisements and forcibly disconnects any clients.
+* There can be only one server. If startGattServer() returned success, you may call this function once.
+* Calling it more will result in failure.
+*
+* @param {emptyCallback} win
+* @param {failCallback} fail
+*/
+exports.stopGattServer = function(win, fail) {
+	exec(win, fail, 'BLE', 'stopGattServer', []);
+};
+
+/** Sends a response to a read or write request.
+* @param {int} deviceHandle - From a requestCallback.
+* @param {int} requestId - From the same requestCallback as deviceHandle.
+* @param {ArrayBuffer} data - Required for responses to read requests. May be set to null for write requests.
+* @param {emptyCallback} win
+* @param {failCallback} fail
+*/
+exports.sendResponse = function(deviceHandle, requestId, data, win, fail) {
+	exec(win, fail, 'BLE', 'sendResponse', [deviceHandle, requestId, data]);
+}
+
+/** Sends a notification to a remote device that a characteristic's value has been updated.
+* @param {int} deviceHandle - From a connectionStateChangeCallback.
+* @param {int} characteristicHandle - GattCharacteristic.handle
+* @param {ArrayBuffer} data - The characteristic's new value.
+* @param {emptyCallback} win
+* @param {failCallback} fail
+*/
+exports.notify = function(deviceHandle, characteristic, data, win, fail) {
+	exec(win, fail, 'BLE', 'notify', [deviceHandle, characteristic, data]);
+};
+
+/*	// never mind, just use close().
+// Closes a client handle, freeing the resources.
+exports.closeClient = function(clientHandle, win, fail) {
+};
+*/
+
+
+/** Starts BLE advertise.
+*
+* @param {AdvertiseSettings} settings
+* @param {emptyCallback} win
+* @param {failCallback} fail
+*/
+exports.startAdvertise = function(settings, win, fail) {
+	exec(win, fail, 'BLE', 'startAdvertise', [settings]);
+}
+
+/** Stops BLE advertise.
+*
+* @param {emptyCallback} win
+* @param {failCallback} fail
+*/
+exports.stopAdvertise = function(win, fail) {
+	exec(win, fail, 'BLE', 'stopAdvertise', []);
+}
+
+// AdvertiseSettings
+/** Describes a BLE advertisement.
+*
+* All the properties are optional, except broadcastData.
+*
+* @typedef {Object} AdvertiseSettings
+* @property {string} advertiseMode - ADVERTISE_MODE_LOW_POWER, ADVERTISE_MODE_BALANCED, or ADVERTISE_MODE_LOW_LATENCY.
+* The default is ADVERTISE_MODE_LOW_POWER.
+* @property {boolean} connectable - Advertise as connectable or not. Has no bearing on whether the device is actually connectable.
+* The default is true if there is a GattServer running, false if there isn't.
+* @property {int} timeoutMillis - Advertising time limit. May not exceed 180000 milliseconds. A value of 0 will disable the time limit.
+* The default is 0.
+* @property {string} txPowerLevel - ADVERTISE_TX_POWER_ULTRA_LOW, ADVERTISE_TX_POWER_LOW, ADVERTISE_TX_POWER_MEDIUM or ADVERTISE_TX_POWER_HIGH.
+* The default is ADVERTISE_TX_POWER_MEDIUM.
+* @property {AdvertiseData} broadcastData
+* @property {AdvertiseData} scanResponseData - If set, the device will respond to active scans.
+*/
+
+/** Describes BLE advertisement data.
+*
+* All properties are optional.
+*
+* @typedef {Object} AdvertiseData
+* @property {boolean} includeDeviceName - If true, the device's Bluetooth name is added to the advertisement.
+* The name is set by the user in the device's Settings. The name cannot be changed by the app.
+* The default is false.
+* @property {boolean} includeTxPowerLevel - If true, the txPowerLevel found in AdvertiseSettings is added to the advertisement.
+* The default is false.
+* @property {Array} serviceUUIDs - Array of strings. Each string is the UUID of a service that should be available in the device's GattServer.
+* @property {Object} serviceData - Map of string to ArrayBuffer. Each string is a service UUID. The accompanying ArrayBuffer is data associated with the service.
+* @property {Object} manufacturerData - Map of int to ArrayBuffer. Each int is a manufacturer id. The accompanying ArrayBuffer is data associated with the manufacturer.
+*/

@@ -10,8 +10,8 @@
 	},
 	"plugins": [],
 	"templates": {
-		"cleverLinks": false,
-		"monospaceLinks": false
+		"cleverLinks": true,
+		"monospaceLinks": true
 	},
 	"opts": {
 		"encoding": "utf8",

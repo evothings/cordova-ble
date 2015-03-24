@@ -46,7 +46,7 @@ exports.startScan = function(win, fail) {
 * @property {number} rssi - A negative integer, the signal strength in decibels.
 * @property {string} name - The device's name, or nil.
 * @property {string} scanRecord - Base64-encoded binary data. Its meaning is device-specific. Not available on iOS.
-* @property {AdvertisementData} advertisementData - Object containing some of the data from the scanRecord. Available natively on iOS. Available on Android when using library easyble.js.
+* @property {AdvertisementData} advertisementData - Object containing some of the data from the scanRecord. Available natively on iOS. Available on Android by parsing the scan record. This functionality is implemented in the library {@link https://github.com/evothings/evothings-examples/tree/master/resources/libs/evothings/easyble|easyble.js}.
 */
 
 /** Information extracted from a scanRecord. Some or all of the fields may be undefined. This varies between BLE devices.

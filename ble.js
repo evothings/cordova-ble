@@ -695,7 +695,7 @@ exports.stopGattServer = function(win, fail) {
 /** Sends a response to a read or write request.
 * @param {int} deviceHandle - From a requestCallback.
 * @param {int} requestId - From the same requestCallback as deviceHandle.
-* @param {ArrayBuffer} data - Required for responses to read requests. May be set to null for write requests.
+* @param {ArrayBufferView} data - Required for responses to read requests. May be set to null for write requests.
 * @param {emptyCallback} win
 * @param {failCallback} fail
 */
@@ -706,7 +706,7 @@ exports.sendResponse = function(deviceHandle, requestId, data, win, fail) {
 /** Sends a notification to a remote device that a characteristic's value has been updated.
 * @param {int} deviceHandle - From a connectionStateChangeCallback.
 * @param {int} characteristicHandle - GattCharacteristic.handle
-* @param {ArrayBuffer} data - The characteristic's new value.
+* @param {ArrayBufferView} data - The characteristic's new value.
 * @param {emptyCallback} win
 * @param {failCallback} fail
 */
@@ -722,6 +722,7 @@ exports.closeClient = function(clientHandle, win, fail) {
 
 
 /** Starts BLE advertise.
+* Fails if advertise is running. In that case, call stopAdvertise first.
 *
 * @param {AdvertiseSettings} settings
 * @param {emptyCallback} win
@@ -769,6 +770,6 @@ exports.stopAdvertise = function(win, fail) {
 * @property {boolean} includeTxPowerLevel - If true, the txPowerLevel found in AdvertiseSettings is added to the advertisement.
 * The default is false.
 * @property {Array} serviceUUIDs - Array of strings. Each string is the UUID of a service that should be available in the device's GattServer.
-* @property {Object} serviceData - Map of string to ArrayBuffer. Each string is a service UUID. The accompanying ArrayBuffer is data associated with the service.
-* @property {Object} manufacturerData - Map of int to ArrayBuffer. Each int is a manufacturer id. The accompanying ArrayBuffer is data associated with the manufacturer.
+* @property {Object} serviceData - Map of string to ArrayBufferView. Each string is a service UUID. The accompanying ArrayBufferView is data associated with the service.
+* @property {Object} manufacturerData - Map of int to ArrayBufferView. Each int is a manufacturer id. The accompanying ArrayBufferView is data associated with the manufacturer.
 */

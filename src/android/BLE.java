@@ -21,6 +21,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import android.bluetooth.*;
+import android.bluetooth.le.*;
 import android.bluetooth.BluetoothAdapter.LeScanCallback;
 import android.content.*;
 import android.app.Activity;
@@ -28,8 +29,10 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Iterator;
+import java.util.UUID;
 import java.io.UnsupportedEncodingException;
 import android.util.Base64;
+import android.os.ParcelUuid;
 
 public class BLE extends CordovaPlugin implements LeScanCallback {
 	private CallbackContext mScanCallbackContext;
@@ -57,6 +60,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 	public boolean execute(String action, CordovaArgs args, final CallbackContext callbackContext)
 		throws JSONException
 	{
+		try {
 		if("startScan".equals(action)) { startScan(args, callbackContext); return true; }
 		else if("stopScan".equals(action)) { stopScan(args, callbackContext); return true; }
 		else if("connect".equals(action)) { connect(args, callbackContext); return true; }
@@ -73,6 +77,20 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		else if("disableNotification".equals(action)) { disableNotification(args, callbackContext); return true; }
 		else if("testCharConversion".equals(action)) { testCharConversion(args, callbackContext); return true; }
 		else if("reset".equals(action)) { reset(args, callbackContext); return true; }
+
+		else if("startAdvertise".equals(action)) { startAdvertise(args, callbackContext); return true; }
+		else if("stopAdvertise".equals(action)) { stopAdvertise(args, callbackContext); return true; }
+		/*
+		else if("startGattServer".equals(action)) { startGattServer(args, callbackContext); return true; }
+		else if("stopGattServer".equals(action)) { stopGattServer(args, callbackContext); return true; }
+		else if("sendResponse".equals(action)) { sendResponse(args, callbackContext); return true; }
+		else if("notify".equals(action)) { notify(args, callbackContext); return true; }
+		*/
+		} catch(JSONException e) {
+			e.printStackTrace();
+			callbackContext.error(e.getMessage());
+		}
+
 		return false;
 	}
 
@@ -623,4 +641,139 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			keepCallback(cc, c.getValue());
 		}
 	};
+
+
+	private boolean mHasActiveGattServer = false;
+	private BluetoothLeAdvertiser mAdvertiser;
+	private AdvertiseCallback mAdCallback;
+
+	private AdvertiseSettings buildAdvertiseSettings(JSONObject setJson) throws JSONException {
+		AdvertiseSettings.Builder setBuild = new AdvertiseSettings.Builder();
+		{
+			String advModeString = setJson.optString("advertiseMode", "ADVERTISE_MODE_LOW_POWER");
+			int advMode;
+			if(advModeString.equals("ADVERTISE_MODE_LOW_POWER")) advMode = AdvertiseSettings.ADVERTISE_MODE_LOW_POWER;
+			else if(advModeString.equals("ADVERTISE_MODE_BALANCED")) advMode = AdvertiseSettings.ADVERTISE_MODE_BALANCED;
+			else if(advModeString.equals("ADVERTISE_MODE_LOW_LATENCY")) advMode = AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY;
+			else throw new JSONException("Invalid advertiseMode: "+advModeString);
+			setBuild.setAdvertiseMode(advMode);
+		}
+
+		setBuild.setConnectable(setJson.optBoolean("connectable", mHasActiveGattServer));
+
+		setBuild.setTimeout(setJson.optInt("timeoutMillis", 0));
+
+		{
+			String advModeString = setJson.optString("txPowerLevel", "ADVERTISE_TX_POWER_MEDIUM");
+			int advMode;
+			if(advModeString.equals("ADVERTISE_TX_POWER_ULTRA_LOW")) advMode = AdvertiseSettings.ADVERTISE_TX_POWER_ULTRA_LOW;
+			else if(advModeString.equals("ADVERTISE_TX_POWER_LOW")) advMode = AdvertiseSettings.ADVERTISE_TX_POWER_LOW;
+			else if(advModeString.equals("ADVERTISE_TX_POWER_MEDIUM")) advMode = AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM;
+			else if(advModeString.equals("ADVERTISE_TX_POWER_HIGH")) advMode = AdvertiseSettings.ADVERTISE_TX_POWER_HIGH;
+			else throw new JSONException("Invalid txPowerLevel");
+			setBuild.setTxPowerLevel(advMode);
+		}
+		return setBuild.build();
+	}
+
+	private AdvertiseData buildAdvertiseData(JSONObject dataJson) throws JSONException {
+		if(dataJson == null)
+			return null;
+		AdvertiseData.Builder dataBuild = new AdvertiseData.Builder();
+
+		dataBuild.setIncludeDeviceName(dataJson.optBoolean("includeDeviceName", false));
+
+		dataBuild.setIncludeTxPowerLevel(dataJson.optBoolean("includeTxPowerLevel", false));
+
+		JSONArray serviceUUIDs = dataJson.optJSONArray("serviceUUIDs");
+		if(serviceUUIDs != null) {
+			for(int i=0; i<serviceUUIDs.length(); i++) {
+				dataBuild.addServiceUuid(new ParcelUuid(UUID.fromString(serviceUUIDs.getString(i))));
+			}
+		}
+
+		JSONObject serviceData = dataJson.optJSONObject("serviceData");
+		if(serviceData != null) {
+			Iterator<String> keys = serviceData.keys();
+			while(keys.hasNext()) {
+				String key = keys.next();
+				ParcelUuid uuid = new ParcelUuid(UUID.fromString(key));
+				byte[] data = Base64.decode(serviceData.getString(key), Base64.DEFAULT);
+				dataBuild.addServiceData(uuid, data);
+			}
+		}
+
+		JSONObject manufacturerData = dataJson.optJSONObject("manufacturerData");
+		if(manufacturerData != null) {
+			Iterator<String> keys = manufacturerData.keys();
+			while(keys.hasNext()) {
+				String key = keys.next();
+				int id = Integer.parseInt(key);
+				byte[] data = Base64.decode(manufacturerData.getString(key), Base64.DEFAULT);
+				dataBuild.addManufacturerData(id, data);
+			}
+		}
+
+		return dataBuild.build();
+	}
+
+	private void startAdvertise(final CordovaArgs args, final CallbackContext cc) throws JSONException {
+		if(mAdCallback != null) {
+			cc.error("Advertise must be stopped first!");
+			return;
+		}
+
+		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+		if(!adapter.isMultipleAdvertisementSupported()) {
+			cc.error("BLE advertisement not supported by this device!");
+			return;
+		}
+
+		JSONObject setJson = args.getJSONObject(0);
+
+		// build settings. this checks arguments for validity.
+		final AdvertiseSettings settings = buildAdvertiseSettings(setJson);
+
+		// build data. this checks arguments for validity.
+		final AdvertiseData broadcastData = buildAdvertiseData(setJson.getJSONObject("broadcastData"));
+		final AdvertiseData scanResponseData = buildAdvertiseData(setJson.optJSONObject("scanResponseData"));
+
+		mAdCallback = new AdvertiseCallback() {
+			@Override
+			public void onStartFailure(int errorCode) {
+				mAdCallback = null;
+				cc.error("AdvertiseCallback.onStartFailure: "+Integer.toString(errorCode));
+			}
+			public void onStartSuccess(AdvertiseSettings settingsInEffect) {
+				cc.success();
+			}
+		};
+
+		// ensure Bluetooth is powered on, then start advertising.
+		checkPowerState(adapter, cc, new Runnable() {
+			@Override
+			public void run() {
+				try {
+					mAdvertiser = adapter.getBluetoothLeAdvertiser();
+					if(scanResponseData != null) {
+						mAdvertiser.startAdvertising(settings, broadcastData, scanResponseData, mAdCallback);
+					} else {
+						mAdvertiser.startAdvertising(settings, broadcastData, mAdCallback);
+					}
+				} catch(Exception e) {
+					mAdCallback = null;
+					e.printStackTrace();
+					cc.error(e.toString());
+				}
+			}
+		});
+	}
+
+	private void stopAdvertise(final CordovaArgs args, final CallbackContext cc) {
+		if(mAdvertiser != null && mAdCallback != null) {
+			mAdvertiser.stopAdvertising(mAdCallback);
+			mAdCallback = null;
+		}
+		cc.success();
+	}
 }

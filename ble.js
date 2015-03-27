@@ -756,7 +756,7 @@ exports.stopAdvertise = function(win, fail) {
 * @property {string} txPowerLevel - ADVERTISE_TX_POWER_ULTRA_LOW, ADVERTISE_TX_POWER_LOW, ADVERTISE_TX_POWER_MEDIUM or ADVERTISE_TX_POWER_HIGH.
 * The default is ADVERTISE_TX_POWER_MEDIUM.
 * @property {AdvertiseData} broadcastData
-* @property {AdvertiseData} scanResponseData - If set, the device will respond to active scans.
+* @property {AdvertiseData} scanResponseData - The data with which the device will respond to active scans.
 */
 
 /** Describes BLE advertisement data.
@@ -770,6 +770,9 @@ exports.stopAdvertise = function(win, fail) {
 * @property {boolean} includeTxPowerLevel - If true, the txPowerLevel found in AdvertiseSettings is added to the advertisement.
 * The default is false.
 * @property {Array} serviceUUIDs - Array of strings. Each string is the UUID of a service that should be available in the device's GattServer.
-* @property {Object} serviceData - Map of string to ArrayBufferView. Each string is a service UUID. The accompanying ArrayBufferView is data associated with the service.
-* @property {Object} manufacturerData - Map of int to ArrayBufferView. Each int is a manufacturer id. The accompanying ArrayBufferView is data associated with the manufacturer.
+* @property {Object} serviceData - Map of string to string. Each key is a service UUID.
+* The value is base64-encoded data associated with the service.
+* @property {Object} manufacturerData - Map of int to string. Each key is a manufacturer ID.
+* Manufacturer IDs are assigned by the {@link http://www.bluetooth.com/|Bluetooth Special Interest Group}.
+* The value is base64-encoded data associated with the manufacturer.
 */

@@ -1249,7 +1249,11 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	if([self isSafeToCopy:o])
 		return o;
 	if([o.class isSubclassOfClass:CBUUID.class]) {
-		return [(CBUUID*)o UUIDString];
+		if (floor(NSFoundationVersionNumber) < NSFoundationVersionNumber_iOS_7_1){
+	           return [(CBUUID*)o uuidString];
+	        } else {
+	           return [(CBUUID*)o UUIDString];
+	        }
 	}
 	if([o.class isSubclassOfClass:NSData.class]) {
 		return [(NSData*)o base64EncodedStringWithOptions:0];

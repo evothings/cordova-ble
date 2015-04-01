@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Iterator;
 import java.util.UUID;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.*;
 import android.util.Base64;
 import android.os.ParcelUuid;
 
@@ -742,7 +743,31 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			@Override
 			public void onStartFailure(int errorCode) {
 				mAdCallback = null;
-				cc.error("AdvertiseCallback.onStartFailure: "+Integer.toString(errorCode));
+				// translate available error codes using reflection.
+				// we're looking for all fields typed "public static final int".
+				Field[] fields = AdvertiseCallback.class.getDeclaredFields();
+				String errorMessage = null;
+				for(int i=0; i<fields.length; i++) {
+					Field f = fields[i];
+					//System.out.println("Field: Class "+f.getType().getName()+". Modifiers: "+Modifier.toString(f.getModifiers()));
+					if(f.getType() == int.class &&
+						f.getModifiers() == (Modifier.PUBLIC | Modifier.STATIC | Modifier.FINAL))
+					{
+						try {
+							if(f.getInt(null) == errorCode) {
+								errorMessage = f.getName();
+								break;
+							}
+						} catch(IllegalAccessException e) {
+							// if this happens, it is an internal error.
+							e.printStackTrace();
+						}
+					}
+				}
+				if(errorMessage == null) {
+					errorMessage = Integer.toString(errorCode);
+				}
+				cc.error("AdvertiseCallback.onStartFailure: "+errorMessage);
 			}
 			public void onStartSuccess(AdvertiseSettings settingsInEffect) {
 				cc.success();

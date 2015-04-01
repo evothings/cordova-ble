@@ -755,13 +755,22 @@ exports.stopAdvertise = function(win, fail) {
 * The default is 0.
 * @property {string} txPowerLevel - ADVERTISE_TX_POWER_ULTRA_LOW, ADVERTISE_TX_POWER_LOW, ADVERTISE_TX_POWER_MEDIUM or ADVERTISE_TX_POWER_HIGH.
 * The default is ADVERTISE_TX_POWER_MEDIUM.
-* @property {AdvertiseData} broadcastData
+* @property {AdvertiseData} broadcastData - The data which will be broadcast. Passive scanners will see this data.
 * @property {AdvertiseData} scanResponseData - The data with which the device will respond to active scans.
+* Should be an extension to the broadcastData; should not contain the same data.
 */
 
 /** Describes BLE advertisement data.
 *
+* Data size is limited to 31 bytes. Each property set consumes some bytes.
+* If too much data is added, startAdvertise will fail with "ADVERTISE_FAILED_DATA_TOO_LARGE" or something similar.
+*
 * All properties are optional.
+* UUIDs must be formatted according to RFC 4122, all lowercase.
+* Normally, UUIDs take up 16 bytes. However, UUIDs that use the Bluetooth Base format can be compressed to 4 or 2 bytes.
+* The Bluetooth Base UUID is "00000000-0000-1000-8000-00805f9b34fb".
+* For 2 bytes, use this format, where "x" is any hexadecimal digit: "0000xxxx-0000-1000-8000-00805f9b34fb".
+* For 4 bytes, use this format: "xxxxxxxx-0000-1000-8000-00805f9b34fb".
 *
 * @typedef {Object} AdvertiseData
 * @property {boolean} includeDeviceName - If true, the device's Bluetooth name is added to the advertisement.

@@ -609,6 +609,69 @@ exports.readAllServiceData = function(deviceHandle, win, fail)
 
 /** @module com.evothings.ble.server */
 
+// Internal. Returns a function that will handle GATT server callbacks.
+function gattServerCallbackHandler(winFunc, settings) {
+	// collect read/write callbacks and add handles, so the native side can tell us which one to call.
+	var readCallbacks = {};
+	var writeCallbacks = {};
+	var nextHandle = 1;
+
+	function handleCallback(object, name, callbacks) {
+		if(!object[name]) {
+			throw name+" missing!";
+		}
+		callbacks[nextHandle] = object[name];
+		object[name+"Handle"] = nextHandle;
+		nextHandle += 1;
+	}
+
+	function handleReadWrite(object) {
+		/* // primitive version
+		if(!object.readRequestCallback) {
+			throw "readRequestCallback missing!");
+		}
+		readCallbacks[nextHandle] = object.readRequestCallback;
+		*/
+		handleCallback(object, "onReadRequest", readCallbacks);
+		handleCallback(object, "onWriteRequest", writeCallbacks);
+	}
+
+	for(var i=0; i<settings.services.length; i++) {
+		var service = settings.services[i];
+		for(var j=0; j<service.characteristics.length; j++) {
+			var characteristic = service.characteristics[j];
+			handleReadWrite(characteristic);
+			for(var k=0; k<characteristic.descriptors.length; k++) {
+				var descriptor = characteristic.descriptors[k];
+				handleReadWrite(descriptor);
+			}
+		}
+	}
+
+	settings.nextHandle = nextHandle;
+
+	return function(args) {
+		// primitive version
+		/*if(args.name == "win") {
+			winFunc();
+			return;
+		}*/
+		var funcs = {
+			win: winFunc,
+			connection: function() {
+				settings.connectionStateChangeCallback(args.deviceHandle, args.connected);
+			},
+			write: function() {
+				writeCallbacks[args.callbackHandle](args.deviceHandle, args.requestId, args.data);
+			},
+			read: function() {
+				readCallbacks[args.callbackHandle](args.deviceHandle, args.requestId);
+			},
+		};
+		funcs[args.name]();
+	};
+}
+
 /** Starts the GATT server.
 * There can be only one server. If this function is called while the server is still running, the call will fail.
 * Once this function succeeds, the server may be stopped by calling stopGattServer.
@@ -618,7 +681,7 @@ exports.readAllServiceData = function(deviceHandle, win, fail)
 * @param {failCallback} fail
 */
 exports.startGattServer = function(settings, win, fail) {
-	exec(win, fail, 'BLE', 'startGattServer', [settings]);
+	exec(gattServerCallbackHandler(win, settings), fail, 'BLE', 'startGattServer', [settings]);
 };
 
 // GattSettings
@@ -644,7 +707,7 @@ exports.startGattServer = function(settings, win, fail) {
 * @property {writeType} writeType
 * @property {readRequestCallback} onReadRequest
 * @property {writeRequestCallback} onWriteRequest
-* @property {Array} descriptors - An array of GattDescriptor objects.
+* @property {Array} descriptors - Optional. An array of GattDescriptor objects.
 */
 
 /** Describes a GATT descriptor.

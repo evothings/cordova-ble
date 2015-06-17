@@ -119,6 +119,10 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			}
 			mGatt.clear();
 		}
+		if(mGattServer != null) {
+			mGattServer.close();
+			mGattServer = null;
+		}
 	}
 
 	private void checkPowerState(BluetoothAdapter adapter, CallbackContext cc, Runnable onPowerOn) {
@@ -643,7 +647,6 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 	};
 
 
-	private boolean mHasActiveGattServer = false;
 	private BluetoothLeAdvertiser mAdvertiser;
 	private AdvertiseCallback mAdCallback;
 
@@ -659,7 +662,9 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			setBuild.setAdvertiseMode(advMode);
 		}
 
-		setBuild.setConnectable(setJson.optBoolean("connectable", mHasActiveGattServer));
+		boolean connectable = setJson.optBoolean("connectable", mGattServer != null);
+		System.out.println("connectable: "+connectable);
+		setBuild.setConnectable(connectable);
 
 		setBuild.setTimeout(setJson.optInt("timeoutMillis", 0));
 
@@ -802,6 +807,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 	}
 
 	private BluetoothGattServer mGattServer;
+	private MyBluetoothGattServerCallback mGattServerCallback;
 
 	private void startGattServer(final CordovaArgs args, final CallbackContext cc) throws JSONException {
 		if(mGattServer != null) {
@@ -810,8 +816,8 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		}
 
 		JSONObject settings = args.getJSONObject(0);
-		MyBluetoothGattServerCallback callback = new MyBluetoothGattServerCallback(settings.getInt("nextHandle"), cc);
-		mGattServer = ((BluetoothManager)mContext.getSystemService(Context.BLUETOOTH_SERVICE)).openGattServer(mContext, callback);
+		mGattServerCallback = new MyBluetoothGattServerCallback(settings.getInt("nextHandle"), cc);
+		mGattServer = ((BluetoothManager)mContext.getSystemService(Context.BLUETOOTH_SERVICE)).openGattServer(mContext, mGattServerCallback);
 
 		JSONArray services = settings.getJSONArray("services");
 		for(int i=0; i<services.length(); i++) {
@@ -823,17 +829,17 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 				System.out.println("characteristic:"+characteristic.toString(1));
 				BluetoothGattCharacteristic c = new BluetoothGattCharacteristic(UUID.fromString(characteristic.getString("uuid")),
 					characteristic.getInt("properties"), characteristic.getInt("permissions"));
-				callback.mReadHandles.put(c, characteristic.getInt("onReadRequestHandle"));
-				callback.mWriteHandles.put(c, characteristic.getInt("onWriteRequestHandle"));
+				mGattServerCallback.mReadHandles.put(c, characteristic.getInt("onReadRequestHandle"));
+				mGattServerCallback.mWriteHandles.put(c, characteristic.getInt("onWriteRequestHandle"));
 				JSONArray descriptors = characteristic.optJSONArray("descriptors");
 				if(descriptors != null) for(int k=0; k<descriptors.length(); k++) {
-					JSONObject descriptor = descriptors.getJSONObject(j);
+					JSONObject descriptor = descriptors.getJSONObject(k);
 					System.out.println("descriptor:"+descriptor.toString(1));
 					BluetoothGattDescriptor d = new BluetoothGattDescriptor(UUID.fromString(descriptor.getString("uuid")),
 						descriptor.getInt("permissions"));
 					c.addDescriptor(d);
-					callback.mReadHandles.put(d, descriptor.getInt("onReadRequestHandle"));
-					callback.mWriteHandles.put(d, descriptor.getInt("onWriteRequestHandle"));
+					mGattServerCallback.mReadHandles.put(d, descriptor.getInt("onReadRequestHandle"));
+					mGattServerCallback.mWriteHandles.put(d, descriptor.getInt("onWriteRequestHandle"));
 				}
 				s.addCharacteristic(c);
 			}
@@ -855,7 +861,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 	class MyBluetoothGattServerCallback extends BluetoothGattServerCallback {
 		// Bidirectional maps; look up object from handle, or handle from object.
 		// The JavaScript side needs handles, the native side needs objects.
-		HashMap<Integer, BluetoothDevice> mDevices;
+		public HashMap<Integer, BluetoothDevice> mDevices;
 		public HashMap<Object, Integer> mDeviceHandles, mReadHandles, mWriteHandles;
 		int mNextHandle;
 		CallbackContext mCC, mNotifyCC;
@@ -869,7 +875,9 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			mCC = cc;
 		}
 
+		@Override
 		public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
+			System.out.println("onConnectionStateChange("+device.getAddress()+", "+status+", "+newState+")");
 			Integer handle = mDeviceHandles.get(device);
 			if(handle == null) {
 				handle = new Integer(mNextHandle++);
@@ -887,7 +895,9 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			}
 		}
 
+		@Override
 		public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset, BluetoothGattCharacteristic characteristic) {
+			System.out.println("onCharacteristicReadRequest("+device.getAddress()+", "+requestId+", "+offset+")");
 			Integer handle = mDeviceHandles.get(device);
 			try {
 				keepCallback(mCC, new JSONObject()
@@ -901,7 +911,9 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			}
 		}
 
+		@Override
 		public void onDescriptorReadRequest(BluetoothDevice device, int requestId, int offset, BluetoothGattDescriptor descriptor) {
+			System.out.println("onDescriptorReadRequest("+device.getAddress()+", "+requestId+", "+offset+")");
 			Integer handle = mDeviceHandles.get(device);
 			try {
 				keepCallback(mCC, new JSONObject()
@@ -915,9 +927,11 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			}
 		}
 
+		@Override
 		public void onCharacteristicWriteRequest(BluetoothDevice device, int requestId, BluetoothGattCharacteristic characteristic,
 			boolean preparedWrite, boolean responseNeeded, int offset, byte[] value)
 		{
+			System.out.println("onCharacteristicWriteRequest("+device.getAddress()+", "+requestId+", "+offset+")");
 			Integer handle = mDeviceHandles.get(device);
 			try {
 				keepCallback(mCC, new JSONObject()
@@ -932,9 +946,11 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			}
 		}
 
+		@Override
 		public void onDescriptorWriteRequest(BluetoothDevice device, int requestId, BluetoothGattDescriptor descriptor,
 			boolean preparedWrite, boolean responseNeeded, int offset, byte[] value)
 		{
+			System.out.println("onDescriptorWriteRequest("+device.getAddress()+", "+requestId+", "+offset+")");
 			Integer handle = mDeviceHandles.get(device);
 			try {
 				keepCallback(mCC, new JSONObject()
@@ -949,15 +965,20 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			}
 		}
 
+		@Override
 		public void onExecuteWrite(BluetoothDevice device, int requestId, boolean execute) {
+			System.out.println("onExecuteWrite("+device.getAddress()+", "+requestId+", "+execute+")");
 			mGattServer.sendResponse(device, requestId, 0, 0, null);
 		}
 
+		@Override
 		public void onMtuChanged(BluetoothDevice device, int mtu) {
 			System.out.println("onMtuChanged("+mtu+")");
 		}
 
+		@Override
 		public void onNotificationSent(BluetoothDevice device, int status) {
+			System.out.println("onNotificationSent("+device.getAddress()+", "+status+")");
 			if(status == BluetoothGatt.GATT_SUCCESS)
 				mNotifyCC.success();
 			else
@@ -965,6 +986,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			mNotifyCC = null;
 		}
 
+		@Override
 		public void onServiceAdded(int status, BluetoothGattService service) {
 			System.out.println("onServiceAdded("+status+")");
 		}
@@ -975,6 +997,12 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			cc.error("GATT server not started!");
 			return;
 		}
+		int deviceHandle = args.getInt(0);
+		int requestId = args.getInt(1);
+		byte[] data = args.getArrayBuffer(2);
+		boolean res = mGattServer.sendResponse(mGattServerCallback.mDevices.get(deviceHandle), requestId, 0, 0, data);
+		System.out.println("sendResponse result: "+res);
+		cc.success();
 	}
 
 	private void notify(final CordovaArgs args, final CallbackContext cc) throws JSONException {

@@ -659,7 +659,7 @@ function gattServerCallbackHandler(winFunc, settings) {
 		var funcs = {
 			win: winFunc,
 			connection: function() {
-				settings.connectionStateChangeCallback(args.deviceHandle, args.connected);
+				settings.onConnectionStateChange(args.deviceHandle, args.connected);
 			},
 			write: function() {
 				writeCallbacks[args.callbackHandle](args.deviceHandle, args.requestId, args.data);
@@ -763,7 +763,7 @@ exports.stopGattServer = function(win, fail) {
 * @param {failCallback} fail
 */
 exports.sendResponse = function(deviceHandle, requestId, data, win, fail) {
-	exec(win, fail, 'BLE', 'sendResponse', [deviceHandle, requestId, data]);
+	exec(win, fail, 'BLE', 'sendResponse', [deviceHandle, requestId, data.buffer]);
 }
 
 /** Sends a notification to a remote device that a characteristic's value has been updated.
@@ -774,7 +774,7 @@ exports.sendResponse = function(deviceHandle, requestId, data, win, fail) {
 * @param {failCallback} fail
 */
 exports.notify = function(deviceHandle, characteristic, data, win, fail) {
-	exec(win, fail, 'BLE', 'notify', [deviceHandle, characteristic, data]);
+	exec(win, fail, 'BLE', 'notify', [deviceHandle, characteristic, data.buffer]);
 };
 
 /*	// never mind, just use close().

@@ -1498,7 +1498,6 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 		@"rssi" : RSSI,
 		@"advertisementData" : advertisementData,
 		@"name" : (peripheral.name != nil) ? peripheral.name : [NSNull null],
-		@"scanRecord" : @""
 	};
 
 	// Send back data to JS.

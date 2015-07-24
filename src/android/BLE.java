@@ -67,7 +67,10 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		else if("descriptors".equals(action)) { descriptors(args, callbackContext); return true; }
 		else if("readCharacteristic".equals(action)) { readCharacteristic(args, callbackContext); return true; }
 		else if("readDescriptor".equals(action)) { readDescriptor(args, callbackContext); return true; }
-		else if("writeCharacteristic".equals(action)) { writeCharacteristic(args, callbackContext); return true; }
+		else if("writeCharacteristic".equals(action))
+			{ writeCharacteristic(args, callbackContext, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT); return true; }
+		else if("writeCharacteristicWithoutResponse".equals(action))
+			{ writeCharacteristic(args, callbackContext, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE); return true; }
 		else if("writeDescriptor".equals(action)) { writeDescriptor(args, callbackContext); return true; }
 		else if("enableNotification".equals(action)) { enableNotification(args, callbackContext); return true; }
 		else if("disableNotification".equals(action)) { disableNotification(args, callbackContext); return true; }
@@ -352,7 +355,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		gh.process();
 	}
 
-	private void writeCharacteristic(final CordovaArgs args, final CallbackContext callbackContext) throws JSONException {
+	private void writeCharacteristic(final CordovaArgs args, final CallbackContext callbackContext, final int writeType) throws JSONException {
 		final GattHandler gh = mGatt.get(args.getInt(0));
 		gh.mOperations.add(new Runnable() {
 			@Override
@@ -361,6 +364,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 					gh.mCurrentOpContext = callbackContext;
 					BluetoothGattCharacteristic c = gh.mCharacteristics.get(args.getInt(1));
 					System.out.println("writeCharacteristic("+args.getInt(0)+", "+args.getInt(1)+", "+args.getString(2)+")");
+					c.setWriteType(writeType);
 					c.setValue(args.getArrayBuffer(2));
 					if(!gh.mGatt.writeCharacteristic(c)) {
 						gh.mCurrentOpContext = null;

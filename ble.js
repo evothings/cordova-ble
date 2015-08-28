@@ -56,6 +56,7 @@ exports.startScan = function(win, fail) {
  * @property {number} kCBAdvDataChannel - A positive integer, the BLE channel on which the device listens for connections. Ignore this number.
  * @property {boolean} kCBAdvDataIsConnectable - True if the device accepts connections. False if it doesn't.
  * @property {array} kCBAdvDataServiceUUIDs - Array of strings, the UUIDs of services advertised by the device. Formatted according to RFC 4122, all lowercase.
+ * @property {object} kCBAdvDataServiceData - Dictionary of strings to strings. The keys are service UUIDs. The values are base-64-encoded binary data.
  * @property {string} kCBAdvDataManufacturerData - Base-64-encoded binary data. This field is used by BLE devices to advertise custom data that don't fit into any of the other fields.
  */
 

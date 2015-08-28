@@ -56,6 +56,13 @@ limitations under the License.
 			appendFormat: @"0000%02x%02x-0000-1000-8000-00805f9b34fb",
 			uuidBytes[0], uuidBytes[1]];
 	}
+	else if (4 == uuidNumBytes)
+	{
+		// Apply the Bluetooth Base UUID to 4-byte UUID:
+		[outputString
+			appendFormat: @"%02x%02x%02x%02x-0000-1000-8000-00805f9b34fb",
+			uuidBytes[0], uuidBytes[1], uuidBytes[2], uuidBytes[3]];
+	}
 	else if (16 == uuidNumBytes)
 	{
 		// Format full 16-byte UUID.
@@ -1249,11 +1256,9 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	if([self isSafeToCopy:o])
 		return o;
 	if([o.class isSubclassOfClass:CBUUID.class]) {
-		if (floor(NSFoundationVersionNumber) < NSFoundationVersionNumber_iOS_7_1){
-	           return [(CBUUID*)o uuidString];
-	        } else {
-	           return [(CBUUID*)o UUIDString];
-	        }
+		// Use our local stringifyer, guaranteed to follow RFC 4122,
+		// as required by the plugin specification.
+		return [(CBUUID*)o uuidString];
 	}
 	if([o.class isSubclassOfClass:NSData.class]) {
 		return [(NSData*)o base64EncodedStringWithOptions:0];

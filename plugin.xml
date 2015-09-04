@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <plugin xmlns="http://cordova.apache.org/ns/plugins/1.0"
 	xmlns:android="http://schemas.android.com/apk/res/android"
-	id="com.evothings.ble"
-	version="0.0.1">
+	id="cordova-plugin-ble"
+	version="1.0.0">
 
 	<!-- This plugin requires Cordova version >= 3.1.0. -->
 	<engines>

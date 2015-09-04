@@ -1,11 +1,36 @@
 {
-    "version": "0.0.1",
-    "name": "com.evothings.ble",
-    "cordova_name": "Bluetooth Low Energy (BLE) API",
-    "engines": [
-        {
-            "name": "cordova",
-            "version": ">=3.1.0"
-        }
+  "name": "cordova-plugin-ble",
+  "version": "1.0.0",
+  "description": "This plugin allows your app to act as a Bluetooth Low Energy client.",
+  "cordova": {
+    "id": "cordova-plugin-ble",
+    "platforms": [
+      "android",
+      "ios"
     ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/evothings/cordova-ble.git"
+  },
+  "keywords": [
+    "bluetooth",
+    "low energy",
+    "smart",
+    "ecosystem:cordova",
+    "cordova-android",
+    "cordova-ios"
+  ],
+  "engines": [
+    {
+      "name": "cordova",
+      "version": ">=3.1.0"
+    }
+  ],
+  "author": "Evothings",
+  "license": "Apache 2.0",
+  "bugs": {
+    "url": "https://github.com/evothings/cordova-ble/issues"
+  },
+  "homepage": "https://github.com/evothings/cordova-ble#readme"
 }

@@ -44,6 +44,12 @@
 
 		<header-file src="src/ios/EVOBLE.h" />
 		<source-file src="src/ios/EVOBLE.m" />
+
+		<config-file target="*-Info.plist" parent="UIBackgroundModes">
+			<array>
+				<string>bluetooth-central</string>
+			</array>
+		</config-file>
 	</platform>
 
 </plugin>

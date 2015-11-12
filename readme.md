@@ -1,6 +1,6 @@
 ## Cordova BLE Plugin
 
-This plugin implements BLE support for Android and iOS. Enable your Cordova and PhoneGap mobile applications to communicate with all sorts of BLE devices.
+This plugin implements BLE support for Android, iOS and Windows 8.1. Enable your Cordova and PhoneGap mobile applications to communicate with all sorts of BLE devices.
 
 Available functionality:
 
@@ -9,7 +9,7 @@ Available functionality:
 * List services, characteristics and descriptors
 * Read and write the values of characteristics and descriptors
 * Request notification of changes to the values of characteristics
-* Poll RSSI (signal strength) of a device
+* Poll RSSI (signal strength) of a device (Android and iOS only)
 
 This plugin requires a Cordova version between 3.1.0 and 3.7.0. Cordova versions 4.0.0 and later are not supported.
 

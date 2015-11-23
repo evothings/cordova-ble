@@ -11,8 +11,6 @@ Available functionality:
 * Request notification of changes to the values of characteristics
 * Poll RSSI (signal strength) of a device
 
-This plugin requires a Cordova version between 3.1.0 and 3.7.0. Cordova versions 4.0.0 and later are not supported.
-
 ### Use Evothings Studio for fast and easy BLE mobile app development
 
 This plugin is used in Evothings Studio, and is compatible with Apache Cordova and PhoneGap.

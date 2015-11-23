@@ -32,16 +32,31 @@ import java.io.UnsupportedEncodingException;
 import android.util.Base64;
 
 public class BLE extends CordovaPlugin implements LeScanCallback {
+	// Used by startScan().
 	private CallbackContext mScanCallbackContext;
+
+	// Used by reset().
 	private CallbackContext mResetCallbackContext;
+
+	// The Android application Context.
 	private Context mContext;
+
 	private boolean mRegisteredReceiver = false;
+
+	// Called when the device's Bluetooth powers on.
+	// Used by startScan() and connect() to wait for power-on if Bluetooth was off when the function was called.
 	private Runnable mOnPowerOn;
+
+	// Used to send error messages to the JavaScript side if Bluetooth power-on fails.
 	private CallbackContext mPowerOnCallbackContext;
 
-	int mNextGattHandle = 1;
+	// Map of connected devices.
 	HashMap<Integer, GattHandler> mGatt = null;
 
+	// Monotonically incrementing key to the Gatt map.
+	int mNextGattHandle = 1;
+
+	// Called each time cordova.js is loaded.
 	@Override
 	public void initialize(final CordovaInterface cordova, CordovaWebView webView) {
 		super.initialize(cordova, webView);
@@ -53,6 +68,8 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		}
 	}
 
+	// Handles JavaScript-to-native function calls.
+	// Returns true if a supported function was called, false otherwise.
 	@Override
 	public boolean execute(String action, CordovaArgs args, final CallbackContext callbackContext)
 		throws JSONException
@@ -103,6 +120,9 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		}
 	}
 
+	// Possibly asynchronous.
+	// Ensures Bluetooth is powered on, then calls the Runnable \a onPowerOn.
+	// Calls cc.error if power-on fails.
 	private void checkPowerState(BluetoothAdapter adapter, CallbackContext cc, Runnable onPowerOn) {
 		if(adapter == null) {
 			return;
@@ -118,6 +138,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		}
 	}
 
+	// Called whe the Bluetooth power-on request is completed.
 	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent intent) {
 		Runnable onPowerOn = mOnPowerOn;
@@ -134,6 +155,8 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			}
 		}
 	}
+
+	// These three functions each send a JavaScript callback *without* removing the callback context, as is default.
 
 	private void keepCallback(final CallbackContext callbackContext, JSONObject message) {
 		PluginResult r = new PluginResult(PluginResult.Status.OK, message);
@@ -153,6 +176,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		callbackContext.sendPluginResult(r);
 	}
 
+	// API implementation. See ble.js for documentation.
 	private void startScan(final CordovaArgs args, final CallbackContext callbackContext) {
 		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
 		final LeScanCallback self = this;
@@ -168,6 +192,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		});
 	}
 
+	// Called during scan, when a device advertisement is received.
 	public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord) {
 		if(mScanCallbackContext == null) {
 			return;
@@ -185,20 +210,25 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		}
 	}
 
+	// API implementation.
 	private void stopScan(final CordovaArgs args, final CallbackContext callbackContext) {
 		BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
 		adapter.stopLeScan(this);
 		mScanCallbackContext = null;
 	}
 
+	// API implementation.
 	private void connect(final CordovaArgs args, final CallbackContext callbackContext) {
 		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
 		checkPowerState(adapter, callbackContext, new Runnable() {
 			@Override
 			public void run() {
 				try {
+					// Each device connection has a GattHandler, which handles the events the can happen to the connection.
+					// The implementation of the GattHandler class is found at the end of this file.
 					GattHandler gh = new GattHandler(mNextGattHandle, callbackContext);
 					gh.mGatt = adapter.getRemoteDevice(args.getString(0)).connectGatt(mContext, true, gh);
+					// Note that gh.mGatt and this.mGatt are different object and have different types.
 					if(mGatt == null)
 						mGatt = new HashMap<Integer, GattHandler>();
 					Object res = mGatt.put(mNextGattHandle, gh);
@@ -212,6 +242,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		});
 	}
 
+	// API implementation.
 	private void close(final CordovaArgs args, final CallbackContext callbackContext) {
 		try {
 			GattHandler gh = mGatt.get(args.getInt(0));
@@ -223,6 +254,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		}
 	}
 
+	// API implementation.
 	private void rssi(final CordovaArgs args, final CallbackContext callbackContext) {
 		GattHandler gh = null;
 		try {
@@ -245,6 +277,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		}
 	}
 
+	// API implementation.
 	private void services(final CordovaArgs args, final CallbackContext callbackContext) {
 		try {
 			final GattHandler gh = mGatt.get(args.getInt(0));
@@ -266,6 +299,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		}
 	}
 
+	// API implementation.
 	private void characteristics(final CordovaArgs args, final CallbackContext callbackContext) throws JSONException {
 		final GattHandler gh = mGatt.get(args.getInt(0));
 		JSONArray a = new JSONArray();
@@ -288,6 +322,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		callbackContext.success(a);
 	}
 
+	// API implementation.
 	private void descriptors(final CordovaArgs args, final CallbackContext callbackContext) throws JSONException {
 		final GattHandler gh = mGatt.get(args.getInt(0));
 		JSONArray a = new JSONArray();
@@ -308,6 +343,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		callbackContext.success(a);
 	}
 
+	// API implementation.
 	private void readCharacteristic(final CordovaArgs args, final CallbackContext callbackContext) throws JSONException {
 		final GattHandler gh = mGatt.get(args.getInt(0));
 		gh.mOperations.add(new Runnable() {
@@ -330,6 +366,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		gh.process();
 	}
 
+	// API implementation.
 	private void readDescriptor(final CordovaArgs args, final CallbackContext callbackContext) throws JSONException {
 		final GattHandler gh = mGatt.get(args.getInt(0));
 		gh.mOperations.add(new Runnable() {
@@ -352,6 +389,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		gh.process();
 	}
 
+	// API implementation.
 	private void writeCharacteristic(final CordovaArgs args, final CallbackContext callbackContext) throws JSONException {
 		final GattHandler gh = mGatt.get(args.getInt(0));
 		gh.mOperations.add(new Runnable() {
@@ -377,6 +415,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		gh.process();
 	}
 
+	// API implementation.
 	private void writeDescriptor(final CordovaArgs args, final CallbackContext callbackContext) throws JSONException {
 		final GattHandler gh = mGatt.get(args.getInt(0));
 		gh.mOperations.add(new Runnable() {
@@ -401,6 +440,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		gh.process();
 	}
 
+	// API implementation.
 	private void enableNotification(final CordovaArgs args, final CallbackContext callbackContext) throws JSONException {
 		final GattHandler gh = mGatt.get(args.getInt(0));
 		BluetoothGattCharacteristic c = gh.mCharacteristics.get(args.getInt(1));
@@ -410,6 +450,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		}
 	}
 
+	// API implementation.
 	private void disableNotification(final CordovaArgs args, final CallbackContext callbackContext) throws JSONException {
 		final GattHandler gh = mGatt.get(args.getInt(0));
 		BluetoothGattCharacteristic c = gh.mCharacteristics.get(args.getInt(1));
@@ -421,11 +462,13 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		}
 	}
 
+	// API implementation.
 	private void testCharConversion(final CordovaArgs args, final CallbackContext callbackContext) throws JSONException {
 		byte[] b = {(byte)args.getInt(0)};
 		callbackContext.success(b);
 	}
 
+	// API implementation.
 	private void reset(final CordovaArgs args, final CallbackContext cc) throws JSONException {
 		mResetCallbackContext = null;
 		BluetoothAdapter a = BluetoothAdapter.getDefaultAdapter();
@@ -466,6 +509,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 		cc.error("Unknown state: "+state);
 	}
 
+	// Receives notification about Bluetooth power on and off. Used by reset().
 	class BluetoothStateReceiver extends BroadcastReceiver {
 		public void onReceive(Context context, Intent intent) {
 			BluetoothAdapter a = BluetoothAdapter.getDefaultAdapter();
@@ -493,15 +537,31 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 	* I've added 'services' to be on the safe side.
 	* 'rssi' and 'notification' should be safe.
 	*/
+
+	// This class handles callbacks pertaining to device connections.
+	// Also maintains the per-device operation queue.
 	private class GattHandler extends BluetoothGattCallback {
+		// Local copy of the key to BLE.mGatt. Fed by BLE.mNextGattHandle.
 		final int mHandle;
+
+		// The queue of operations.
 		LinkedList<Runnable> mOperations = new LinkedList<Runnable>();
+
+		// connect() and rssi() are handled separately from other operations.
 		CallbackContext mConnectContext, mRssiContext, mCurrentOpContext;
+
+		// The Android API connection.
 		BluetoothGatt mGatt;
-		int mNextHandle = 1;
+
+		// Maps of integer to Gatt subobject.
 		HashMap<Integer, BluetoothGattService> mServices;
 		HashMap<Integer, BluetoothGattCharacteristic> mCharacteristics;
 		HashMap<Integer, BluetoothGattDescriptor> mDescriptors;
+
+		// Monotonically incrementing key to the subobject maps.
+		int mNextHandle = 1;
+
+		// Notification callbacks. The BluetoothGattCharacteristic object, as found in the mCharacteristics map, is the key.
 		HashMap<BluetoothGattCharacteristic, CallbackContext> mNotifications =
 			new HashMap<BluetoothGattCharacteristic, CallbackContext>();
 
@@ -510,6 +570,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 			mConnectContext = cc;
 		}
 
+		// Run the next operation, if any.
 		void process() {
 			if(mCurrentOpContext != null)
 				return;

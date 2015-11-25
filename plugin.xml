@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <plugin xmlns="http://cordova.apache.org/ns/plugins/1.0"
 	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:m2="http://schemas.microsoft.com/appx/2013/manifest"
 	id="cordova-plugin-ble"
 	version="1.0.0">
 
@@ -46,4 +47,34 @@
 		<source-file src="src/ios/EVOBLE.m" />
 	</platform>
 
+	<!-- Windows universal apps (Windows 8.1, Windows Phone 8.1) -->
+	<platform name="windows">
+		<config-file target="package.windows.appxmanifest" parent="/Package/Capabilities">
+			<m2:DeviceCapability Name="bluetooth.genericAttributeProfile">
+				<m2:Device Id="any">
+					<m2:Function Type="name:genericAccess" />
+				</m2:Device>
+			</m2:DeviceCapability>
+		</config-file>
+		<config-file target="package.phone.appxmanifest" parent="/Package/Capabilities">
+			<m2:DeviceCapability Name="bluetooth.genericAttributeProfile">
+				<m2:Device Id="any">
+					<m2:Function Type="serviceId:1800" /> <!-- Generic Access -->
+					<m2:Function Type="serviceId:1801" /> <!-- Generic Attribute -->
+					<m2:Function Type="serviceId:1802" /> <!-- Immediate Alert -->
+					<m2:Function Type="serviceId:1803" /> <!-- Link Loss -->
+					<m2:Function Type="serviceId:1804" /> <!-- Tx Power -->
+					<m2:Function Type="serviceId:180A" /> <!-- Device Information -->
+					<m2:Function Type="serviceId:180E" /> <!-- Phone Alert Status Service -->
+					<m2:Function Type="serviceId:180F" /> <!-- Battery Service -->
+					<m2:Function Type="serviceId:1811" /> <!-- Alert Notification Service -->
+					<m2:Function Type="serviceId:1813" /> <!-- Scan Parameters -->
+					<m2:Function Type="serviceId:1819" /> <!-- Location and Navigation -->
+				</m2:Device>
+			</m2:DeviceCapability>
+		</config-file>
+		<js-module src="src/windows/bleProxy.js" name="bleProxy">
+			<merges target="" />
+		</js-module>
+	</platform>
 </plugin>

@@ -1,6 +1,6 @@
 {
   "name": "cordova-plugin-ble",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "This plugin allows your app to act as a Bluetooth Low Energy client.",
   "cordova": {
     "id": "cordova-plugin-ble",

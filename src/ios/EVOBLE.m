@@ -663,6 +663,13 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	}
 }
 
+- (void) peripheral: (CBPeripheral *)peripheral
+	didUpdateNotificationStateForCharacteristic: (CBCharacteristic *)characteristic
+	error: (NSError *)error
+{
+	[self peripheral:peripheral didUpdateValueForCharacteristic:characteristic error:error];
+}
+
 - (void)peripheral:(CBPeripheral *) peripheral
 	didUpdateValueForDescriptor: (CBDescriptor *)descriptor
 	error:(NSError *)error
@@ -1166,7 +1173,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	if (nil == characteristic) return; // Error.
 
 	// Result is delivered in:
-	//	peripheral:didUpdateValueForCharacteristic:error:
+	//	peripheral:didUpdateNotificationStateForCharacteristic:error:
 	[myPeripheral
 		addCallbackForCharacteristic: characteristic
 		callbackId: command.callbackId

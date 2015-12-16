@@ -667,7 +667,11 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	didUpdateNotificationStateForCharacteristic: (CBCharacteristic *)characteristic
 	error: (NSError *)error
 {
-	[self peripheral:peripheral didUpdateValueForCharacteristic:characteristic error:error];
+	// Call didUpdateValueForCharacteristic only when we have a value.
+	if (characteristic.value)
+	{
+		[self peripheral:peripheral didUpdateValueForCharacteristic:characteristic error:error];
+	}
 }
 
 - (void)peripheral:(CBPeripheral *) peripheral
@@ -1173,6 +1177,8 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	if (nil == characteristic) return; // Error.
 
 	// Result is delivered in:
+	//  peripheral:didUpdateValueForCharacteristic:error:
+	// TODO Confirm this: Possibly results are also delived in:
 	//	peripheral:didUpdateNotificationStateForCharacteristic:error:
 	[myPeripheral
 		addCallbackForCharacteristic: characteristic

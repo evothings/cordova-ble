@@ -6,7 +6,11 @@
 // Use the jsdoc option -l to ignore the error.
 var exec = cordova.require('cordova/exec');
 
-/** @module com.evothings.ble */
+/**
+ * @module cordova-plugin-ble
+ * @description Functions and properties in this module are available
+ * under the global name <code>evothings.ble</code>
+ */
 
 /** Starts scanning for devices.
 * <p>Found devices and errors will be reported to the supplied callbacks.</p>
@@ -53,6 +57,7 @@ exports.startScan = function(win, fail) {
  * Depending on OS version and BLE device, additional fields, not documented here, may be present.
  * @typedef {Object} AdvertisementData
  * @property {string} kCBAdvDataLocalName - The device's name. Equal to DeviceInfo.name.
+ * @property {number} kCBAdvDataTxPowerLevel - Transmission power level as advertised by the device.
  * @property {number} kCBAdvDataChannel - A positive integer, the BLE channel on which the device listens for connections. Ignore this number.
  * @property {boolean} kCBAdvDataIsConnectable - True if the device accepts connections. False if it doesn't.
  * @property {array} kCBAdvDataServiceUUIDs - Array of strings, the UUIDs of services advertised by the device. Formatted according to RFC 4122, all lowercase.
@@ -106,19 +111,33 @@ exports.connect = function(address, win, fail) {
 /** Info about connection events and state.
 * @typedef {Object} ConnectInfo
 * @property {number} deviceHandle - Handle to the device. Save it for other function calls.
-* @property {number} state - One of the {@link connectionState} keys.
+* @property {number} state - One of the {@link module:cordova-plugin-ble.connectionState} keys.
 */
 
-/** A number-string map describing possible connection states.
-* @global
+/** A map describing possible connection states.
+* @alias module:cordova-plugin-ble.connectionState
 * @readonly
-* @enum {string}
+* @enum
 */
 exports.connectionState = {
+	/** STATE_DISCONNECTED */
 	0: 'STATE_DISCONNECTED',
+	/** STATE_CONNECTING */
 	1: 'STATE_CONNECTING',
+	/** STATE_CONNECTED */
 	2: 'STATE_CONNECTED',
+	/** STATE_DISCONNECTING */
 	3: 'STATE_DISCONNECTING',
+
+	// TODO: Add these in the next release of the BLE plugin.
+	// /** 0 */
+	// 'STATE_DISCONNECTED': 0,
+	// /** 1 */
+	// 'STATE_CONNECTING': 1,
+	// /** 2 */
+	// 'STATE_CONNECTED': 2,
+	// /** 3 */
+	// 'STATE_DISCONNECTING': 3,
 };
 
 /** Close the connection to a remote device.
@@ -195,17 +214,25 @@ exports.services = function(deviceHandle, win, fail) {
 * @typedef {Object} Service
 * @property {number} handle
 * @property {string} uuid - Formatted according to RFC 4122, all lowercase.
-* @property {serviceType} type
+* @property {module:cordova-plugin-ble.serviceType} type
 */
 
-/** A number-string map describing possible service types.
-* @global
+/** A map describing possible service types.
 * @readonly
-* @enum {string}
+* @alias module:cordova-plugin-ble.serviceType
+* @enum
 */
 exports.serviceType = {
+	/** SERVICE_TYPE_PRIMARY */
 	0: 'SERVICE_TYPE_PRIMARY',
+	/** SERVICE_TYPE_SECONDARY */
 	1: 'SERVICE_TYPE_SECONDARY',
+
+	// TODO: Add these in the next release of the BLE plugin.
+	// /** 0 */
+	// 'SERVICE_TYPE_PRIMARY': 0,
+	// /** 1 */
+	// 'SERVICE_TYPE_SECONDARY': 1,
 };
 
 /** Fetch information about a service's characteristics.
@@ -243,52 +270,115 @@ exports.characteristics = function(deviceHandle, serviceHandle, win, fail) {
 * @typedef {Object} Characteristic
 * @property {number} handle
 * @property {string} uuid - Formatted according to RFC 4122, all lowercase.
-* @property {permission} permissions - Bitmask of zero or more permission flags.
-* @property {property} properties - Bitmask of zero or more property flags.
-* @property {writeType} writeType
+* @property {module:cordova-plugin-ble.permission} permissions - Bitmask of zero or more permission flags.
+* @property {module:cordova-plugin-ble.property} properties - Bitmask of zero or more property flags.
+* @property {module:cordova-plugin-ble.writeType} writeType
 */
 
-/** A number-string map describing possible permission flags.
-* @global
+/** A map describing possible permission flags.
+* @alias module:cordova-plugin-ble.permission
 * @readonly
-* @enum {string}
+* @enum
 */
 exports.permission = {
+	/** PERMISSION_READ */
 	1: 'PERMISSION_READ',
+	/** PERMISSION_READ_ENCRYPTED */
 	2: 'PERMISSION_READ_ENCRYPTED',
+	/** PERMISSION_READ_ENCRYPTED_MITM */
 	4: 'PERMISSION_READ_ENCRYPTED_MITM',
+	/** PERMISSION_WRITE */
 	16: 'PERMISSION_WRITE',
+	/** PERMISSION_WRITE_ENCRYPTED */
 	32: 'PERMISSION_WRITE_ENCRYPTED',
+	/** PERMISSION_WRITE_ENCRYPTED_MITM */
 	64: 'PERMISSION_WRITE_ENCRYPTED_MITM',
+	/** PERMISSION_WRITE_SIGNED */
 	128: 'PERMISSION_WRITE_SIGNED',
+	/** PERMISSION_WRITE_SIGNED_MITM */
 	256: 'PERMISSION_WRITE_SIGNED_MITM',
+
+	// TODO: Add these in the next release of the BLE plugin.
+	// /** 1 */
+	// 'PERMISSION_READ': 1,
+	// /** 2 */
+	// 'PERMISSION_READ_ENCRYPTED': 2,
+	// /** 4 */
+	// 'PERMISSION_READ_ENCRYPTED_MITM': 4,
+	// /** 16 */
+	// 'PERMISSION_WRITE': 16,
+	// /** 32 */
+	// 'PERMISSION_WRITE_ENCRYPTED': 32,
+	// /** 64 */
+	// 'PERMISSION_WRITE_ENCRYPTED_MITM': 64,
+	// /** 128 */
+	// 'PERMISSION_WRITE_SIGNED': 128,
+	// /** 256 */
+	// 'PERMISSION_WRITE_SIGNED_MITM': 256,
 };
 
-/** A number-string map describing possible property flags.
-* @global
+/** A map describing possible property flags.
+* @alias module:cordova-plugin-ble.property
 * @readonly
-* @enum {string}
+* @enum
 */
 exports.property = {
+	/** PROPERTY_BROADCAST */
 	1: 'PROPERTY_BROADCAST',
+	/** PROPERTY_READ */
 	2: 'PROPERTY_READ',
+	/** PROPERTY_WRITE_NO_RESPONSE */
 	4: 'PROPERTY_WRITE_NO_RESPONSE',
+	/** PROPERTY_WRITE */
 	8: 'PROPERTY_WRITE',
+	/** PROPERTY_NOTIFY */
 	16: 'PROPERTY_NOTIFY',
+	/** PROPERTY_INDICATE */
 	32: 'PROPERTY_INDICATE',
+	/** PROPERTY_SIGNED_WRITE */
 	64: 'PROPERTY_SIGNED_WRITE',
+	/** PROPERTY_EXTENDED_PROPS */
 	128: 'PROPERTY_EXTENDED_PROPS',
+
+	// TODO: Add these in the next release of the BLE plugin.
+	// /** 1 */
+	// 'PROPERTY_BROADCAST': 1,
+	// /** 2 */
+	// 'PROPERTY_READ': 2,
+	// /** 4 */
+	// 'PROPERTY_WRITE_NO_RESPONSE': 4,
+	// /** 8 */
+	// 'PROPERTY_WRITE': 8,
+	// /** 16 */
+	// 'PROPERTY_NOTIFY': 16,
+	// /** 32 */
+	// 'PROPERTY_INDICATE': 32,
+	// /** 64 */
+	// 'PROPERTY_SIGNED_WRITE': 4,
+	// /** 128 */
+	// 'PROPERTY_EXTENDED_PROPS': 128,
 };
 
-/** A number-string map describing possible write types.
-* @global
+/** A map describing possible write types.
+* @alias module:cordova-plugin-ble.writeType
 * @readonly
-* @enum {string}
+* @enum
 */
 exports.writeType = {
+	/** WRITE_TYPE_NO_RESPONSE */
 	1: 'WRITE_TYPE_NO_RESPONSE',
+	/** WRITE_TYPE_DEFAULT */
 	2: 'WRITE_TYPE_DEFAULT',
+	/** WRITE_TYPE_SIGNED */
 	4: 'WRITE_TYPE_SIGNED',
+
+	// TODO: Add these in the next release of the BLE plugin.
+	// /** 1 */
+	// 'WRITE_TYPE_NO_RESPONSE': 1,
+	// /** 2 */
+	// 'WRITE_TYPE_DEFAULT': 2,
+	// /** 4 */
+	// 'WRITE_TYPE_SIGNED': 4,
 };
 
 /** Fetch information about a characteristic's descriptors.
@@ -326,7 +416,7 @@ exports.descriptors = function(deviceHandle, characteristicHandle, win, fail) {
 * @typedef {Object} Descriptor
 * @property {number} handle
 * @property {string} uuid - Formatted according to RFC 4122, all lowercase.
-* @property {permission} permissions - Bitmask of zero or more permission flags.
+* @property {module:cordova-plugin-ble.permission} permissions - Bitmask of zero or more permission flags.
 */
 
 // TODO: What is read* ?

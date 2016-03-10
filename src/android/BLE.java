@@ -161,19 +161,25 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 	private void keepCallback(final CallbackContext callbackContext, JSONObject message) {
 		PluginResult r = new PluginResult(PluginResult.Status.OK, message);
 		r.setKeepCallback(true);
-		callbackContext.sendPluginResult(r);
+		if (callbackContext != null) {
+			callbackContext.sendPluginResult(r);
+		}
 	}
 
 	private void keepCallback(final CallbackContext callbackContext, String message) {
 		PluginResult r = new PluginResult(PluginResult.Status.OK, message);
 		r.setKeepCallback(true);
-		callbackContext.sendPluginResult(r);
+		if (callbackContext != null) {
+			callbackContext.sendPluginResult(r);
+		}
 	}
 
 	private void keepCallback(final CallbackContext callbackContext, byte[] message) {
 		PluginResult r = new PluginResult(PluginResult.Status.OK, message);
 		r.setKeepCallback(true);
-		callbackContext.sendPluginResult(r);
+		if (callbackContext != null) {
+			callbackContext.sendPluginResult(r);
+		}
 	}
 
 	// API implementation. See ble.js for documentation.

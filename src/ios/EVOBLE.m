@@ -1232,9 +1232,11 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 {
 	self.scanIsWaiting = NO;
 
+	// TODO:  Add option CBCentralManagerOptionShowPowerAlertKey - "A Boolean value that specifies whether the system should display a warning dialog to the user if Bluetooth is powered off when the central manager is instantiated."
 	self.central = [[CBCentralManager alloc]
 		initWithDelegate: self
-		queue: nil];
+		queue: nil
+		options: @{ CBCentralManagerOptionShowPowerAlertKey: YES }];
 
 	self.peripherals = [NSMutableDictionary dictionary];
 
@@ -1468,6 +1470,9 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 
 	NSDictionary* options = @{CBCentralManagerScanOptionAllowDuplicatesKey: @YES};
 
+	// TODO: Add services to scan for.
+	// Create array with UUIDs:
+	// CBUUID* uuid = [CBUUID UUIDWithString:(NSString *)theString];
 	[self.central
 		scanForPeripheralsWithServices: nil
 		options: options];

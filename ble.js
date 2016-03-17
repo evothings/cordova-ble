@@ -12,29 +12,55 @@ var exec = cordova.require('cordova/exec');
  * under the global name <code>evothings.ble</code>
  */
 
-/** Starts scanning for devices.
-* <p>Found devices and errors will be reported to the supplied callbacks.</p>
-* <p>Will keep scanning indefinitely until you call stopScan().</p>
-* To conserve energy, call stopScan() as soon as you've found the device you're looking for.
-* <p>Calling this function while scanning is in progress has no effect?</p>
-*
-* @param {scanCallback} win
-* @param {failCallback} fail
-*
-* @example
-evothings.ble.startScan(
-	function(device)
+/**
+ * Start scanning for devices.
+ * <p>An array of service UUID strings may be given (optional parameter).
+ * One or more service UUIDs must be specified for iOS background scanning to work.</p>
+ * <p>Found devices and errors are reported to the supplied callback functions.</p>
+ * <p>Will keep scanning until you call stopScan().</p>
+ * To conserve energy, call stopScan() as soon as you've found the device you're looking for.
+ * <p>Calling this function while scanning is in progress has no effect?</p>
+ *
+ * @param {array} uuids - Array with service UUID strings (optional).
+ * @param {scanCallback} success - Success callback, called repeatedly for each found device.
+ * @param {failCallback} fail - Error callback.
+ *
+ * @example
+ *   // Scan for all services.
+ *   evothings.ble.startScan(
+ *       function(device)
+ *       {
+ *           console.log('BLE startScan found device named: ' + device.name);
+ *       },
+ *       function(errorCode)
+ *       {
+ *           console.log('BLE startScan error: ' + errorCode);
+ *       }
+ *   );
+ *
+ *   // Scan for specific service (or services).
+ *   evothings.ble.startScan(
+ *       ['0000ffff-0000-1000-8000-00805f9b34fb'],
+ *       function(device)
+ *       {
+ *       console.log('BLE startScan found device named: ' + device.name);
+ *       },
+ *       function(errorCode)
+ *       {
+ *       console.log('BLE startScan error: ' + errorCode);
+ *       }
+ *   );
+ */
+exports.startScan = function(uuids, success, fail) {
+	if ('function' == typeof uuids)
 	{
-		console.log('BLE startScan found device named: ' + device.name);
-	},
-	function(errorCode)
-	{
-		console.log('BLE startScan error: ' + errorCode);
+		// No Service UUIDs specified.
+		exec(uuids, success, 'BLE', 'startScan', []);
 	}
-);
-*/
-exports.startScan = function(win, fail) {
-	exec(win, fail, 'BLE', 'startScan', []);
+	else
+	{
+		exec(success, fail, 'BLE', 'startScan', [uuids]);
+	}
 };
 
 /** This function is a parameter to startScan() and is called when a new device is discovered.

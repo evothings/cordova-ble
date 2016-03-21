@@ -70,13 +70,17 @@ exports.startScan = function(uuids, success, fail) {
 
 /** Info about a BLE device.
 * @typedef {Object} DeviceInfo
-//* @property {string} address - Has the form xx:xx:xx:xx:xx:xx, where x are hexadecimal characters.
-* @property {string} address - Uniquely identifies the device. Pass this to connect().
+* @property {string} address - Uniquely identifies the device.
+* Pass this to connect().
 * The form of the address depends on the host platform.
 * @property {number} rssi - A negative integer, the signal strength in decibels.
 * @property {string} name - The device's name, or nil.
-* @property {string} scanRecord - Base64-encoded binary data. Its meaning is device-specific. Not available on iOS.
-* @property {AdvertisementData} advertisementData - Object containing some of the data from the scanRecord. Available natively on iOS. Available on Android by parsing the scanRecord, which is implemented in the library {@link https://github.com/evothings/evothings-examples/tree/master/resources/libs/evothings/easyble|easyble.js}.
+* @property {string} scanRecord - Base64-encoded binary data.
+* Its meaning is device-specific. Not available on iOS.
+* @property {AdvertisementData} advertisementData - Object containing some
+* of the data from the scanRecord. Available natively on iOS. Available on
+* Android by parsing the scanRecord, which is implemented in the library EasyBLE:
+* {@link https://github.com/evothings/evothings-libraries/blob/master/libs/evothings/easyble/easyble.js}.
 */
 
 /** Information extracted from a scanRecord. Some or all of the fields may be undefined. This varies between BLE devices.

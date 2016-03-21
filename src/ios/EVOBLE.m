@@ -1235,11 +1235,16 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 {
 	self.scanIsWaiting = NO;
 
-	// TODO:  Add option CBCentralManagerOptionShowPowerAlertKey - "A Boolean value that specifies whether the system should display a warning dialog to the user if Bluetooth is powered off when the central manager is instantiated."
+	// CBCentralManagerOptionShowPowerAlertKey - "A Boolean value that
+	// specifies whether the system should display a warning dialog to
+	// the user if Bluetooth is powered off when the central manager
+	// is instantiated."
 	self.central = [[CBCentralManager alloc]
 		initWithDelegate: self
 		queue: nil
-		options: @{ CBCentralManagerOptionShowPowerAlertKey: @YES }];
+		options: @{
+			CBCentralManagerOptionRestoreIdentifierKey: @"EVOCentralManagerIdentifier",
+			CBCentralManagerOptionShowPowerAlertKey: @YES }];
 
 	self.peripherals = [NSMutableDictionary dictionary];
 
@@ -1328,7 +1333,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
  * From interface CBCentralManagerDelegate.
  * Called when the central manager changes state.
  */
-- (void) centralManagerDidUpdateState: (CBCentralManager *)central
+- (void) centralManagerDidUpdateState: (CBCentralManager*)central
 {
 	// Start scan if we have a waiting scan that failed because
 	// of the Central Manager not being on.
@@ -1337,6 +1342,16 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	{
 		[self scanForPeripherals: self.scanIsWaitingServices];
 	}
+}
+
+/**
+ * From interface CBCentralManagerDelegate.
+ * Called when the central manager is about to be restored by the system.
+ */
+- (void) centralManager: (CBCentralManager*)central
+		willRestoreState:(NSDictionary<NSString*,id>*)dict
+{
+	// No action taken.
 }
 
 /**

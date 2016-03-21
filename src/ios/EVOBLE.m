@@ -1261,50 +1261,66 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 }
 
 // Returns true if the object can be safely fed into sendDictionary, false otherwise.
-- (bool) isSafeToCopy: (NSObject*) o
+- (bool) isSafeToCopy: (NSObject*) obj
 {
-	Class c = o.class;
-	return ([c isSubclassOfClass:NSString.class] ||
-		[c isSubclassOfClass:NSNull.class] ||
-		[c isSubclassOfClass:NSNumber.class] ||
-		[c isSubclassOfClass:NSValue.class] ||
+	return ([obj.class isSubclassOfClass:NSString.class] ||
+		[obj.class isSubclassOfClass:NSNull.class] ||
+		[obj.class isSubclassOfClass:NSNumber.class] ||
+		[obj.class isSubclassOfClass:NSValue.class] ||
 		false);
 }
 
 // Returns either the object, or a copy of the object.
 // In either case, the result can be safely fed into sendDictionary.
 // May @throw the object if no conversion is implemented.
-- (NSObject*) prepareForJson: (NSObject*) o
+- (NSObject*) prepareForJson: (NSObject*) obj
 {
-	if([self isSafeToCopy:o])
-		return o;
-	if([o.class isSubclassOfClass:CBUUID.class]) {
+	if ([self isSafeToCopy: obj])
+	{
+		return obj;
+	}
+
+	if ([obj.class isSubclassOfClass: CBUUID.class])
+	{
 		// Use our local stringifyer, guaranteed to follow RFC 4122,
 		// as required by the plugin specification.
-		return [(CBUUID*)o uuidString];
+		return [(CBUUID*)obj uuidString];
 	}
-	if([o.class isSubclassOfClass:NSData.class]) {
-		return [(NSData*)o base64EncodedStringWithOptions:0];
+
+	if ([obj.class isSubclassOfClass: NSData.class])
+	{
+		// Base64 encode data.
+		return [(NSData*)obj base64EncodedStringWithOptions: 0];
 	}
-	if([o.class isSubclassOfClass:NSArray.class]) {
-		NSArray* a = (NSArray*)o;
-		NSMutableArray* ma = [NSMutableArray arrayWithCapacity:a.count];
-		for(int i=0; i<a.count; i++) {
-			[ma addObject:[self prepareForJson:[a objectAtIndex:i]]];
+
+	if ([obj.class isSubclassOfClass: NSArray.class])
+	{
+		// Returns copy of array.
+		NSArray* array = (NSArray*)obj;
+		NSMutableArray* newArray = [NSMutableArray arrayWithCapacity: array.count];
+		for (int i = 0; i < array.count; ++i)
+		{
+			[newArray addObject: [self prepareForJson: [array objectAtIndex: i]]];
 		}
-		return ma;
+		return newArray;
 	}
-	if([o.class isSubclassOfClass:NSDictionary.class]) {
-		NSDictionary* src = (NSDictionary*)o;
-		NSMutableDictionary* newData = [NSMutableDictionary dictionaryWithCapacity:src.count];
-		[src enumerateKeysAndObjectsUsingBlock:^(id key, id value, BOOL *stop) {
-			id newKey = [self prepareForJson:key];
-			id newValue = [self prepareForJson:value];
-			[newData setObject:newValue forKey:newKey];
+
+	if ([obj.class isSubclassOfClass: NSDictionary.class])
+	{
+		// Returns copy of dictionary.
+		NSDictionary* dict = (NSDictionary*)obj;
+		NSMutableDictionary* newDict = [NSMutableDictionary dictionaryWithCapacity: dict.count];
+		[dict enumerateKeysAndObjectsUsingBlock:^(id key, id value, BOOL *stop)
+		{
+			id newKey = [self prepareForJson: key];
+			id newValue = [self prepareForJson: value];
+			[newDict setObject: newValue forKey: newKey];
 		}];
-		return newData;
+		return newDict;
 	}
-	@throw o;
+
+	// Could not handle object, throw it.
+	@throw obj;
 }
 
 /**
@@ -1321,11 +1337,11 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	// prepareForJson those objects.
 	// Since we call prepareForJson: with an NSDictionary we will get
 	// back an NSDictionary, so this type cast should be safe.
-	NSDictionary* newData = (NSDictionary*) [self prepareForJson:advertisementData];
+	NSDictionary* newDict = (NSDictionary*) [self prepareForJson: advertisementData];
 
 	[self
 		sendScanInfoForPeriperhal: peripheral
-		advertisementData: newData
+		advertisementData: newDict
 		RSSI: RSSI];
 }
 

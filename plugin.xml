@@ -41,6 +41,12 @@
 			</feature>
 		</config-file>
 
+		<config-file target="*-Info.plist" parent="UIBackgroundModes">
+			<array>
+				<string>bluetooth-central</string>
+			</array>
+		</config-file>
+
 		<framework src="CoreBluetooth.framework" />
 
 		<header-file src="src/ios/EVOBLE.h" />

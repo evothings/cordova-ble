@@ -547,7 +547,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 
 	if (nil == error)
 	{
-		// Create array with Service objects.
+		// Create array with Characteristic objects.
 		NSMutableArray* array = [NSMutableArray array];
 		for (CBCharacteristic* characteristic in service.characteristics)
 		{
@@ -791,8 +791,11 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	// Save callbackId.
 	self.scanCallbackId = command.callbackId;
 
+	// Get services to scan for.
+	NSArray* services = [command argumentAtIndex: 0];
+
 	// Start scanning.
-	[self scanForPeripherals];
+	[self scanForPeripherals: services];
 }
 
 /**
@@ -1236,7 +1239,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	self.central = [[CBCentralManager alloc]
 		initWithDelegate: self
 		queue: nil
-		options: @{ CBCentralManagerOptionShowPowerAlertKey: YES }];
+		options: @{ CBCentralManagerOptionShowPowerAlertKey: @YES }];
 
 	self.peripherals = [NSMutableDictionary dictionary];
 
@@ -1332,7 +1335,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	if (central.state == CBCentralManagerStatePoweredOn
 		&& self.scanIsWaiting)
 	{
-		[self scanForPeripherals];
+		[self scanForPeripherals: self.scanIsWaitingServices];
 	}
 }
 
@@ -1456,25 +1459,41 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 /**
  * Internal helper method.
  */
-- (int) scanForPeripherals
+- (int) scanForPeripherals: (NSArray*)services
 {
 	if (self.central.state != CBCentralManagerStatePoweredOn)
 	{
 		// BLE is off, set flag that scan is waiting, scan will be restarted
 		// in centralManagerDidUpdateState: when BLE is powered on.
 		self.scanIsWaiting = YES;
+		self.scanIsWaitingServices = services;
 		return -1;
 	}
 
 	self.scanIsWaiting = NO;
+	self.scanIsWaitingServices = nil;
+
+	NSLog(@"scanForPeripherals services: %@", services);
 
 	NSDictionary* options = @{CBCentralManagerScanOptionAllowDuplicatesKey: @YES};
 
-	// TODO: Add services to scan for.
-	// Create array with UUIDs:
-	// CBUUID* uuid = [CBUUID UUIDWithString:(NSString *)theString];
+	// Add services to scan for. Create array with service UUIDs.
+	NSMutableArray* serviceUUIDs = nil;
+	if (services)
+	{
+		serviceUUIDs = [NSMutableArray array];
+		for (NSString* uuidString in services)
+		{
+			CBUUID* uuid = [CBUUID UUIDWithString: uuidString];
+			[serviceUUIDs addObject: uuid];
+		}
+	}
+
+	NSLog(@"scanForPeripherals serviceUUIDs: %@", serviceUUIDs);
+
+	// Start scanning.
 	[self.central
-		scanForPeripheralsWithServices: nil
+		scanForPeripheralsWithServices: serviceUUIDs
 		options: options];
 
 	return 0;

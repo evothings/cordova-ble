@@ -5,7 +5,7 @@
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, user-scalable=no
 		initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0" />
-	<title>Eddystone Demo</title>
+	<title>Cordova BLE Demo</title>
 
 	<script>
 	// Redirect console.log when running from Evothings Workbench.
@@ -39,186 +39,135 @@
 
 	<img class="evo-image" src="https://evomedia.evothings.com/2013/11/evothings_logo_large_white1.png" />
 
-	<h1>Eddystone Demo</h1>
+	<h1>Cordova BLE Demo</h1>
 
 
 	<p id="message">Preparing...</p>
 
-	<div id="found-beacons"></div>
+	<div id="found-devices"></div>
 
 	<!--
 	Including cordova.js will automatically include the JavaScript library
-	for Eddystone.
+	for the Cordova BLE plugin.
 	-->
 	<script src="cordova.js"></script>
 
 	<script>
 	// Application code starts here. The code is wrapped in a
 	// function closure to prevent overwriting global objects.
-	(function()
+	;(function()
 	{
-		// Dictionary of beacons.
-		var beacons = {};
+		// Dictionary of devices.
+		var devices = {};
 
-		// Timer that displays list of beacons.
+		// Timer that displays list of devices.
 		var timer = null;
 
 		function onDeviceReady()
 		{
-			// Start tracking beacons!
+			// Start tracking devices!
 			setTimeout(startScan, 500);
 
 			// Timer that refreshes the display.
-			timer = setInterval(updateBeaconList, 500);
+			timer = setInterval(updateDeviceList, 500);
 		}
 
 		function startScan()
 		{
 			showMessage('Scan in progress.');
-			evothings.eddystone.startScan(
-				function(beacon)
+			evothings.ble.startScan(
+				// Eddystone Service UUID used as an example.
+				// Remove or set this parameter to null to scan for all
+				// devices regardless of advertised services.
+				['0000FEAA-0000-1000-8000-00805F9B34FB'],
+				function(device)
 				{
-					// Update beacon data.
-					beacon.timeStamp = Date.now();
-					beacons[beacon.address] = beacon;
+					console.log('got device ' + device.name + ' ' + device.address);
+					// Update device data.
+					device.timeStamp = Date.now();
+					devices[device.address] = device;
 				},
 				function(error)
 				{
-					showMessage('Eddystone scan error: ' + error);
+					showMessage('BLE scan error: ' + error);
 				});
 		}
 
 		// Map the RSSI value to a value between 1 and 100.
-		function mapBeaconRSSI(rssi)
+		function mapDeviceRSSI(rssi)
 		{
 			if (rssi >= 0) return 1; // Unknown RSSI maps to 1.
 			if (rssi < -100) return 100; // Max RSSI
 			return 100 + rssi;
 		}
 
-		function getSortedBeaconList(beacons)
+		function getSortedDeviceList(devices)
 		{
-			var beaconList = [];
-			for (var key in beacons)
+			var deviceList = [];
+			for (var key in devices)
 			{
-				beaconList.push(beacons[key]);
+				deviceList.push(devices[key]);
 			}
-			beaconList.sort(function(beacon1, beacon2)
+			deviceList.sort(function(device1, device2)
 			{
-				return mapBeaconRSSI(beacon1.rssi) < mapBeaconRSSI(beacon2.rssi);
+				return mapDeviceRSSI(device1.rssi) < mapDeviceRSSI(device2.rssi);
 			});
-			return beaconList;
+			return deviceList;
 		}
 
-		function updateBeaconList()
+		function updateDeviceList()
 		{
-			removeOldBeacons();
-			displayBeacons();
+			removeOldDevices();
+			displayDevices();
 		}
 
-		function removeOldBeacons()
+		function removeOldDevices()
 		{
 			var timeNow = Date.now();
-			for (var key in beacons)
+			for (var key in devices)
 			{
-				// Only show beacons updated during the last 60 seconds.
-				var beacon = beacons[key];
-				if (beacon.timeStamp + 60000 < timeNow)
+				// Only show devices updated during the last 60 seconds.
+				var device = devices[key];
+				if (device.timeStamp + 60000 < timeNow)
 				{
-					delete beacons[key];
+					delete devices[key];
 				}
 			}
 		}
 
-		function displayBeacons()
+		function displayDevices()
 		{
 			var html = '';
-			var sortedList = getSortedBeaconList(beacons);
+			var sortedList = getSortedDeviceList(devices);
 			for (var i = 0; i < sortedList.length; ++i)
 			{
-				var beacon = sortedList[i];
-				var htmlBeacon =
+				var device = sortedList[i];
+				var htmlDevice =
 					'<p>'
-					+	htmlBeaconName(beacon)
-					+	htmlBeaconURL(beacon)
-					+	htmlBeaconNID(beacon)
-					+	htmlBeaconBID(beacon)
-					+	htmlBeaconVoltage(beacon)
-					+	htmlBeaconTemperature(beacon)
-					+	htmlBeaconRSSI(beacon)
+					+	htmlDeviceName(device)
+					+	htmlDeviceRSSI(device)
 					+ '</p>';
-				html += htmlBeacon
+				html += htmlDevice
 			}
-			document.querySelector('#found-beacons').innerHTML = html;
+			document.querySelector('#found-devices').innerHTML = html;
 		}
 
-		function htmlBeaconName(beacon)
+		function htmlDeviceName(device)
 		{
-			var name = beacon.name || 'no name';
+			var name = device.name || 'no name';
 			return '<strong>' + name + '</strong><br/>';
 		}
 
-		function htmlBeaconURL(beacon)
+		function htmlDeviceRSSI(device)
 		{
-			return beacon.url ?
-				'URL: ' + beacon.url + '<br/>' :  '';
-		}
-
-		function htmlBeaconURL(beacon)
-		{
-			return beacon.url ?
-				'URL: ' + beacon.url + '<br/>' :  '';
-		}
-
-		function htmlBeaconNID(beacon)
-		{
-			return beacon.nid ?
-				'NID: ' + uint8ArrayToString(beacon.nid) + '<br/>' :  '';
-		}
-
-		function htmlBeaconBID(beacon)
-		{
-			return beacon.bid ?
-				'BID: ' + uint8ArrayToString(beacon.bid) + '<br/>' :  '';
-		}
-
-		function htmlBeaconVoltage(beacon)
-		{
-			return beacon.voltage ?
-				'Voltage: ' + beacon.voltage + '<br/>' :  '';
-		}
-
-		function htmlBeaconTemperature(beacon)
-		{
-			return beacon.temperature && beacon.temperature != 0x8000 ?
-				'Temperature: ' + beacon.temperature + '<br/>' :  '';
-		}
-
-		function htmlBeaconRSSI(beacon)
-		{
-			return beacon.rssi ?
-				'RSSI: ' + beacon.rssi + '<br/>' :  '';
-		}
-
-		function uint8ArrayToString(uint8Array)
-		{
-			function format(x)
-			{
-				var hex = x.toString(16);
-				return hex.length < 2 ? '0' + hex : hex;
-			}
-
-			var result = '';
-			for (var i = 0; i < uint8Array.length; ++i)
-			{
-				result += format(uint8Array[i]) + ' ';
-			}
-			return result;
+			return device.rssi ?
+				'RSSI: ' + device.rssi + '<br/>' :  '';
 		}
 
 		function showMessage(text)
 		{
 			document.querySelector('#message').innerHTML = text;
+			console.log(text);
 		}
 
 		// This calls onDeviceReady when Cordova has loaded everything.

@@ -34,6 +34,7 @@ import java.io.UnsupportedEncodingException;
 import java.lang.reflect.*;
 import android.util.Base64;
 import android.os.ParcelUuid;
+import android.util.Log;
 
 public class BLE extends CordovaPlugin implements LeScanCallback {
 	// Used by startScan().
@@ -211,10 +212,28 @@ public class BLE extends CordovaPlugin implements LeScanCallback {
 	private void startScan(final CordovaArgs args, final CallbackContext callbackContext) {
 		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
 		final LeScanCallback self = this;
+
+		// Get service UUIDs.
+		UUID[] uuidArray = null;
+		try {
+			JSONArray uuids = args.getJSONArray(0);
+			if (null != uuids) {
+				uuidArray = new UUID[uuids.length()];
+				for (int i = 0; i < uuids.length(); ++i) {
+					uuidArray[i] = UUID.fromString(uuids.getString(i));
+				}
+			}
+		}
+		catch(JSONException ex) {
+			uuidArray = null;
+		}
+
+		final UUID[] serviceUUIDs = uuidArray;
+
 		checkPowerState(adapter, callbackContext, new Runnable() {
 			@Override
 			public void run() {
-				if(!adapter.startLeScan(self)) {
+				if(!adapter.startLeScan(serviceUUIDs, self)) {
 					callbackContext.error("Android function startLeScan failed");
 					return;
 				}

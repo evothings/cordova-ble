@@ -20,10 +20,19 @@ var exec = cordova.require('cordova/exec');
  * One or more service UUIDs must be specified for iOS background scanning to work.</p>
  * <p>Found devices and errors are reported to the supplied callback functions.</p>
  * <p>Will keep scanning until you call stopScan().</p>
- * To conserve energy, call stopScan() as soon as you've found the device you're looking for.
- * <p>Calling this function while scanning is in progress has no effect?</p>
+ * <p>To conserve energy, call stopScan() as soon as you've found the device you're looking for.</p>
+ * <p>Call stopScan() before calling startScan() again.</p>
  *
  * @param {array} uuids - Array with service UUID strings (optional).
+ * On iOS multiple UUIDs are scanned for using logical OR operator,
+ * any UUID that matches any of the UUIDs adverticed by the device
+ * will count as a match. On Android, multiple UUIDs are scanned for
+ * using AND logic, the device must advertise all of the given UUIDs
+ * to produce a match. (The matching logic will be unified in future
+ * versions of the plugin.) When providing one service UUID, behaviour
+ * is the same on Android and iOS. Learning out this parameter or
+ * setting it to null, will scan for all devices, regardless of
+ * advertised services.
  * @param {scanCallback} success - Success callback, called repeatedly for each found device.
  * @param {failCallback} fail - Error callback.
  *

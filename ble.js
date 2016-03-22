@@ -507,15 +507,39 @@ without specifying and additional information.
 */
 
 /** Write a characteristic's value to the remote device.
+*
+* Writes with response, the remote device sends back a confirmation message.
+* This is safe but slower than writing without response.
+*
 * @param {number} deviceHandle - A handle from {@link connectCallback}.
 * @param {number} characteristicHandle - A handle from {@link characteristicCallback}.
 * @param {ArrayBufferView} data - The value to be written.
-* @param {emptyCallback} win
-* @param {failCallback} fail
+* @param {emptyCallback} win - Called when the remote device has confirmed the write.
+* @param {failCallback} fail - Called if the operation fails.
 * @example TODO: Add example.
 */
 exports.writeCharacteristic = function(deviceHandle, characteristicHandle, data, win, fail) {
 	exec(win, fail, 'BLE', 'writeCharacteristic', [deviceHandle, characteristicHandle, data.buffer]);
+};
+
+/** Write a characteristic's value without response.
+*
+* Experimental, implemented on Android.
+*
+* Asks the remote device to NOT send a confirmation message.
+* This may be used for increased data throughput.
+*
+* A separate safety protocol will be required to ensure data integrity.
+* Design of such protocols is beyond the scope of this document.
+*
+* @param {number} deviceHandle - A handle from {@link connectCallback}.
+* @param {number} characteristicHandle - A handle from {@link characteristicCallback}.
+* @param {ArrayBufferView} data - The value to be written.
+* @param {emptyCallback} win - Called when the data has been sent.
+* @param {failCallback} fail - Called if the operation fails.
+*/
+exports.writeCharacteristicWithoutResponse = function(deviceHandle, characteristicHandle, data, win, fail) {
+	exec(win, fail, 'BLE', 'writeCharacteristicWithoutResponse', [deviceHandle, characteristicHandle, data.buffer]);
 };
 
 /** Write a descriptor's value to a remote device.

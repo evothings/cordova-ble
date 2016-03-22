@@ -161,15 +161,14 @@ exports.connectionState = {
 	/** STATE_DISCONNECTING */
 	3: 'STATE_DISCONNECTING',
 
-	// TODO: Add these in the next release of the BLE plugin.
-	// /** 0 */
-	// 'STATE_DISCONNECTED': 0,
-	// /** 1 */
-	// 'STATE_CONNECTING': 1,
-	// /** 2 */
-	// 'STATE_CONNECTED': 2,
-	// /** 3 */
-	// 'STATE_DISCONNECTING': 3,
+	/** 0 */
+	'STATE_DISCONNECTED': 0,
+	/** 1 */
+	'STATE_CONNECTING': 1,
+	/** 2 */
+	'STATE_CONNECTED': 2,
+	/** 3 */
+	'STATE_DISCONNECTING': 3,
 };
 
 /** Close the connection to a remote device.
@@ -260,11 +259,10 @@ exports.serviceType = {
 	/** SERVICE_TYPE_SECONDARY */
 	1: 'SERVICE_TYPE_SECONDARY',
 
-	// TODO: Add these in the next release of the BLE plugin.
-	// /** 0 */
-	// 'SERVICE_TYPE_PRIMARY': 0,
-	// /** 1 */
-	// 'SERVICE_TYPE_SECONDARY': 1,
+	/** 0 */
+	'SERVICE_TYPE_PRIMARY': 0,
+	/** 1 */
+	'SERVICE_TYPE_SECONDARY': 1,
 };
 
 /** Fetch information about a service's characteristics.
@@ -330,23 +328,22 @@ exports.permission = {
 	/** PERMISSION_WRITE_SIGNED_MITM */
 	256: 'PERMISSION_WRITE_SIGNED_MITM',
 
-	// TODO: Add these in the next release of the BLE plugin.
-	// /** 1 */
-	// 'PERMISSION_READ': 1,
-	// /** 2 */
-	// 'PERMISSION_READ_ENCRYPTED': 2,
-	// /** 4 */
-	// 'PERMISSION_READ_ENCRYPTED_MITM': 4,
-	// /** 16 */
-	// 'PERMISSION_WRITE': 16,
-	// /** 32 */
-	// 'PERMISSION_WRITE_ENCRYPTED': 32,
-	// /** 64 */
-	// 'PERMISSION_WRITE_ENCRYPTED_MITM': 64,
-	// /** 128 */
-	// 'PERMISSION_WRITE_SIGNED': 128,
-	// /** 256 */
-	// 'PERMISSION_WRITE_SIGNED_MITM': 256,
+	/** 1 */
+	'PERMISSION_READ': 1,
+	/** 2 */
+	'PERMISSION_READ_ENCRYPTED': 2,
+	/** 4 */
+	'PERMISSION_READ_ENCRYPTED_MITM': 4,
+	/** 16 */
+	'PERMISSION_WRITE': 16,
+	/** 32 */
+	'PERMISSION_WRITE_ENCRYPTED': 32,
+	/** 64 */
+	'PERMISSION_WRITE_ENCRYPTED_MITM': 64,
+	/** 128 */
+	'PERMISSION_WRITE_SIGNED': 128,
+	/** 256 */
+	'PERMISSION_WRITE_SIGNED_MITM': 256,
 };
 
 /** A map describing possible property flags.
@@ -372,23 +369,22 @@ exports.property = {
 	/** PROPERTY_EXTENDED_PROPS */
 	128: 'PROPERTY_EXTENDED_PROPS',
 
-	// TODO: Add these in the next release of the BLE plugin.
-	// /** 1 */
-	// 'PROPERTY_BROADCAST': 1,
-	// /** 2 */
-	// 'PROPERTY_READ': 2,
-	// /** 4 */
-	// 'PROPERTY_WRITE_NO_RESPONSE': 4,
-	// /** 8 */
-	// 'PROPERTY_WRITE': 8,
-	// /** 16 */
-	// 'PROPERTY_NOTIFY': 16,
-	// /** 32 */
-	// 'PROPERTY_INDICATE': 32,
-	// /** 64 */
-	// 'PROPERTY_SIGNED_WRITE': 4,
-	// /** 128 */
-	// 'PROPERTY_EXTENDED_PROPS': 128,
+	/** 1 */
+	'PROPERTY_BROADCAST': 1,
+	/** 2 */
+	'PROPERTY_READ': 2,
+	/** 4 */
+	'PROPERTY_WRITE_NO_RESPONSE': 4,
+	/** 8 */
+	'PROPERTY_WRITE': 8,
+	/** 16 */
+	'PROPERTY_NOTIFY': 16,
+	/** 32 */
+	'PROPERTY_INDICATE': 32,
+	/** 64 */
+	'PROPERTY_SIGNED_WRITE': 4,
+	/** 128 */
+	'PROPERTY_EXTENDED_PROPS': 128,
 };
 
 /** A map describing possible write types.
@@ -404,13 +400,12 @@ exports.writeType = {
 	/** WRITE_TYPE_SIGNED */
 	4: 'WRITE_TYPE_SIGNED',
 
-	// TODO: Add these in the next release of the BLE plugin.
-	// /** 1 */
-	// 'WRITE_TYPE_NO_RESPONSE': 1,
-	// /** 2 */
-	// 'WRITE_TYPE_DEFAULT': 2,
-	// /** 4 */
-	// 'WRITE_TYPE_SIGNED': 4,
+	/** 1 */
+	'WRITE_TYPE_NO_RESPONSE': 1,
+	/** 2 */
+	'WRITE_TYPE_DEFAULT': 2,
+	/** 4 */
+	'WRITE_TYPE_SIGNED': 4,
 };
 
 /** Fetch information about a characteristic's descriptors.

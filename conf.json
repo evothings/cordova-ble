@@ -11,7 +11,7 @@
 	"plugins": [],
 	"templates": {
 		"cleverLinks": true,
-		"monospaceLinks": true
+		"monospaceLinks": false
 	},
 	"opts": {
 		"encoding": "utf8",

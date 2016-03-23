@@ -3,7 +3,7 @@
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:m2="http://schemas.microsoft.com/appx/2013/manifest"
 	id="cordova-plugin-ble"
-	version="1.0.1">
+	version="1.1.0">
 
 	<!-- This plugin requires Cordova version >= 3.1.0. -->
 	<engines>
@@ -11,9 +11,9 @@
 	</engines>
 
 	<name>Evothings BLE API</name>
-	<description>This plugin allows your app to act as a Bluetooth Low Energy client.</description>
+	<description>Bluetooth Low Energy Cordova plugin.</description>
 	<author>Evothings</author>
-	<keywords>bluetooth,low energy,smart</keywords>
+	<keywords>bluetooth,ble,bluetooth low energy,bluetooth smart</keywords>
 	<license>Apache 2.0</license>
 
 	<js-module src="ble.js" name="BLE">

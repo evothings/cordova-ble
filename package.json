@@ -1,7 +1,7 @@
 {
   "name": "cordova-plugin-ble",
-  "version": "1.0.1",
-  "description": "This plugin allows your app to act as a Bluetooth Low Energy client.",
+  "version": "1.1.0",
+  "description": "Bluetooth Low Energy Cordova plugin.",
   "cordova": {
     "id": "cordova-plugin-ble",
     "platforms": [
@@ -15,8 +15,9 @@
   },
   "keywords": [
     "bluetooth",
-    "low energy",
-    "smart",
+    "ble",
+    "bluetooth low energy",
+    "bluetooth smart",
     "ecosystem:cordova",
     "cordova-android",
     "cordova-ios"

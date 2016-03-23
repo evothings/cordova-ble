@@ -41,7 +41,6 @@
 
 	<h1>Cordova BLE Demo</h1>
 
-
 	<p id="message">Preparing...</p>
 
 	<div id="found-devices"></div>
@@ -70,6 +69,12 @@
 
 			// Timer that refreshes the display.
 			timer = setInterval(updateDeviceList, 500);
+		}
+
+		function onBackButtonDown()
+		{
+			evothings.ble.stopScan();
+			navigator.app.exitApp();
 		}
 
 		function startScan()
@@ -172,6 +177,9 @@
 
 		// This calls onDeviceReady when Cordova has loaded everything.
 		document.addEventListener('deviceready', onDeviceReady, false);
+
+		// Add back button listener (for Android).
+		document.addEventListener('backbutton', onBackButtonDown, false);
 
 	})(); // End of closure.
 	</script>

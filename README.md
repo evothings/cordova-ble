@@ -35,7 +35,7 @@ The file [introduction.md](introduction.md) contains a general introduction to B
 The following are libraries built on top of the BLE plugin:
 
 * **Bleat** - library with support for Web Bluetooth ([code](https://github.com/evothings/evothings-libraries/tree/master/libs/bleat), [master repository](https://github.com/thegecko/bleat), [tutorial](https://evothings.com/evothings-studio-with-support-for-web-bluetooth-and-ecmascript-6/))
-* **EasyBLE** - high level BLE library ([code](https://github.com/evothings/evothings-libraries/tree/master/libs/evothings/easyble), [documentation](https://evothings.com/doc/lib-doc/evothings.easyble.html), [tutorial](https://evothings.com/doc/starter-guides/bluetooth-smart-starter-guide.html))
+* **EasyBLE** - BLE library (see BLE example apps that ship with Evothings Studio for code examples) ([code](https://github.com/evothings/evothings-libraries/tree/master/libs/evothings/easyble), [documentation](https://evothings.com/doc/lib-doc/evothings.easyble.html), [tutorial](https://evothings.com/doc/starter-guides/bluetooth-smart-starter-guide.html))
 * **Eddystone** - library and Cordova plugin for scanning for Eddystone devices/beacons (Physical Web) ([Cordova Plugin](https://github.com/evothings/cordova-eddystone), [code](https://github.com/evothings/evothings-libraries/tree/master/libs/evothings/eddystone), [documentation](https://evothings.com/doc/lib-doc/evothings.eddystone.html), [tutorial](https://evothings.com/doc/starter-guides/eddystone-starter-guide.html))
 
 ### Getting started tutorial

@@ -552,13 +552,22 @@ public class BLE extends CordovaPlugin implements LeScanCallback
 		final CallbackContext callbackContext)
 		throws JSONException
 	{
-		final GattHandler gattHandler = mConnectedDevices.get(args.getInt(0));
+		final GattHandler gh = mConnectedDevices.get(args.getInt(0));
+
+		// Get characteristic.
 		BluetoothGattCharacteristic c = gh.mCharacteristics.get(args.getInt(1));
+
+		// Turn notification on.
+		if (!turnNotificationOnOrOff(gh.mGatt, c, true)) // ON
+		{
+			callbackContext.error("enableNotification error");
+			return;
+		}
+
+		// Save callback context for the characteristic.
 		gh.mNotifications.put(c, callbackContext);
 
-		if(!gh.mGatt.setCharacteristicNotification(c, true)) {
-			callbackContext.error("setCharacteristicNotification");
-		}
+		// Note: Success callback is not called here, but when notifications occur.
 	}
 
 	// API implementation.
@@ -568,13 +577,55 @@ public class BLE extends CordovaPlugin implements LeScanCallback
 		throws JSONException
 	{
 		final GattHandler gh = mConnectedDevices.get(args.getInt(0));
+
+		// Get characteristic.
 		BluetoothGattCharacteristic c = gh.mCharacteristics.get(args.getInt(1));
+
+		// Remove callback context for the characteristic.
 		gh.mNotifications.remove(c);
-		if(gh.mGatt.setCharacteristicNotification(c, false)) {
+
+		// Turn notification off.
+		if (turnNotificationOnOrOff(gh.mGatt, c, false)) // OFF
+		{
 			callbackContext.success();
-		} else {
-			callbackContext.error("setCharacteristicNotification");
 		}
+		else
+		{
+			callbackContext.error("disableNotification error");
+		}
+	}
+
+	// Helper method.
+	// Returns true if successful, false if error.
+	private boolean turnNotificationOnOrOff(
+		BluetoothGatt gatt,
+		BluetoothGattCharacteristic characteristic,
+		boolean onOrOff)
+	{
+		// Turn notification on or off.
+		if (!gatt.setCharacteristicNotification(characteristic, onOrOff)) {
+			return false;
+		}
+
+		// Get config descriptor.
+		BluetoothGattDescriptor configDescriptor = characteristic.getDescriptor(
+			UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"));
+		if (configDescriptor == null) {
+			return false;
+		}
+
+		// Set descriptor value.
+		byte[] descriptorValue = onOrOff ?
+			BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE :
+			BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE;
+		configDescriptor.setValue(descriptorValue);
+
+		// Write descriptor.
+		if (!gh.mGatt.writeDescriptor(configDescriptor)) {
+			return false;
+		}
+
+		return true;
 	}
 
 	// API implementation.

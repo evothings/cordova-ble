@@ -11,7 +11,7 @@
 	</engines>
 
 	<name>Evothings BLE API</name>
-	<description>Bluetooth Low Energy Cordova plugin.</description>
+	<description>Bluetooth Low Energy Cordova plugin</description>
 	<author>Evothings</author>
 	<keywords>bluetooth,ble,bluetooth low energy,bluetooth smart</keywords>
 	<license>Apache 2.0</license>

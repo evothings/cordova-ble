@@ -590,6 +590,9 @@ public class BLE extends CordovaPlugin implements LeScanCallback
 			public void run()
 			{
 				try {
+					// Mark operation in progress.
+					gattHandler.mCurrentOp = true;
+
 					if (!turnOn) {
 						// Remove callback context for the characteristic.
 						gattHandler.mNotifications.remove(characteristic);
@@ -744,6 +747,10 @@ public class BLE extends CordovaPlugin implements LeScanCallback
 		CallbackContext mRssiContext;
 		CallbackContext mCurrentOpContext;
 
+		// Special flag for doing async operations without a Cordova callback context.
+		// Used when writing notification config descriptor.
+		boolean mCurrentOp = false;
+
 		// The Android API connection.
 		BluetoothGatt mGatt;
 
@@ -769,7 +776,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback
 		// Run the next operation, if any.
 		void process()
 		{
-			if(mCurrentOpContext != null)
+			if(mCurrentOpContext != null || mCurrentOp)
 				return;
 			Runnable r = mOperations.poll();
 			if(r == null)
@@ -893,6 +900,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback
 				}
 				mCurrentOpContext = null;
 			}
+			mCurrentOp = false;
 			process();
 		}
 

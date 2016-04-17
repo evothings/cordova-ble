@@ -635,8 +635,6 @@ public class BLE extends CordovaPlugin implements LeScanCallback
 						// called on every notification event.
 						callbackContext.success();
 					}
-
-					gattHandler.process();
 				}
 				catch (Exception e) {
 					e.printStackTrace();

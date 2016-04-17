@@ -558,16 +558,7 @@ public class BLE extends CordovaPlugin implements LeScanCallback
 		BluetoothGattCharacteristic c = gh.mCharacteristics.get(args.getInt(1));
 
 		// Turn notification on.
-		if (!turnNotificationOnOrOff(gh.mGatt, c, true)) // ON
-		{
-			callbackContext.error("enableNotification error");
-			return;
-		}
-
-		// Save callback context for the characteristic.
-		gh.mNotifications.put(c, callbackContext);
-
-		// Note: Success callback is not called here, but when notifications occur.
+		turnNotificationOnOrOff(callbackContext, gh, gh.mGatt, c, true); // ON
 	}
 
 	// API implementation.
@@ -581,51 +572,80 @@ public class BLE extends CordovaPlugin implements LeScanCallback
 		// Get characteristic.
 		BluetoothGattCharacteristic c = gh.mCharacteristics.get(args.getInt(1));
 
-		// Remove callback context for the characteristic.
-		gh.mNotifications.remove(c);
-
 		// Turn notification off.
-		if (turnNotificationOnOrOff(gh.mGatt, c, false)) // OFF
-		{
-			callbackContext.success();
-		}
-		else
-		{
-			callbackContext.error("disableNotification error");
-		}
+		turnNotificationOnOrOff(callbackContext, gh, gh.mGatt, c, false); // OFF
 	}
 
 	// Helper method.
-	// Returns true if successful, false if error.
-	private boolean turnNotificationOnOrOff(
-		BluetoothGatt gatt,
-		BluetoothGattCharacteristic characteristic,
-		boolean onOrOff)
+	private void turnNotificationOnOrOff(
+		final CallbackContext callbackContext,
+		final GattHandler gattHandler,
+		final BluetoothGatt gatt,
+		final BluetoothGattCharacteristic characteristic,
+		final boolean turnOn)
 	{
-		// Turn notification on or off.
-		if (!gatt.setCharacteristicNotification(characteristic, onOrOff)) {
-			return false;
-		}
+		gattHandler.mOperations.add(new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				try {
+					if (!turnOn) {
+						// Remove callback context for the characteristic.
+						gattHandler.mNotifications.remove(characteristic);
+					}
 
-		// Get config descriptor.
-		BluetoothGattDescriptor configDescriptor = characteristic.getDescriptor(
-			UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"));
-		if (configDescriptor == null) {
-			return false;
-		}
+					// Get config descriptor.
+					BluetoothGattDescriptor configDescriptor = characteristic.getDescriptor(
+						UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"));
+					if (configDescriptor == null) {
+						callbackContext.error("Could not get config descriptor");
+						gattHandler.process();
+						return;
+					}
 
-		// Set descriptor value.
-		byte[] descriptorValue = onOrOff ?
-			BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE :
-			BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE;
-		configDescriptor.setValue(descriptorValue);
+					// Set descriptor value.
+					byte[] descriptorValue = turnOn ?
+						BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE :
+						BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE;
+					configDescriptor.setValue(descriptorValue);
 
-		// Write descriptor.
-		if (!gh.mGatt.writeDescriptor(configDescriptor)) {
-			return false;
-		}
+					// Write descriptor.
+					if (!gatt.writeDescriptor(configDescriptor)) {
+						callbackContext.error("Could not write config descriptor");
+						gattHandler.process();
+						return;
+					}
 
-		return true;
+					// Turn notification on or off.
+					if (!gatt.setCharacteristicNotification(characteristic, turnOn)) {
+						callbackContext.error("Could not enable or disable notification");
+						gattHandler.process();
+						return;
+					}
+
+					if (turnOn) {
+						// Save callback context for the characteristic.
+						gattHandler.mNotifications.put(characteristic, callbackContext);
+					}
+
+					if (!turnOn) {
+						// Call success callback only when notification is turned off.
+						// When turning notification on, the success callback will be
+						// called on every notification event.
+						callbackContext.success();
+					}
+
+					gattHandler.process();
+				}
+				catch (Exception e) {
+					e.printStackTrace();
+					callbackContext.error("Exception when enabling or disabling notification");
+					gattHandler.process();
+				}
+			}
+		});
+		gattHandler.process();
 	}
 
 	// API implementation.
@@ -722,7 +742,9 @@ public class BLE extends CordovaPlugin implements LeScanCallback
 		LinkedList<Runnable> mOperations = new LinkedList<Runnable>();
 
 		// connect() and rssi() are handled separately from other operations.
-		CallbackContext mConnectContext, mRssiContext, mCurrentOpContext;
+		CallbackContext mConnectContext;
+		CallbackContext mRssiContext;
+		CallbackContext mCurrentOpContext;
 
 		// The Android API connection.
 		BluetoothGatt mGatt;
@@ -860,12 +882,19 @@ public class BLE extends CordovaPlugin implements LeScanCallback
 		@Override
 		public void onDescriptorWrite(BluetoothGatt g, BluetoothGattDescriptor d, int status)
 		{
-			if(status == BluetoothGatt.GATT_SUCCESS) {
-				mCurrentOpContext.success();
-			} else {
-				mCurrentOpContext.error(status);
+			// We write the notification config descriptor in native code,
+			// and in this case there is no callback context. Thus we check
+			// if the context is null here.
+			// TODO: Encapsulate exposed instance variables in this file,
+			// use method calls instead.
+			if (mCurrentOpContext != null) {
+				if (status == BluetoothGatt.GATT_SUCCESS) {
+					mCurrentOpContext.success();
+				} else {
+					mCurrentOpContext.error(status);
+				}
+				mCurrentOpContext = null;
 			}
-			mCurrentOpContext = null;
 			process();
 		}
 

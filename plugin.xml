@@ -5,9 +5,8 @@
 	id="cordova-plugin-ble"
 	version="1.2.0">
 
-	<!-- This plugin requires Cordova version >= 3.1.0. -->
 	<engines>
-		<engine name="cordova" version=">=3.1.0" />
+		<engine name="cordova" version=">=6.0.0" />
 	</engines>
 
 	<name>Evothings BLE API</name>
@@ -29,8 +28,9 @@
 		<config-file target="AndroidManifest.xml" parent="/manifest">
 			<uses-permission android:name="android.permission.BLUETOOTH" />
 			<uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+			<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 		</config-file>
-
+		<framework src="com.android.support:support-v4:+" />
 		<source-file src="src/android/BLE.java" target-dir="src/com/evothings" />
 	</platform>
 

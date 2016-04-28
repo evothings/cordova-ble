@@ -35,11 +35,24 @@ import java.lang.reflect.*;
 import android.util.Base64;
 import android.os.ParcelUuid;
 import android.util.Log;
+import android.support.v4.content.ContextCompat;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.ActivityCompat.OnRequestPermissionsResultCallback;
+import android.content.pm.PackageManager;
+import android.os.Build;
+import android.Manifest;
 
-public class BLE extends CordovaPlugin implements LeScanCallback
+public class BLE
+	extends CordovaPlugin
+	implements
+		LeScanCallback,
+		OnRequestPermissionsResultCallback
 {
+	private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
+
 	// Used by startScan().
 	private CallbackContext mScanCallbackContext;
+	private CordovaArgs mScanArgs;
 
 	// Used by reset().
 	private CallbackContext mResetCallbackContext;
@@ -220,24 +233,88 @@ public class BLE extends CordovaPlugin implements LeScanCallback
 		}
 	}
 
+	// Callback from ActivityCompat.requestPermissions().
+	@Override
+	public void onRequestPermissionsResult(
+		int requestCode,
+		String permissions[],
+		int[] grantResults)
+	{
+		Log.i("@@@@@@@@", "onRequestPermissionsResult: " + permissions + " " + grantResults);
+
+		if (PERMISSION_REQUEST_COARSE_LOCATION == requestCode)
+		{
+			if (PackageManager.PERMISSION_GRANTED == grantResults[0])
+			{
+				Log.i("@@@@@@@@", "Coarse location permission granted");
+				// Permission ok, start scanning.
+				startScanImpl(mScanArgs, mScanCallbackContext);
+			}
+			else
+			{
+				Log.i("@@@@@@@@", "Coarse location permission NOT granted");
+				// Permission NOT ok, send callback error.
+				mScanCallbackContext.error("Location permission not granted");
+				mScanCallbackContext = null;
+			}
+		}
+	}
+
 	// API implementation. See ble.js for documentation.
 	private void startScan(final CordovaArgs args, final CallbackContext callbackContext)
 	{
+		// Save callback context.
+		mScanCallbackContext = callbackContext;
+		mScanArgs = args;
+
+		Log.i("@@@@@@@@", "Checking permission platform: " + Build.VERSION.SDK_INT + " >= " + Build.VERSION_CODES.M);
+
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+		{
+			Log.i("@@@@@@@@", "Checking permission");
+
+			// Android M Permission check
+			if (ContextCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) !=
+				PackageManager.PERMISSION_GRANTED)
+			{
+					Log.i("@@@@@@@@", "PERMISSION NEEDED");
+
+					// Permission needed. Ask user.
+					ActivityCompat.requestPermissions(
+						this.cordova.getActivity(),
+						new String[] { Manifest.permission.ACCESS_COARSE_LOCATION },
+						PERMISSION_REQUEST_COARSE_LOCATION);
+					return;
+			}
+		}
+
+		// Permission ok, go ahead and start scanning.
+		startScanImpl(mScanArgs, mScanCallbackContext);
+	}
+
+	private void startScanImpl(final CordovaArgs args, final CallbackContext callbackContext)
+	{
+		Log.i("@@@@@@", "Start scan");
+
 		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
 		final LeScanCallback self = this;
 
 		// Get service UUIDs.
 		UUID[] uuidArray = null;
-		try {
+		try
+		{
 			JSONArray uuids = args.getJSONArray(0);
-			if (null != uuids) {
+			if (null != uuids)
+			{
 				uuidArray = new UUID[uuids.length()];
-				for (int i = 0; i < uuids.length(); ++i) {
+				for (int i = 0; i < uuids.length(); ++i)
+				{
 					uuidArray[i] = UUID.fromString(uuids.getString(i));
 				}
 			}
 		}
-		catch(JSONException ex) {
+		catch(JSONException ex)
+		{
 			uuidArray = null;
 		}
 
@@ -246,12 +323,15 @@ public class BLE extends CordovaPlugin implements LeScanCallback
 		checkPowerState(adapter, callbackContext, new Runnable()
 		{
 			@Override
-			public void run() {
-				if(!adapter.startLeScan(serviceUUIDs, self)) {
+			public void run()
+			{
+				if(!adapter.startLeScan(serviceUUIDs, self))
+				{
+					Log.i("@@@@@@", "Start scan failed");
 					callbackContext.error("Android function startLeScan failed");
+					mScanCallbackContext = null;
 					return;
 				}
-				mScanCallbackContext = callbackContext;
 			}
 		});
 	}
@@ -259,18 +339,26 @@ public class BLE extends CordovaPlugin implements LeScanCallback
 	// Called during scan, when a device advertisement is received.
 	public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord)
 	{
-		if(mScanCallbackContext == null) {
+		Log.i("@@@@@@", "onLeScan");
+
+		if (mScanCallbackContext == null)
+		{
 			return;
 		}
-		try {
+
+		try
+		{
+			Log.i("@@@@@@", "onLeScan "+device.getAddress()+" "+rssi+" "+device.getName());
 			//System.out.println("onLeScan "+device.getAddress()+" "+rssi+" "+device.getName());
-			JSONObject o = new JSONObject();
-			o.put("address", device.getAddress());
-			o.put("rssi", rssi);
-			o.put("name", device.getName());
-			o.put("scanRecord", Base64.encodeToString(scanRecord, Base64.NO_WRAP));
-			keepCallback(mScanCallbackContext, o);
-		} catch(JSONException e) {
+			JSONObject jsonObject = new JSONObject();
+			jsonObject.put("address", device.getAddress());
+			jsonObject.put("rssi", rssi);
+			jsonObject.put("name", device.getName());
+			jsonObject.put("scanRecord", Base64.encodeToString(scanRecord, Base64.NO_WRAP));
+			keepCallback(mScanCallbackContext, jsonObject);
+		}
+		catch(JSONException e)
+		{
 			mScanCallbackContext.error(e.toString());
 		}
 	}

@@ -240,19 +240,19 @@ public class BLE
 		String permissions[],
 		int[] grantResults)
 	{
-		Log.i("@@@@@@@@", "onRequestPermissionsResult: " + permissions + " " + grantResults);
+		//Log.i("@@@@@@@@", "onRequestPermissionsResult: " + permissions + " " + grantResults);
 
 		if (PERMISSION_REQUEST_COARSE_LOCATION == requestCode)
 		{
 			if (PackageManager.PERMISSION_GRANTED == grantResults[0])
 			{
-				Log.i("@@@@@@@@", "Coarse location permission granted");
+				//Log.i("@@@@@@@@", "Coarse location permission granted");
 				// Permission ok, start scanning.
 				startScanImpl(mScanArgs, mScanCallbackContext);
 			}
 			else
 			{
-				Log.i("@@@@@@@@", "Coarse location permission NOT granted");
+				//Log.i("@@@@@@@@", "Coarse location permission NOT granted");
 				// Permission NOT ok, send callback error.
 				mScanCallbackContext.error("Location permission not granted");
 				mScanCallbackContext = null;
@@ -267,17 +267,17 @@ public class BLE
 		mScanCallbackContext = callbackContext;
 		mScanArgs = args;
 
-		Log.i("@@@@@@@@", "Checking permission platform: " + Build.VERSION.SDK_INT + " >= " + Build.VERSION_CODES.M);
+		//Log.i("@@@@@@@@", "Checking permission platform: " + Build.VERSION.SDK_INT + " >= " + Build.VERSION_CODES.M);
 
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
 		{
-			Log.i("@@@@@@@@", "Checking permission");
+			//Log.i("@@@@@@@@", "Checking permission");
 
 			// Android M Permission check
 			if (ContextCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) !=
 				PackageManager.PERMISSION_GRANTED)
 			{
-					Log.i("@@@@@@@@", "PERMISSION NEEDED");
+					//Log.i("@@@@@@@@", "PERMISSION NEEDED");
 
 					// Permission needed. Ask user.
 					ActivityCompat.requestPermissions(
@@ -294,7 +294,7 @@ public class BLE
 
 	private void startScanImpl(final CordovaArgs args, final CallbackContext callbackContext)
 	{
-		Log.i("@@@@@@", "Start scan");
+		//Log.i("@@@@@@", "Start scan");
 
 		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
 		final LeScanCallback self = this;
@@ -327,7 +327,7 @@ public class BLE
 			{
 				if(!adapter.startLeScan(serviceUUIDs, self))
 				{
-					Log.i("@@@@@@", "Start scan failed");
+					//Log.i("@@@@@@", "Start scan failed");
 					callbackContext.error("Android function startLeScan failed");
 					mScanCallbackContext = null;
 					return;
@@ -339,7 +339,7 @@ public class BLE
 	// Called during scan, when a device advertisement is received.
 	public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord)
 	{
-		Log.i("@@@@@@", "onLeScan");
+		//Log.i("@@@@@@", "onLeScan");
 
 		if (mScanCallbackContext == null)
 		{
@@ -348,7 +348,7 @@ public class BLE
 
 		try
 		{
-			Log.i("@@@@@@", "onLeScan "+device.getAddress()+" "+rssi+" "+device.getName());
+			//Log.i("@@@@@@", "onLeScan "+device.getAddress()+" "+rssi+" "+device.getName());
 			//System.out.println("onLeScan "+device.getAddress()+" "+rssi+" "+device.getName());
 			JSONObject jsonObject = new JSONObject();
 			jsonObject.put("address", device.getAddress());

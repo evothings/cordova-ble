@@ -1504,7 +1504,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	self.scanIsWaiting = NO;
 	self.scanIsWaitingServices = nil;
 
-	NSLog(@"scanForPeripherals services: %@", services);
+	//NSLog(@"scanForPeripherals services: %@", services);
 
 	NSDictionary* options = @{CBCentralManagerScanOptionAllowDuplicatesKey: @YES};
 
@@ -1520,7 +1520,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 		}
 	}
 
-	NSLog(@"scanForPeripherals serviceUUIDs: %@", serviceUUIDs);
+	//NSLog(@"scanForPeripherals serviceUUIDs: %@", serviceUUIDs);
 
 	// Start scanning.
 	[self.central

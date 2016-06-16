@@ -35,9 +35,6 @@ import java.lang.reflect.*;
 import android.util.Base64;
 import android.os.ParcelUuid;
 import android.util.Log;
-import android.support.v4.content.ContextCompat;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.ActivityCompat.OnRequestPermissionsResultCallback;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.Manifest;
@@ -45,8 +42,7 @@ import android.Manifest;
 public class BLE
 	extends CordovaPlugin
 	implements
-		LeScanCallback,
-		OnRequestPermissionsResultCallback
+		LeScanCallback
 {
 	private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
 
@@ -233,12 +229,10 @@ public class BLE
 		}
 	}
 
-	// Callback from ActivityCompat.requestPermissions().
+	// Callback from cordova.requestPermissions().
 	@Override
-	public void onRequestPermissionsResult(
-		int requestCode,
-		String permissions[],
-		int[] grantResults)
+	public void onRequestPermissionResult(int requestCode, String[] permissions,
+		int[] grantResults) throws JSONException
 	{
 		//Log.i("@@@@@@@@", "onRequestPermissionsResult: " + permissions + " " + grantResults);
 
@@ -267,25 +261,15 @@ public class BLE
 		mScanCallbackContext = callbackContext;
 		mScanArgs = args;
 
-		//Log.i("@@@@@@@@", "Checking permission platform: " + Build.VERSION.SDK_INT + " >= " + Build.VERSION_CODES.M);
-
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+		// Cordova Permission check
+		if (!cordova.hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION))
 		{
-			//Log.i("@@@@@@@@", "Checking permission");
+			//Log.i("@@@@@@@@", "PERMISSION NEEDED");
 
-			// Android M Permission check
-			if (ContextCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) !=
-				PackageManager.PERMISSION_GRANTED)
-			{
-					//Log.i("@@@@@@@@", "PERMISSION NEEDED");
-
-					// Permission needed. Ask user.
-					ActivityCompat.requestPermissions(
-						this.cordova.getActivity(),
-						new String[] { Manifest.permission.ACCESS_COARSE_LOCATION },
-						PERMISSION_REQUEST_COARSE_LOCATION);
-					return;
-			}
+			// Permission needed. Ask user.
+			cordova.requestPermission(this, PERMISSION_REQUEST_COARSE_LOCATION,
+				Manifest.permission.ACCESS_COARSE_LOCATION);
+			return;
 		}
 
 		// Permission ok, go ahead and start scanning.

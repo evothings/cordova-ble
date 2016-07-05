@@ -573,10 +573,10 @@ exports.writeDescriptor = function(deviceHandle, descriptorHandle, data, win, fa
 * @param {number} characteristicHandle - A handle from {@link characteristicCallback}.
 * @param {dataCallback} win - Called every time the value changes.
 * @param {failCallback} fail - Error callback.
-* @param {object} options - Android only: Optional object with options. 
-Set field writeConfigDescriptor to false to disable automatic writing of 
-notification or indication descriptor value. This is useful if full control 
-of writing the config descriptor is needed.
+* @param {object} options - Android only: Optional object with options.
+* Set field writeConfigDescriptor to false to disable automatic writing of
+* notification or indication descriptor value. This is useful if full control
+* of writing the config descriptor is needed.
 *
 * @example
 // Example call:
@@ -610,10 +610,10 @@ exports.enableNotification = function(deviceHandle, characteristicHandle, win, f
 * @param {number} characteristicHandle - A handle from {@link characteristicCallback}.
 * @param {emptyCallback} win - Success callback.
 * @param {failCallback} fail - Error callback.
-* @param {object} options - Android only: Optional object with options. 
-Set field writeConfigDescriptor  to false to disable automatic writing of 
-notification or indication descriptor value. This is useful if full control 
-of writing the config descriptor is needed.
+* @param {object} options - Android only: Optional object with options.
+* Set field writeConfigDescriptor to false to disable automatic writing of
+* notification or indication descriptor value. This is useful if full control
+* of writing the config descriptor is needed.
 *
 * @example
 // Example call:

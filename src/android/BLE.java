@@ -171,6 +171,7 @@ public class BLE
 	private void checkPowerState(BluetoothAdapter adapter, CallbackContext cc, Runnable onPowerOn)
 	{
 		if(adapter == null) {
+			cc.error("Bluetooth not supported");
 			return;
 		}
 		if(adapter.getState() == BluetoothAdapter.STATE_ON) {
@@ -193,12 +194,17 @@ public class BLE
 		mOnPowerOn = null;
 		mPowerOnCallbackContext = null;
 		if(resultCode == Activity.RESULT_OK) {
-			onPowerOn.run();
+			if (null != onPowerOn) {
+				onPowerOn.run();
+			} else {
+				// Runnable was null.
+				if (null != cc) cc.error("Runnable is null in onActivityResult (internal error)");
+			}
 		} else {
 			if(resultCode == Activity.RESULT_CANCELED) {
-				cc.error("Bluetooth power-on canceled");
+				if (null != cc) cc.error("Bluetooth power-on canceled");
 			} else {
-				cc.error("Bluetooth power-on failed, code "+resultCode);
+				if (null != cc) cc.error("Bluetooth power-on failed with code: "+resultCode);
 			}
 		}
 	}

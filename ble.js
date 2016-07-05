@@ -560,19 +560,26 @@ exports.writeDescriptor = function(deviceHandle, descriptorHandle, data, win, fa
 	exec(win, fail, 'BLE', 'writeDescriptor', [deviceHandle, descriptorHandle, data.buffer]);
 };
 
-/** Request notification on changes to a characteristic's value.
+/** Request notification or indication on changes to a characteristic's value.
 * This is more efficient than polling the value using readCharacteristic().
+* This function automatically detects if the characteristic supports 
+* notification or indication. 
 *
-* <p>To activate notifications,
-* some (all?) devices require you to write a special value to a separate configuration characteristic,
-* in addition to calling this function.
-* Refer to your device's documentation.
+* <p>Android only: To disable this functionality and write
+* the configuration descriptor yourself, supply an options object as
+* last parameter, see example below.</p>
 *
 * @param {number} deviceHandle - A handle from {@link connectCallback}.
 * @param {number} characteristicHandle - A handle from {@link characteristicCallback}.
 * @param {dataCallback} win - Called every time the value changes.
-* @param {failCallback} fail
+* @param {failCallback} fail - Error callback.
+* @param {object} options - Android only: Optional object with options. 
+Set field writeConfigDescriptor to false to disable automatic writing of 
+notification or indication descriptor value. This is useful if full control 
+of writing the config descriptor is needed.
+*
 * @example
+// Example call:
 evothings.ble.enableNotification(
 	deviceHandle,
 	characteristic.handle,
@@ -584,17 +591,32 @@ evothings.ble.enableNotification(
 	{
 		console.log('BLE enableNotification error: ' + errorCode);
 	});
+	
+// To disable automatic writing of the config descriptor 
+// supply this as last parameter to enableNotification:
+{ writeConfigDescriptor: false }
 */
-exports.enableNotification = function(deviceHandle, characteristicHandle, win, fail) {
-	exec(win, fail, 'BLE', 'enableNotification', [deviceHandle, characteristicHandle]);
+exports.enableNotification = function(deviceHandle, characteristicHandle, win, fail, options) {
+	var flags = 0;
+	if (options && !options.writeConfigDescriptor) {
+		var flags = 1; // Don't write config descriptor.
+	}
+	exec(win, fail, 'BLE', 'enableNotification', [deviceHandle, characteristicHandle, flags]);
 };
 
-/** Disable notification of changes to a characteristic's value.
+/** Disable notification or indication of a characteristic's value.
+*
 * @param {number} deviceHandle - A handle from {@link connectCallback}.
 * @param {number} characteristicHandle - A handle from {@link characteristicCallback}.
-* @param {emptyCallback} win
-* @param {failCallback} fail
+* @param {emptyCallback} win - Success callback.
+* @param {failCallback} fail - Error callback.
+* @param {object} options - Android only: Optional object with options. 
+Set field writeConfigDescriptor  to false to disable automatic writing of 
+notification or indication descriptor value. This is useful if full control 
+of writing the config descriptor is needed.
+*
 * @example
+// Example call:
 evothings.ble.disableNotification(
 	deviceHandle,
 	characteristic.handle,
@@ -606,9 +628,17 @@ evothings.ble.disableNotification(
 	{
 		console.log('BLE disableNotification error: ' + errorCode);
 	});
+	
+// To disable automatic writing of the config descriptor 
+// supply this as last parameter to enableNotification:
+{ writeConfigDescriptor: false }
 */
-exports.disableNotification = function(deviceHandle, characteristicHandle, win, fail) {
-	exec(win, fail, 'BLE', 'disableNotification', [deviceHandle, characteristicHandle]);
+exports.disableNotification = function(deviceHandle, characteristicHandle, win, fail, options) {
+	var flags = 0;
+	if (options && !options.writeConfigDescriptor) {
+		var flags = 1; // Don't write config descriptor.
+	}
+	exec(win, fail, 'BLE', 'disableNotification', [deviceHandle, characteristicHandle, flags]);
 };
 
 /** i is an integer. It is converted to byte and put in an array[1].

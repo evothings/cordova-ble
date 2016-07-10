@@ -38,6 +38,10 @@ import android.util.Log;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.Manifest;
+import android.provider.Settings;
+import android.provider.Settings.SettingNotFoundException;
+import android.app.AlertDialog;
+import android.text.TextUtils;
 
 public class BLE
 	extends CordovaPlugin
@@ -49,6 +53,9 @@ public class BLE
 	// Implementation of BLE Central API.
 	
 	private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
+
+	private static final int ACTIVITY_REQUEST_ENABLE_BLUETOOTH = 1;
+	private static final int ACTIVITY_REQUEST_ENABLE_LOCATION = 2;
 
 	// Used by startScan().
 	private CallbackContext mScanCallbackContext;
@@ -94,43 +101,100 @@ public class BLE
 	// Handles JavaScript-to-native function calls.
 	// Returns true if a supported function was called, false otherwise.
 	@Override
-	public boolean execute(String action, CordovaArgs args, final CallbackContext callbackContext)
+	public boolean execute(
+		String action,
+		CordovaArgs args,
+		final CallbackContext callbackContext)
 	{
 		try {
-		if("startScan".equals(action)) { startScan(args, callbackContext); return true; }
-		else if("stopScan".equals(action)) { stopScan(args, callbackContext); return true; }
-		else if("connect".equals(action)) { connect(args, callbackContext); return true; }
-		else if("close".equals(action)) { close(args, callbackContext); return true; }
-		else if("rssi".equals(action)) { rssi(args, callbackContext); return true; }
-		else if("services".equals(action)) { services(args, callbackContext); return true; }
-		else if("characteristics".equals(action)) { characteristics(args, callbackContext); return true; }
-		else if("descriptors".equals(action)) { descriptors(args, callbackContext); return true; }
-		else if("readCharacteristic".equals(action)) { readCharacteristic(args, callbackContext); return true; }
-		else if("readDescriptor".equals(action)) { readDescriptor(args, callbackContext); return true; }
-		else if("writeCharacteristic".equals(action))
-			{ writeCharacteristic(args, callbackContext, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT); return true; }
-		else if("writeCharacteristicWithoutResponse".equals(action))
-			{ writeCharacteristic(args, callbackContext, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE); return true; }
-		else if("writeDescriptor".equals(action)) { writeDescriptor(args, callbackContext); return true; }
-		else if("enableNotification".equals(action)) { enableNotification(args, callbackContext); return true; }
-		else if("disableNotification".equals(action)) { disableNotification(args, callbackContext); return true; }
-		else if("testCharConversion".equals(action)) { testCharConversion(args, callbackContext); return true; }
-		else if("reset".equals(action)) { reset(args, callbackContext); return true; }
-
-		else if("startAdvertise".equals(action)) { startAdvertise(args, callbackContext); return true; }
-		else if("stopAdvertise".equals(action)) { stopAdvertise(args, callbackContext); return true; }
-
-		else if("startGattServer".equals(action)) { startGattServer(args, callbackContext); return true; }
-		else if("stopGattServer".equals(action)) { stopGattServer(args, callbackContext); return true; }
-		else if("sendResponse".equals(action)) { sendResponse(args, callbackContext); return true; }
-		else if("notify".equals(action)) { notify(args, callbackContext); return true; }
-
-		} catch(JSONException e) {
+			// Central API
+			if("startScan".equals(action)) {
+				startScan(args, callbackContext);
+			}
+			else if("stopScan".equals(action)) {
+				stopScan(args, callbackContext);
+			}
+			else if("connect".equals(action)) {
+				connect(args, callbackContext);
+			}
+			else if("close".equals(action)) {
+				close(args, callbackContext);
+			}
+			else if("rssi".equals(action)) {
+				rssi(args, callbackContext);
+			}
+			else if("services".equals(action)) {
+				services(args, callbackContext);
+			}
+			else if("characteristics".equals(action)) {
+				characteristics(args, callbackContext);
+			}
+			else if("descriptors".equals(action)) {
+				descriptors(args, callbackContext);
+			}
+			else if("readCharacteristic".equals(action)) {
+				readCharacteristic(args, callbackContext);
+			}
+			else if("readDescriptor".equals(action)) {
+				readDescriptor(args, callbackContext);
+			}
+			else if("writeCharacteristic".equals(action)) {
+				writeCharacteristic(
+					args,
+					callbackContext,
+					BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+			}
+			else if("writeCharacteristicWithoutResponse".equals(action)) {
+				writeCharacteristic(
+					args,
+					callbackContext,
+					BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+			}
+			else if("writeDescriptor".equals(action)) {
+				writeDescriptor(args, callbackContext);
+			}
+			else if("enableNotification".equals(action)) {
+				enableNotification(args, callbackContext);
+			}
+			else if("disableNotification".equals(action)) {
+				disableNotification(args, callbackContext);
+			}
+			else if("testCharConversion".equals(action)) {
+				testCharConversion(args, callbackContext);
+			}
+			else if("reset".equals(action)) {
+				reset(args, callbackContext);
+			}
+			// Peripheral API
+			else if("startAdvertise".equals(action)) {
+				startAdvertise(args, callbackContext);
+			}
+			else if("stopAdvertise".equals(action)) {
+				stopAdvertise(args, callbackContext);
+			}
+			else if("startGattServer".equals(action)) {
+				startGattServer(args, callbackContext);
+			}
+			else if("stopGattServer".equals(action)) {
+				stopGattServer(args, callbackContext);
+			}
+			else if("sendResponse".equals(action)) {
+				sendResponse(args, callbackContext);
+			}
+			else if("notify".equals(action)) {
+				notify(args, callbackContext);
+			}
+			else {
+				return false;
+			}
+		}
+		catch(JSONException e) {
 			e.printStackTrace();
 			callbackContext.error(e.getMessage());
+			return false;
 		}
 
-		return false;
+		return true;
 	}
 
 	/**
@@ -181,7 +245,7 @@ public class BLE
 			mOnPowerOn = onPowerOn;
 			mPowerOnCallbackContext = cc;
 			Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-			cordova.startActivityForResult(this, enableBtIntent, 0);
+			cordova.startActivityForResult(this, enableBtIntent, ACTIVITY_REQUEST_ENABLE_BLUETOOTH);
 		}
 	}
 
@@ -189,22 +253,35 @@ public class BLE
 	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent intent)
 	{
-		Runnable onPowerOn = mOnPowerOn;
-		CallbackContext cc = mPowerOnCallbackContext;
-		mOnPowerOn = null;
-		mPowerOnCallbackContext = null;
-		if(resultCode == Activity.RESULT_OK) {
-			if (null != onPowerOn) {
-				onPowerOn.run();
+		if (ACTIVITY_REQUEST_ENABLE_BLUETOOTH == requestCode) {
+			Runnable onPowerOn = mOnPowerOn;
+			CallbackContext cc = mPowerOnCallbackContext;
+			mOnPowerOn = null;
+			mPowerOnCallbackContext = null;
+			if(resultCode == Activity.RESULT_OK) {
+				if (null != onPowerOn) {
+					onPowerOn.run();
+				} else {
+					// Runnable was null.
+					if (null != cc) cc.error("Runnable is null in onActivityResult (internal error)");
+				}
 			} else {
-				// Runnable was null.
-				if (null != cc) cc.error("Runnable is null in onActivityResult (internal error)");
+				if(resultCode == Activity.RESULT_CANCELED) {
+					if (null != cc) cc.error("Bluetooth power-on canceled");
+				} else {
+					if (null != cc) cc.error("Bluetooth power-on failed with code: "+resultCode);
+				}
 			}
-		} else {
-			if(resultCode == Activity.RESULT_CANCELED) {
-				if (null != cc) cc.error("Bluetooth power-on canceled");
-			} else {
-				if (null != cc) cc.error("Bluetooth power-on failed with code: "+resultCode);
+		}
+		else if (ACTIVITY_REQUEST_ENABLE_LOCATION == requestCode) {
+			if (isSystemLocationEnabled(mContext)) {
+				// All prerequisites ok, go ahead and start scanning.
+				startScanImpl(mScanArgs, mScanCallbackContext);
+			}
+			else {
+				// System Location is off, send callback error.
+				mScanCallbackContext.error("System Location is off");
+				mScanCallbackContext = null;
 			}
 		}
 	}
@@ -239,31 +316,6 @@ public class BLE
 		}
 	}
 
-	// Callback from cordova.requestPermissions().
-	@Override
-	public void onRequestPermissionResult(int requestCode, String[] permissions,
-		int[] grantResults) throws JSONException
-	{
-		//Log.i("@@@@@@@@", "onRequestPermissionsResult: " + permissions + " " + grantResults);
-
-		if (PERMISSION_REQUEST_COARSE_LOCATION == requestCode)
-		{
-			if (PackageManager.PERMISSION_GRANTED == grantResults[0])
-			{
-				//Log.i("@@@@@@@@", "Coarse location permission granted");
-				// Permission ok, start scanning.
-				startScanImpl(mScanArgs, mScanCallbackContext);
-			}
-			else
-			{
-				//Log.i("@@@@@@@@", "Coarse location permission NOT granted");
-				// Permission NOT ok, send callback error.
-				mScanCallbackContext.error("Location permission not granted");
-				mScanCallbackContext = null;
-			}
-		}
-	}
-
 	// API implementation. See ble.js for documentation.
 	private void startScan(final CordovaArgs args, final CallbackContext callbackContext)
 	{
@@ -271,25 +323,117 @@ public class BLE
 		mScanCallbackContext = callbackContext;
 		mScanArgs = args;
 
-		// Cordova Permission check
-		if (!cordova.hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION))
-		{
-			//Log.i("@@@@@@@@", "PERMISSION NEEDED");
+		// Check permissions needed for scanning, starting with
+		// application location permission.
+		startScanCheckApplicationLocationPermission();
+	}
 
-			// Permission needed. Ask user.
+	// Callback from cordova.requestPermission().
+	@Override
+	public void onRequestPermissionResult(int requestCode, String[] permissions,
+		int[] grantResults) throws JSONException
+	{
+		if (PERMISSION_REQUEST_COARSE_LOCATION == requestCode)
+		{
+			if (PackageManager.PERMISSION_GRANTED == grantResults[0])
+			{
+				// Permission ok, check system location setting.
+				startScanCheckSystemLocationSetting();
+			}
+			else
+			{
+				// Permission NOT ok, send callback error.
+				mScanCallbackContext.error("Location permission not granted");
+				mScanCallbackContext = null;
+			}
+		}
+	}
+
+	private void startScanCheckApplicationLocationPermission()
+	{
+		// Location permission check.
+		if (cordova.hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION))
+		{
+			// Location permission ok, next check system location setting.
+			startScanCheckSystemLocationSetting();
+		}
+		else
+		{
+			// Location permission needed. Ask user.
 			cordova.requestPermission(this, PERMISSION_REQUEST_COARSE_LOCATION,
 				Manifest.permission.ACCESS_COARSE_LOCATION);
+		}
+	}
+
+	private void startScanCheckSystemLocationSetting()
+	{
+		// If below Marshmallow System Location setting does not need to be on.
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+			// Go ahead and start scanning.
+			startScanImpl(mScanArgs, mScanCallbackContext);
 			return;
 		}
 
-		// Permission ok, go ahead and start scanning.
-		startScanImpl(mScanArgs, mScanCallbackContext);
+		// We are on Marshmallow or higher, check/ask for System Location to be enabled.
+		if (isSystemLocationEnabled(mContext)) {
+			// All prerequisites ok, now we can go ahead and start scanning.
+			startScanImpl(mScanArgs, mScanCallbackContext);
+		}
+		else {
+			// Ask user to enable system location.
+			// TODO: Make it possible to set strings from JavaScript (for localisation).
+			AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
+			builder.setTitle("Please enable Location in System Settings");
+			builder.setMessage("Location setting needs to be turned On for Bluetooth scanning to work");
+			final CordovaPlugin self = this;
+			builder.setPositiveButton(
+				"Open System Settings",
+				new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialogInterface, int i) {
+						Intent enableLocationIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+						cordova.startActivityForResult(
+							self,
+							enableLocationIntent,
+							ACTIVITY_REQUEST_ENABLE_LOCATION);
+					}
+				});
+			builder.setNegativeButton(
+				"Cancel",
+				new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialogInterface, int i) {
+						// Permission NOT ok, send callback error.
+						mScanCallbackContext.error("System Location is off");
+						mScanCallbackContext = null;
+					}
+				});
+			builder.create().show();
+		}
+	}
+
+	private boolean isSystemLocationEnabled(Context context)
+	{
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+			try {
+				int locationMode = Settings.Secure.getInt(
+					context.getContentResolver(),
+					Settings.Secure.LOCATION_MODE);
+				return locationMode != Settings.Secure.LOCATION_MODE_OFF;
+			}
+			catch (SettingNotFoundException e) {
+				e.printStackTrace();
+				return false;
+			}
+		}
+		else {
+			String locationProviders = Settings.Secure.getString(
+				context.getContentResolver(),
+				Settings.Secure.LOCATION_PROVIDERS_ALLOWED);
+			return !TextUtils.isEmpty(locationProviders);
+		}
 	}
 
 	private void startScanImpl(final CordovaArgs args, final CallbackContext callbackContext)
 	{
-		//Log.i("@@@@@@", "Start scan");
-
 		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
 		final LeScanCallback self = this;
 
@@ -321,10 +465,8 @@ public class BLE
 			{
 				if(!adapter.startLeScan(serviceUUIDs, self))
 				{
-					//Log.i("@@@@@@", "Start scan failed");
 					callbackContext.error("Android function startLeScan failed");
 					mScanCallbackContext = null;
-					return;
 				}
 			}
 		});
@@ -333,8 +475,6 @@ public class BLE
 	// Called during scan, when a device advertisement is received.
 	public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord)
 	{
-		//Log.i("@@@@@@", "onLeScan");
-
 		if (mScanCallbackContext == null)
 		{
 			return;
@@ -343,7 +483,6 @@ public class BLE
 		try
 		{
 			//Log.i("@@@@@@", "onLeScan "+device.getAddress()+" "+rssi+" "+device.getName());
-			//System.out.println("onLeScan "+device.getAddress()+" "+rssi+" "+device.getName());
 			JSONObject jsonObject = new JSONObject();
 			jsonObject.put("address", device.getAddress());
 			jsonObject.put("rssi", rssi);
@@ -733,7 +872,7 @@ public class BLE
 		byte[] descriptorValue;
 		
 		// Check if notification or indication should be used.
-		if (0 != (characteristic.getProperties() &  BluetoothGattCharacteristic.PROPERTY_NOTIFY)) {
+		if (0 != (characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_NOTIFY)) {
 			descriptorValue = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE;
 		} 
 		else if (0 != (characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_INDICATE)) {

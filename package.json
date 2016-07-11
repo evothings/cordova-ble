@@ -1,6 +1,6 @@
 {
   "name": "cordova-plugin-ble",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Bluetooth Low Energy Cordova plugin",
   "cordova": {
     "id": "cordova-plugin-ble",

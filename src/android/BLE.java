@@ -785,9 +785,7 @@ public class BLE
 		int options = args.getInt(2);
 
 		// Turn notification on.
-		boolean setConfigDescriptor = 
-			NOTIFICATION_OPTIONS_DISABLE_AUTOMATIC_CONFIG == 
-			(NOTIFICATION_OPTIONS_DISABLE_AUTOMATIC_CONFIG & options);
+		boolean setConfigDescriptor = (options == 0);
 		turnNotificationOn(callbackContext, gh, gh.mGatt, characteristic, setConfigDescriptor);
 	}
 
@@ -806,9 +804,7 @@ public class BLE
 		int options = args.getInt(2);
 		
 		// Turn notification off.
-		boolean setConfigDescriptor = 
-			NOTIFICATION_OPTIONS_DISABLE_AUTOMATIC_CONFIG == 
-			(NOTIFICATION_OPTIONS_DISABLE_AUTOMATIC_CONFIG & options);
+		boolean setConfigDescriptor = (options == 0);
 		turnNotificationOff(callbackContext, gh, gh.mGatt, characteristic, setConfigDescriptor);
 	}
 

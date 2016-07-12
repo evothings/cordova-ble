@@ -83,7 +83,7 @@ public class BLE
 		super.initialize(cordova, webView);
 		mContext = webView.getContext();
 
-		if(!mRegisteredReceiver) {
+		if (!mRegisteredReceiver) {
 			mContext.registerReceiver(
 				new BluetoothStateReceiver(),
 				new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
@@ -97,33 +97,33 @@ public class BLE
 	public boolean execute(String action, CordovaArgs args, final CallbackContext callbackContext)
 	{
 		try {
-		if("startScan".equals(action)) { startScan(args, callbackContext); return true; }
-		else if("stopScan".equals(action)) { stopScan(args, callbackContext); return true; }
-		else if("connect".equals(action)) { connect(args, callbackContext); return true; }
-		else if("close".equals(action)) { close(args, callbackContext); return true; }
-		else if("rssi".equals(action)) { rssi(args, callbackContext); return true; }
-		else if("services".equals(action)) { services(args, callbackContext); return true; }
-		else if("characteristics".equals(action)) { characteristics(args, callbackContext); return true; }
-		else if("descriptors".equals(action)) { descriptors(args, callbackContext); return true; }
-		else if("readCharacteristic".equals(action)) { readCharacteristic(args, callbackContext); return true; }
-		else if("readDescriptor".equals(action)) { readDescriptor(args, callbackContext); return true; }
-		else if("writeCharacteristic".equals(action))
+		if ("startScan".equals(action)) { startScan(args, callbackContext); return true; }
+		else if ("stopScan".equals(action)) { stopScan(args, callbackContext); return true; }
+		else if ("connect".equals(action)) { connect(args, callbackContext); return true; }
+		else if ("close".equals(action)) { close(args, callbackContext); return true; }
+		else if ("rssi".equals(action)) { rssi(args, callbackContext); return true; }
+		else if ("services".equals(action)) { services(args, callbackContext); return true; }
+		else if ("characteristics".equals(action)) { characteristics(args, callbackContext); return true; }
+		else if ("descriptors".equals(action)) { descriptors(args, callbackContext); return true; }
+		else if ("readCharacteristic".equals(action)) { readCharacteristic(args, callbackContext); return true; }
+		else if ("readDescriptor".equals(action)) { readDescriptor(args, callbackContext); return true; }
+		else if ("writeCharacteristic".equals(action))
 			{ writeCharacteristic(args, callbackContext, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT); return true; }
-		else if("writeCharacteristicWithoutResponse".equals(action))
+		else if ("writeCharacteristicWithoutResponse".equals(action))
 			{ writeCharacteristic(args, callbackContext, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE); return true; }
-		else if("writeDescriptor".equals(action)) { writeDescriptor(args, callbackContext); return true; }
-		else if("enableNotification".equals(action)) { enableNotification(args, callbackContext); return true; }
-		else if("disableNotification".equals(action)) { disableNotification(args, callbackContext); return true; }
-		else if("testCharConversion".equals(action)) { testCharConversion(args, callbackContext); return true; }
-		else if("reset".equals(action)) { reset(args, callbackContext); return true; }
+		else if ("writeDescriptor".equals(action)) { writeDescriptor(args, callbackContext); return true; }
+		else if ("enableNotification".equals(action)) { enableNotification(args, callbackContext); return true; }
+		else if ("disableNotification".equals(action)) { disableNotification(args, callbackContext); return true; }
+		else if ("testCharConversion".equals(action)) { testCharConversion(args, callbackContext); return true; }
+		else if ("reset".equals(action)) { reset(args, callbackContext); return true; }
 
-		else if("startAdvertise".equals(action)) { startAdvertise(args, callbackContext); return true; }
-		else if("stopAdvertise".equals(action)) { stopAdvertise(args, callbackContext); return true; }
+		else if ("startAdvertise".equals(action)) { startAdvertise(args, callbackContext); return true; }
+		else if ("stopAdvertise".equals(action)) { stopAdvertise(args, callbackContext); return true; }
 
-		else if("startGattServer".equals(action)) { startGattServer(args, callbackContext); return true; }
-		else if("stopGattServer".equals(action)) { stopGattServer(args, callbackContext); return true; }
-		else if("sendResponse".equals(action)) { sendResponse(args, callbackContext); return true; }
-		else if("notify".equals(action)) { notify(args, callbackContext); return true; }
+		else if ("startGattServer".equals(action)) { startGattServer(args, callbackContext); return true; }
+		else if ("stopGattServer".equals(action)) { stopGattServer(args, callbackContext); return true; }
+		else if ("sendResponse".equals(action)) { sendResponse(args, callbackContext); return true; }
+		else if ("notify".equals(action)) { notify(args, callbackContext); return true; }
 
 		} catch(JSONException e) {
 			e.printStackTrace();
@@ -145,21 +145,21 @@ public class BLE
 	@Override
 	public void onReset()
 	{
-		if(mScanCallbackContext != null) {
+		if (mScanCallbackContext != null) {
 			BluetoothAdapter a = BluetoothAdapter.getDefaultAdapter();
 			a.stopLeScan(this);
 			mScanCallbackContext = null;
 		}
-		if(mConnectedDevices != null) {
+		if (mConnectedDevices != null) {
 			Iterator<GattHandler> itr = mConnectedDevices.values().iterator();
-			while(itr.hasNext()) {
+			while (itr.hasNext()) {
 				GattHandler gh = itr.next();
-				if(gh.mGatt != null)
+				if (gh.mGatt != null)
 					gh.mGatt.close();
 			}
 			mConnectedDevices.clear();
 		}
-		if(mGattServer != null) {
+		if (mGattServer != null) {
 			mGattServer.close();
 			mGattServer = null;
 		}
@@ -170,11 +170,11 @@ public class BLE
 	// Calls cc.error if power-on fails.
 	private void checkPowerState(BluetoothAdapter adapter, CallbackContext cc, Runnable onPowerOn)
 	{
-		if(adapter == null) {
+		if (adapter == null) {
 			cc.error("Bluetooth not supported");
 			return;
 		}
-		if(adapter.getState() == BluetoothAdapter.STATE_ON) {
+		if (adapter.getState() == BluetoothAdapter.STATE_ON) {
 			// Bluetooth is ON
 			onPowerOn.run();
 		} else {
@@ -193,7 +193,7 @@ public class BLE
 		CallbackContext cc = mPowerOnCallbackContext;
 		mOnPowerOn = null;
 		mPowerOnCallbackContext = null;
-		if(resultCode == Activity.RESULT_OK) {
+		if (resultCode == Activity.RESULT_OK) {
 			if (null != onPowerOn) {
 				onPowerOn.run();
 			} else {
@@ -201,7 +201,7 @@ public class BLE
 				if (null != cc) cc.error("Runnable is null in onActivityResult (internal error)");
 			}
 		} else {
-			if(resultCode == Activity.RESULT_CANCELED) {
+			if (resultCode == Activity.RESULT_CANCELED) {
 				if (null != cc) cc.error("Bluetooth power-on canceled");
 			} else {
 				if (null != cc) cc.error("Bluetooth power-on failed with code: "+resultCode);
@@ -319,7 +319,7 @@ public class BLE
 			@Override
 			public void run()
 			{
-				if(!adapter.startLeScan(serviceUUIDs, self))
+				if (!adapter.startLeScan(serviceUUIDs, self))
 				{
 					//Log.i("@@@@@@", "Start scan failed");
 					callbackContext.error("Android function startLeScan failed");
@@ -382,7 +382,7 @@ public class BLE
 
 					// Note that gh.mGatt and this.mGatt are different object and have different types.
 					// --> Renamed this.mGatt to mConnectedDevices to avoid confusion.
-					if(mConnectedDevices == null)
+					if (mConnectedDevices == null)
 						mConnectedDevices = new HashMap<Integer, GattHandler>();
 					Object res = mConnectedDevices.put(mNextGattHandle, gh);
 					assert(res == null);
@@ -414,18 +414,18 @@ public class BLE
 		GattHandler gh = null;
 		try {
 			gh = mConnectedDevices.get(args.getInt(0));
-			if(gh.mRssiContext != null) {
+			if (gh.mRssiContext != null) {
 				callbackContext.error("Previous call to rssi() not yet completed!");
 				return;
 			}
 			gh.mRssiContext = callbackContext;
-			if(!gh.mGatt.readRemoteRssi()) {
+			if (!gh.mGatt.readRemoteRssi()) {
 				gh.mRssiContext = null;
 				callbackContext.error("readRemoteRssi");
 			}
 		} catch(Exception e) {
 			e.printStackTrace();
-			if(gh != null) {
+			if (gh != null) {
 				gh.mRssiContext = null;
 			}
 			callbackContext.error(e.toString());
@@ -441,7 +441,7 @@ public class BLE
 				@Override
 				public void run() {
 					gh.mCurrentOpContext = callbackContext;
-					if(!gh.mGatt.discoverServices()) {
+					if (!gh.mGatt.discoverServices()) {
 						gh.mCurrentOpContext = null;
 						callbackContext.error("discoverServices");
 						gh.process();
@@ -463,8 +463,8 @@ public class BLE
 	{
 		final GattHandler gh = mConnectedDevices.get(args.getInt(0));
 		JSONArray a = new JSONArray();
-		for(BluetoothGattCharacteristic c : gh.mServices.get(args.getInt(1)).getCharacteristics()) {
-			if(gh.mCharacteristics == null)
+		for (BluetoothGattCharacteristic c : gh.mServices.get(args.getInt(1)).getCharacteristics()) {
+			if (gh.mCharacteristics == null)
 				gh.mCharacteristics = new HashMap<Integer, BluetoothGattCharacteristic>();
 			Object res = gh.mCharacteristics.put(gh.mNextHandle, c);
 			assert(res == null);
@@ -490,8 +490,8 @@ public class BLE
 	{
 		final GattHandler gh = mConnectedDevices.get(args.getInt(0));
 		JSONArray a = new JSONArray();
-		for(BluetoothGattDescriptor d : gh.mCharacteristics.get(args.getInt(1)).getDescriptors()) {
-			if(gh.mDescriptors == null)
+		for (BluetoothGattDescriptor d : gh.mCharacteristics.get(args.getInt(1)).getDescriptors()) {
+			if (gh.mDescriptors == null)
 				gh.mDescriptors = new HashMap<Integer, BluetoothGattDescriptor>();
 			Object res = gh.mDescriptors.put(gh.mNextHandle, d);
 			assert(res == null);
@@ -519,7 +519,8 @@ public class BLE
 			public void run() {
 				try {
 					gh.mCurrentOpContext = callbackContext;
-					if(!gh.mGatt.readCharacteristic(gh.mCharacteristics.get(args.getInt(1)))) {
+					if (!gh.mGatt.readCharacteristic(gh.mCharacteristics.get(args.getInt(1)))) {
+						// TODO: Set to null in catch.
 						gh.mCurrentOpContext = null;
 						callbackContext.error("readCharacteristic");
 						gh.process();
@@ -548,7 +549,8 @@ public class BLE
 			{
 				try {
 					gh.mCurrentOpContext = callbackContext;
-					if(!gh.mGatt.readDescriptor(gh.mDescriptors.get(args.getInt(1)))) {
+					if (!gh.mGatt.readDescriptor(gh.mDescriptors.get(args.getInt(1)))) {
+						// TODO: Set to null in catch.
 						gh.mCurrentOpContext = null;
 						callbackContext.error("readDescriptor");
 						gh.process();
@@ -582,12 +584,13 @@ public class BLE
 					System.out.println("writeCharacteristic("+args.getInt(0)+", "+args.getInt(1)+", "+args.getString(2)+")");
 					c.setWriteType(writeType);
 					c.setValue(args.getArrayBuffer(2));
-					if(!gh.mGatt.writeCharacteristic(c)) {
+					if (!gh.mGatt.writeCharacteristic(c)) {
 						gh.mCurrentOpContext = null;
 						callbackContext.error("writeCharacteristic");
 						gh.process();
 					}
 				} catch(JSONException e) {
+						// TODO: Set to null in catch.
 					e.printStackTrace();
 					callbackContext.error(e.toString());
 					gh.process();
@@ -614,12 +617,13 @@ public class BLE
 					gh.mDontReportWriteDescriptor = false;
 					BluetoothGattDescriptor d = gh.mDescriptors.get(args.getInt(1));
 					d.setValue(args.getArrayBuffer(2));
-					if(!gh.mGatt.writeDescriptor(d)) {
+					if (!gh.mGatt.writeDescriptor(d)) {
 						gh.mCurrentOpContext = null;
 						callbackContext.error("writeDescriptor");
 						gh.process();
 					}
 				} catch(JSONException e) {
+						// TODO: Set to null in catch.
 					e.printStackTrace();
 					callbackContext.error(e.toString());
 					gh.process();
@@ -846,34 +850,34 @@ public class BLE
 	{
 		mResetCallbackContext = null;
 		BluetoothAdapter a = BluetoothAdapter.getDefaultAdapter();
-		if(mScanCallbackContext != null) {
+		if (mScanCallbackContext != null) {
 			a.stopLeScan(this);
 			mScanCallbackContext = null;
 		}
 		int state = a.getState();
 		//STATE_OFF, STATE_TURNING_ON, STATE_ON, STATE_TURNING_OFF.
-		if(state == BluetoothAdapter.STATE_TURNING_ON) {
+		if (state == BluetoothAdapter.STATE_TURNING_ON) {
 			// reset in progress; wait for STATE_ON.
 			mResetCallbackContext = cc;
 			return;
 		}
-		if(state == BluetoothAdapter.STATE_TURNING_OFF) {
+		if (state == BluetoothAdapter.STATE_TURNING_OFF) {
 			// reset in progress; wait for STATE_OFF.
 			mResetCallbackContext = cc;
 			return;
 		}
-		if(state == BluetoothAdapter.STATE_OFF) {
+		if (state == BluetoothAdapter.STATE_OFF) {
 			boolean res = a.enable();
-			if(res) {
+			if (res) {
 				mResetCallbackContext = cc;
 			} else {
 				cc.error("enable");
 			}
 			return;
 		}
-		if(state == BluetoothAdapter.STATE_ON) {
+		if (state == BluetoothAdapter.STATE_ON) {
 			boolean res = a.disable();
-			if(res) {
+			if (res) {
 				mResetCallbackContext = cc;
 			} else {
 				cc.error("disable");
@@ -891,15 +895,15 @@ public class BLE
 			BluetoothAdapter a = BluetoothAdapter.getDefaultAdapter();
 			int state = a.getState();
 			System.out.println("BluetoothState: "+a);
-			if(mResetCallbackContext != null) {
-				if(state == BluetoothAdapter.STATE_OFF) {
+			if (mResetCallbackContext != null) {
+				if (state == BluetoothAdapter.STATE_OFF) {
 					boolean res = a.enable();
-					if(!res) {
+					if (!res) {
 						mResetCallbackContext.error("enable");
 						mResetCallbackContext = null;
 					}
 				}
-				if(state == BluetoothAdapter.STATE_ON) {
+				if (state == BluetoothAdapter.STATE_ON) {
 					mResetCallbackContext.success();
 					mResetCallbackContext = null;
 				}
@@ -958,21 +962,16 @@ public class BLE
 		// Run the next operation, if any.
 		void process()
 		{
-			//Log.i("@@@@@@", "GattHandler process 1");
-			if(mCurrentOpContext != null)
-				return;
-			//Log.i("@@@@@@", "GattHandler process 2");
-			Runnable r = mOperations.poll();
-			if(r == null)
-				return;
-			//Log.i("@@@@@@", "GattHandler process 3");
-			r.run();
+			if (mCurrentOpContext != null) return;
+			Runnable runnable = mOperations.poll();
+			if (runnable == null) return;
+			runnable.run();
 		}
 
 		@Override
 		public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState)
 		{
-			if(status == BluetoothGatt.GATT_SUCCESS) {
+			if (status == BluetoothGatt.GATT_SUCCESS) {
 				try {
 					JSONObject o = new JSONObject();
 					o.put("deviceHandle", mHandle);
@@ -992,7 +991,7 @@ public class BLE
 		{
 			CallbackContext c = mRssiContext;
 			mRssiContext = null;
-			if(status == BluetoothGatt.GATT_SUCCESS) {
+			if (status == BluetoothGatt.GATT_SUCCESS) {
 				c.success(rssi);
 			} else {
 				c.error(status);
@@ -1002,14 +1001,12 @@ public class BLE
 		@Override
 		public void onServicesDiscovered(BluetoothGatt g, int status)
 		{
-			if (mCurrentOpContext == null) return;
-			
-			if(status == BluetoothGatt.GATT_SUCCESS) {
+			if (status == BluetoothGatt.GATT_SUCCESS) {
 				List<BluetoothGattService> services = g.getServices();
 				JSONArray a = new JSONArray();
-				for(BluetoothGattService s : services) {
+				for (BluetoothGattService s : services) {
 					// give the service a handle.
-					if(mServices == null)
+					if (mServices == null)
 						mServices = new HashMap<Integer, BluetoothGattService>();
 					Object res = mServices.put(mNextHandle, s);
 					assert(res == null);
@@ -1038,9 +1035,7 @@ public class BLE
 		@Override
 		public void onCharacteristicRead(BluetoothGatt g, BluetoothGattCharacteristic c, int status)
 		{
-			if (mCurrentOpContext == null) return;
-			
-			if(status == BluetoothGatt.GATT_SUCCESS) {
+			if (status == BluetoothGatt.GATT_SUCCESS) {
 				mCurrentOpContext.success(c.getValue());
 			} else {
 				mCurrentOpContext.error(status);
@@ -1052,9 +1047,7 @@ public class BLE
 		@Override
 		public void onDescriptorRead(BluetoothGatt g, BluetoothGattDescriptor d, int status)
 		{
-			if (mCurrentOpContext == null) return;
-			
-			if(status == BluetoothGatt.GATT_SUCCESS) {
+			if (status == BluetoothGatt.GATT_SUCCESS) {
 				mCurrentOpContext.success(d.getValue());
 			} else {
 				mCurrentOpContext.error(status);
@@ -1066,7 +1059,7 @@ public class BLE
 		@Override
 		public void onCharacteristicWrite(BluetoothGatt g, BluetoothGattCharacteristic c, int status)
 		{
-			if(status == BluetoothGatt.GATT_SUCCESS) {
+			if (status == BluetoothGatt.GATT_SUCCESS) {
 				mCurrentOpContext.success();
 			} else {
 				mCurrentOpContext.error(status);
@@ -1113,11 +1106,11 @@ public class BLE
 		{
 			String advModeString = setJson.optString("advertiseMode", "ADVERTISE_MODE_LOW_POWER");
 			int advMode;
-			if(advModeString.equals("ADVERTISE_MODE_LOW_POWER"))
+			if (advModeString.equals("ADVERTISE_MODE_LOW_POWER"))
 				advMode = AdvertiseSettings.ADVERTISE_MODE_LOW_POWER;
-			else if(advModeString.equals("ADVERTISE_MODE_BALANCED"))
+			else if (advModeString.equals("ADVERTISE_MODE_BALANCED"))
 				advMode = AdvertiseSettings.ADVERTISE_MODE_BALANCED;
-			else if(advModeString.equals("ADVERTISE_MODE_LOW_LATENCY"))
+			else if (advModeString.equals("ADVERTISE_MODE_LOW_LATENCY"))
 				advMode = AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY;
 			else
 				throw new JSONException("Invalid advertiseMode: "+advModeString);
@@ -1132,13 +1125,13 @@ public class BLE
 		{
 			String advModeString = setJson.optString("txPowerLevel", "ADVERTISE_TX_POWER_MEDIUM");
 			int advMode;
-			if(advModeString.equals("ADVERTISE_TX_POWER_ULTRA_LOW"))
+			if (advModeString.equals("ADVERTISE_TX_POWER_ULTRA_LOW"))
 				advMode = AdvertiseSettings.ADVERTISE_TX_POWER_ULTRA_LOW;
-			else if(advModeString.equals("ADVERTISE_TX_POWER_LOW"))
+			else if (advModeString.equals("ADVERTISE_TX_POWER_LOW"))
 				advMode = AdvertiseSettings.ADVERTISE_TX_POWER_LOW;
-			else if(advModeString.equals("ADVERTISE_TX_POWER_MEDIUM"))
+			else if (advModeString.equals("ADVERTISE_TX_POWER_MEDIUM"))
 				advMode = AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM;
-			else if(advModeString.equals("ADVERTISE_TX_POWER_HIGH"))
+			else if (advModeString.equals("ADVERTISE_TX_POWER_HIGH"))
 				advMode = AdvertiseSettings.ADVERTISE_TX_POWER_HIGH;
 			else
 				throw new JSONException("Invalid txPowerLevel");
@@ -1150,7 +1143,7 @@ public class BLE
 
 	private AdvertiseData buildAdvertiseData(JSONObject dataJson) throws JSONException
 	{
-		if(dataJson == null)
+		if (dataJson == null)
 			return null;
 		AdvertiseData.Builder dataBuild = new AdvertiseData.Builder();
 
@@ -1159,16 +1152,16 @@ public class BLE
 		dataBuild.setIncludeTxPowerLevel(dataJson.optBoolean("includeTxPowerLevel", false));
 
 		JSONArray serviceUUIDs = dataJson.optJSONArray("serviceUUIDs");
-		if(serviceUUIDs != null) {
-			for(int i=0; i<serviceUUIDs.length(); i++) {
+		if (serviceUUIDs != null) {
+			for (int i=0; i<serviceUUIDs.length(); i++) {
 				dataBuild.addServiceUuid(new ParcelUuid(UUID.fromString(serviceUUIDs.getString(i))));
 			}
 		}
 
 		JSONObject serviceData = dataJson.optJSONObject("serviceData");
-		if(serviceData != null) {
+		if (serviceData != null) {
 			Iterator<String> keys = serviceData.keys();
-			while(keys.hasNext()) {
+			while (keys.hasNext()) {
 				String key = keys.next();
 				ParcelUuid uuid = new ParcelUuid(UUID.fromString(key));
 				byte[] data = Base64.decode(serviceData.getString(key), Base64.DEFAULT);
@@ -1177,9 +1170,9 @@ public class BLE
 		}
 
 		JSONObject manufacturerData = dataJson.optJSONObject("manufacturerData");
-		if(manufacturerData != null) {
+		if (manufacturerData != null) {
 			Iterator<String> keys = manufacturerData.keys();
-			while(keys.hasNext()) {
+			while (keys.hasNext()) {
 				String key = keys.next();
 				int id = Integer.parseInt(key);
 				byte[] data = Base64.decode(manufacturerData.getString(key), Base64.DEFAULT);
@@ -1192,13 +1185,13 @@ public class BLE
 
 	private void startAdvertise(final CordovaArgs args, final CallbackContext cc) throws JSONException
 	{
-		if(mAdCallback != null) {
+		if (mAdCallback != null) {
 			cc.error("Advertise must be stopped first!");
 			return;
 		}
 
 		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-		if(!adapter.isMultipleAdvertisementSupported()) {
+		if (!adapter.isMultipleAdvertisementSupported()) {
 			cc.error("BLE advertisement not supported by this device!");
 			return;
 		}
@@ -1222,14 +1215,14 @@ public class BLE
 				// we're looking for all fields typed "public static final int".
 				Field[] fields = AdvertiseCallback.class.getDeclaredFields();
 				String errorMessage = null;
-				for(int i=0; i<fields.length; i++) {
+				for (int i=0; i<fields.length; i++) {
 					Field f = fields[i];
 					System.out.println("Field: Class "+f.getType().getName()+". Modifiers: "+Modifier.toString(f.getModifiers()));
-					if(f.getType() == int.class &&
+					if (f.getType() == int.class &&
 						f.getModifiers() == (Modifier.PUBLIC | Modifier.STATIC | Modifier.FINAL))
 					{
 						try {
-							if(f.getInt(null) == errorCode) {
+							if (f.getInt(null) == errorCode) {
 								errorMessage = f.getName();
 								break;
 							}
@@ -1239,7 +1232,7 @@ public class BLE
 						}
 					}
 				}
-				if(errorMessage == null) {
+				if (errorMessage == null) {
 					errorMessage = Integer.toString(errorCode);
 				}
 				cc.error("AdvertiseCallback.onStartFailure: "+errorMessage);
@@ -1259,7 +1252,7 @@ public class BLE
 			{
 				try {
 					mAdvertiser = adapter.getBluetoothLeAdvertiser();
-					if(scanResponseData != null) {
+					if (scanResponseData != null) {
 						mAdvertiser.startAdvertising(settings, broadcastData, scanResponseData, mAdCallback);
 					} else {
 						mAdvertiser.startAdvertising(settings, broadcastData, mAdCallback);
@@ -1275,7 +1268,7 @@ public class BLE
 
 	private void stopAdvertise(final CordovaArgs args, final CallbackContext cc)
 	{
-		if(mAdvertiser != null && mAdCallback != null) {
+		if (mAdvertiser != null && mAdCallback != null) {
 			mAdvertiser.stopAdvertising(mAdCallback);
 			mAdCallback = null;
 		}
@@ -1287,7 +1280,7 @@ public class BLE
 
 	private void startGattServer(final CordovaArgs args, final CallbackContext cc) throws JSONException
 	{
-		if(mGattServer != null) {
+		if (mGattServer != null) {
 			cc.error("GATT server already started!");
 			return;
 		}
@@ -1299,14 +1292,14 @@ public class BLE
 
 		JSONArray services = settings.getJSONArray("services");
 
-		for(int i=0; i<services.length(); i++) {
+		for (int i=0; i<services.length(); i++) {
 			JSONObject service = services.getJSONObject(i);
 			BluetoothGattService s = new BluetoothGattService(
 				UUID.fromString(service.getString("uuid")), service.getInt("type"));
 			JSONArray characteristics = service.optJSONArray("characteristics");
 
-			if(characteristics != null) {
-				for(int j=0; j<characteristics.length(); j++) {
+			if (characteristics != null) {
+				for (int j=0; j<characteristics.length(); j++) {
 
 					JSONObject characteristic = characteristics.getJSONObject(j);
 					System.out.println("characteristic:"+characteristic.toString(1));
@@ -1319,7 +1312,7 @@ public class BLE
 
 					JSONArray descriptors = characteristic.optJSONArray("descriptors");
 
-					if(descriptors != null) for(int k=0; k<descriptors.length(); k++) {
+					if (descriptors != null) for (int k=0; k<descriptors.length(); k++) {
 						JSONObject descriptor = descriptors.getJSONObject(k);
 						System.out.println("descriptor:"+descriptor.toString(1));
 						BluetoothGattDescriptor d = new BluetoothGattDescriptor(
@@ -1340,7 +1333,7 @@ public class BLE
 
 	private void stopGattServer(final CordovaArgs args, final CallbackContext cc)
 	{
-		if(mGattServer == null) {
+		if (mGattServer == null) {
 			cc.error("GATT server not started!");
 			return;
 		}
@@ -1376,7 +1369,7 @@ public class BLE
 		{
 			System.out.println("onConnectionStateChange("+device.getAddress()+", "+status+", "+newState+")");
 			Integer handle = mDeviceHandles.get(device);
-			if(handle == null) {
+			if (handle == null) {
 				handle = new Integer(mNextHandle++);
 				mDeviceHandles.put(device, handle);
 				mDevices.put(handle, device);
@@ -1501,7 +1494,7 @@ public class BLE
 		public void onNotificationSent(BluetoothDevice device, int status)
 		{
 			System.out.println("onNotificationSent("+device.getAddress()+", "+status+")");
-			if(status == BluetoothGatt.GATT_SUCCESS)
+			if (status == BluetoothGatt.GATT_SUCCESS)
 				mNotifyCC.success();
 			else
 				mNotifyCC.error(status);
@@ -1517,7 +1510,7 @@ public class BLE
 
 	private void sendResponse(final CordovaArgs args, final CallbackContext cc) throws JSONException
 	{
-		if(mGattServer == null) {
+		if (mGattServer == null) {
 			cc.error("GATT server not started!");
 			return;
 		}
@@ -1536,7 +1529,7 @@ public class BLE
 
 	private void notify(final CordovaArgs args, final CallbackContext cc) throws JSONException
 	{
-		if(mGattServer == null) {
+		if (mGattServer == null) {
 			cc.error("GATT server not started!");
 			return;
 		}

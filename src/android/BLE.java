@@ -611,6 +611,7 @@ public class BLE
 			{
 				try {
 					gh.mCurrentOpContext = callbackContext;
+					gh.mDontReportWriteDescriptor = false;
 					BluetoothGattDescriptor d = gh.mDescriptors.get(args.getInt(1));
 					d.setValue(args.getArrayBuffer(2));
 					if(!gh.mGatt.writeDescriptor(d)) {
@@ -642,67 +643,50 @@ public class BLE
 		// Get characteristic.
 		BluetoothGattCharacteristic characteristic = gh.mCharacteristics.get(args.getInt(1));
 		
-		// Get options flag.
-		int options = args.getInt(2);
-
 		// Turn notification on.
-		boolean setConfigDescriptor = (options == 0);
-		turnNotificationOn(callbackContext, gh, gh.mGatt, characteristic, setConfigDescriptor);
-	}
+		boolean success = gh.mGatt.setCharacteristicNotification(characteristic, true);
+		if (!success) {
+			callbackContext.error("Could not enable notification");
+			return;
+		}
 
-	// API implementation.
-	private void disableNotification(
-		final CordovaArgs args,
-		final CallbackContext callbackContext)
-		throws JSONException
-	{
-		final GattHandler gh = mConnectedDevices.get(args.getInt(0));
-
-		// Get characteristic.
-		BluetoothGattCharacteristic characteristic = gh.mCharacteristics.get(args.getInt(1));
-
-		// Get options flag.
-		int options = args.getInt(2);
+		// Save callback context for the characteristic.
+		// When turning notification on, the success callback will be
+		// called on every notification event.
+		gh.mNotifications.put(characteristic, callbackContext);
 		
-		// Turn notification off.
-		boolean setConfigDescriptor = (options == 0);
-		turnNotificationOff(callbackContext, gh, gh.mGatt, characteristic, setConfigDescriptor);
+		// Write config descriptor if not disabled in options.
+		int options = args.getInt(2);
+		boolean writeConfigDescriptor = (options == 0);
+		if (writeConfigDescriptor) {
+			turnConfigDescriptorOn(callbackContext, gh, gh.mGatt, characteristic);
+		}
 	}
 
 	// Helper method.
-	private void turnNotificationOn(
+	private void turnConfigDescriptorOn(
 		final CallbackContext callbackContext,
 		final GattHandler gattHandler,
 		final BluetoothGatt gatt,
-		final BluetoothGattCharacteristic characteristic,
-		final boolean setConfigDescriptor)
+		final BluetoothGattCharacteristic characteristic)
 	{
 		gattHandler.mOperations.add(new Runnable()
 		{
 			@Override
 			public void run()
 			{
-				try {
-					// Mark operation in progress.
-					gattHandler.mCurrentOp = true;
-
-					if (setConfigDescriptor) {
-						// Write the config descriptor and enable notification.
-						if (enableConfigDescriptor(callbackContext, gattHandler, gatt, characteristic)) {
-							enableNotification(callbackContext, gattHandler, gatt, characteristic);
-						}
-					}
-					else {
-						// Enable notification without writing config descriptor.
-						// This is useful for applications that want to manually 
-						// set the config descriptor.
-						enableNotification(callbackContext, gattHandler, gatt, characteristic);
-					}
-				}
-				catch (Exception e) {
-					e.printStackTrace();
-					callbackContext.error("Exception when enabling notification");
+				// Mark operation in process.
+				gattHandler.mCurrentOpContext = callbackContext;
+					
+				// Don't report result from writing descriptor.
+				gattHandler.mDontReportWriteDescriptor = true;
+				
+				// Write the config descriptor.
+				if (!enableConfigDescriptor(callbackContext, gattHandler, gatt, characteristic)) {
+					gattHandler.mCurrentOpContext = null;
+					gattHandler.mDontReportWriteDescriptor = false;
 					gattHandler.process();
+					return;
 				}
 			}
 		});
@@ -721,7 +705,6 @@ public class BLE
 			UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"));
 		if (configDescriptor == null) {
 			callbackContext.error("Could not get config descriptor");
-			gattHandler.process();
 			return false;
 		}
 
@@ -737,7 +720,6 @@ public class BLE
 		} 
 		else {
 			callbackContext.error("Characteristic does not support notification or indication.");
-			gattHandler.process();
 			return false;
 		} 
 		
@@ -748,74 +730,73 @@ public class BLE
 		boolean success = gatt.writeDescriptor(configDescriptor);
 		if (!success) {
 			callbackContext.error("Could not write config descriptor");
-			gattHandler.process();
 			return false;
 		}
 		
 		return true;
 	}
 	
+	// API implementation.
+	private void disableNotification(
+		final CordovaArgs args,
+		final CallbackContext callbackContext)
+		throws JSONException
+	{
+		final GattHandler gh = mConnectedDevices.get(args.getInt(0));
+
+		// Get characteristic.
+		BluetoothGattCharacteristic characteristic = gh.mCharacteristics.get(args.getInt(1));
+
+		// Turn notification off.
+		boolean success = gh.mGatt.setCharacteristicNotification(characteristic, false);
+		if (!success) {
+			callbackContext.error("Could not disable notification");
+			return;
+		}
+		
+		// Remove callback context for the characteristic 
+		// when turning off notification.
+		gh.mNotifications.remove(characteristic);
+
+		// Write config descriptor if not disabled in options.
+		int options = args.getInt(2);
+		boolean writeConfigDescriptor = (options == 0);
+		if (writeConfigDescriptor) {
+			turnConfigDescriptorOff(callbackContext, gh, gh.mGatt, characteristic);
+		} else {
+			// Call success callback when notification is turned off.
+			callbackContext.success();
+		}
+	}
+
 	// Helper method.
-	private void enableNotification(
+	private void turnConfigDescriptorOff(
 		final CallbackContext callbackContext,
 		final GattHandler gattHandler,
 		final BluetoothGatt gatt,
 		final BluetoothGattCharacteristic characteristic)
-	{
-
-		// Turn notification on.
-		boolean success = gatt.setCharacteristicNotification(characteristic, true);
-		if (!success) {
-			callbackContext.error("Could not enable notification");
-			gattHandler.process();
-			return;
-		}
-
-		// Save callback context for the characteristic.
-		// When turning notification on, the success callback will be
-		// called on every notification event.
-		gattHandler.mNotifications.put(characteristic, callbackContext);
-	}
-	
-	// Helper method.
-	private void turnNotificationOff(
-		final CallbackContext callbackContext,
-		final GattHandler gattHandler,
-		final BluetoothGatt gatt,
-		final BluetoothGattCharacteristic characteristic,
-		final boolean setConfigDescriptor)
 	{
 		gattHandler.mOperations.add(new Runnable()
 		{
 			@Override
 			public void run()
 			{
-				try {
-					// Mark operation in progress.
-					gattHandler.mCurrentOp = true;
-
-					// Remove callback context for the characteristic 
-					// when turning off notification.
-					gattHandler.mNotifications.remove(characteristic);
-
-					if (setConfigDescriptor) {
-						// Write the config descriptor and disable notification.
-						if (disableConfigDescriptor(callbackContext, gattHandler, gatt, characteristic)) {
-							disableNotification(callbackContext, gattHandler, gatt, characteristic);
-						}
-					}
-					else {
-						// Disable notification without writing config descriptor.
-						// This is useful for applications that want to manually 
-						// set the config descriptor.
-						disableNotification(callbackContext, gattHandler, gatt, characteristic);
-					}
-				}
-				catch (Exception e) {
-					e.printStackTrace();
-					callbackContext.error("Exception when disabling notification");
+				// Mark operation in process.
+				gattHandler.mCurrentOpContext = callbackContext;
+					
+				// Don't report result from writing descriptor.
+				gattHandler.mDontReportWriteDescriptor = true;
+				
+				// Write the config descriptor.
+				if (!disableConfigDescriptor(callbackContext, gattHandler, gatt, characteristic)) {
+					gattHandler.mCurrentOpContext = null;
+					gattHandler.mDontReportWriteDescriptor = false;
 					gattHandler.process();
+					return;
 				}
+				
+				// Call success callback for notification turned off.
+				callbackContext.success();
 			}
 		});
 		gattHandler.process();
@@ -833,7 +814,6 @@ public class BLE
 			UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"));
 		if (configDescriptor == null) {
 			callbackContext.error("Could not get config descriptor");
-			gattHandler.process();
 			return false;
 		}
 		
@@ -845,30 +825,10 @@ public class BLE
 		boolean success = gatt.writeDescriptor(configDescriptor);
 		if (!success) {
 			callbackContext.error("Could not write config descriptor");
-			gattHandler.process();
 			return false;
 		}
 		
 		return true;
-	}
-	
-	// Helper method.
-	private void disableNotification(
-		final CallbackContext callbackContext,
-		final GattHandler gattHandler,
-		final BluetoothGatt gatt,
-		final BluetoothGattCharacteristic characteristic)
-	{
-		// Turn notification off.
-		boolean success = gatt.setCharacteristicNotification(characteristic, false);
-		if (!success) {
-			callbackContext.error("Could not disable notification");
-			gattHandler.process();
-			return;
-		}
-
-		// Call success callback when notification is turned off.
-		callbackContext.success();
 	}
 	
 	// API implementation.
@@ -969,9 +929,9 @@ public class BLE
 		CallbackContext mRssiContext;
 		CallbackContext mCurrentOpContext;
 
-		// Special flag for doing async operations without a Cordova callback context.
-		// Used when writing notification config descriptor.
-		boolean mCurrentOp = false;
+		// Flag used when writing notification config descriptor.
+		// In this case we don't want to send back the result to JavaScript.
+		boolean mDontReportWriteDescriptor = false;
 
 		// The Android API connection.
 		BluetoothGatt mGatt;
@@ -998,11 +958,14 @@ public class BLE
 		// Run the next operation, if any.
 		void process()
 		{
-			if(mCurrentOpContext != null || mCurrentOp)
+			//Log.i("@@@@@@", "GattHandler process 1");
+			if(mCurrentOpContext != null)
 				return;
+			//Log.i("@@@@@@", "GattHandler process 2");
 			Runnable r = mOperations.poll();
 			if(r == null)
 				return;
+			//Log.i("@@@@@@", "GattHandler process 3");
 			r.run();
 		}
 
@@ -1039,6 +1002,8 @@ public class BLE
 		@Override
 		public void onServicesDiscovered(BluetoothGatt g, int status)
 		{
+			if (mCurrentOpContext == null) return;
+			
 			if(status == BluetoothGatt.GATT_SUCCESS) {
 				List<BluetoothGattService> services = g.getServices();
 				JSONArray a = new JSONArray();
@@ -1073,6 +1038,8 @@ public class BLE
 		@Override
 		public void onCharacteristicRead(BluetoothGatt g, BluetoothGattCharacteristic c, int status)
 		{
+			if (mCurrentOpContext == null) return;
+			
 			if(status == BluetoothGatt.GATT_SUCCESS) {
 				mCurrentOpContext.success(c.getValue());
 			} else {
@@ -1085,6 +1052,8 @@ public class BLE
 		@Override
 		public void onDescriptorRead(BluetoothGatt g, BluetoothGattDescriptor d, int status)
 		{
+			if (mCurrentOpContext == null) return;
+			
 			if(status == BluetoothGatt.GATT_SUCCESS) {
 				mCurrentOpContext.success(d.getValue());
 			} else {
@@ -1109,20 +1078,15 @@ public class BLE
 		@Override
 		public void onDescriptorWrite(BluetoothGatt g, BluetoothGattDescriptor d, int status)
 		{
-			// We write the notification config descriptor in native code,
-			// and in this case there is no callback context. Thus we check
-			// if the context is null here.
-			// TODO: Encapsulate exposed instance variables in this file,
-			// use method calls instead.
-			if (mCurrentOpContext != null) {
+			if (!mDontReportWriteDescriptor) {
 				if (status == BluetoothGatt.GATT_SUCCESS) {
 					mCurrentOpContext.success();
 				} else {
 					mCurrentOpContext.error(status);
 				}
-				mCurrentOpContext = null;
 			}
-			mCurrentOp = false;
+			mDontReportWriteDescriptor = false;
+			mCurrentOpContext = null;
 			process();
 		}
 

@@ -442,8 +442,8 @@ public class BLE
 				public void run() {
 					gh.mCurrentOpContext = callbackContext;
 					if (!gh.mGatt.discoverServices()) {
-						gh.mCurrentOpContext = null;
 						callbackContext.error("discoverServices");
+						gh.mCurrentOpContext = null;
 						gh.process();
 					}
 				}
@@ -520,14 +520,14 @@ public class BLE
 				try {
 					gh.mCurrentOpContext = callbackContext;
 					if (!gh.mGatt.readCharacteristic(gh.mCharacteristics.get(args.getInt(1)))) {
-						// TODO: Set to null in catch.
-						gh.mCurrentOpContext = null;
 						callbackContext.error("readCharacteristic");
+						gh.mCurrentOpContext = null;
 						gh.process();
 					}
 				} catch(JSONException e) {
 					e.printStackTrace();
 					callbackContext.error(e.toString());
+					gh.mCurrentOpContext = null;
 					gh.process();
 				}
 			}
@@ -550,14 +550,14 @@ public class BLE
 				try {
 					gh.mCurrentOpContext = callbackContext;
 					if (!gh.mGatt.readDescriptor(gh.mDescriptors.get(args.getInt(1)))) {
-						// TODO: Set to null in catch.
-						gh.mCurrentOpContext = null;
 						callbackContext.error("readDescriptor");
+						gh.mCurrentOpContext = null;
 						gh.process();
 					}
 				} catch(JSONException e) {
 					e.printStackTrace();
 					callbackContext.error(e.toString());
+					gh.mCurrentOpContext = null;
 					gh.process();
 				}
 			}
@@ -585,14 +585,14 @@ public class BLE
 					c.setWriteType(writeType);
 					c.setValue(args.getArrayBuffer(2));
 					if (!gh.mGatt.writeCharacteristic(c)) {
-						gh.mCurrentOpContext = null;
 						callbackContext.error("writeCharacteristic");
+						gh.mCurrentOpContext = null;
 						gh.process();
 					}
 				} catch(JSONException e) {
-						// TODO: Set to null in catch.
 					e.printStackTrace();
 					callbackContext.error(e.toString());
+					gh.mCurrentOpContext = null;
 					gh.process();
 				}
 			}
@@ -618,14 +618,14 @@ public class BLE
 					BluetoothGattDescriptor d = gh.mDescriptors.get(args.getInt(1));
 					d.setValue(args.getArrayBuffer(2));
 					if (!gh.mGatt.writeDescriptor(d)) {
-						gh.mCurrentOpContext = null;
 						callbackContext.error("writeDescriptor");
+						gh.mCurrentOpContext = null;
 						gh.process();
 					}
 				} catch(JSONException e) {
-						// TODO: Set to null in catch.
 					e.printStackTrace();
 					callbackContext.error(e.toString());
+					gh.mCurrentOpContext = null;
 					gh.process();
 				}
 			}
@@ -687,8 +687,8 @@ public class BLE
 				
 				// Write the config descriptor.
 				if (!enableConfigDescriptor(callbackContext, gattHandler, gatt, characteristic)) {
-					gattHandler.mCurrentOpContext = null;
 					gattHandler.mDontReportWriteDescriptor = false;
+					gattHandler.mCurrentOpContext = null;
 					gattHandler.process();
 					return;
 				}
@@ -793,8 +793,8 @@ public class BLE
 				
 				// Write the config descriptor.
 				if (!disableConfigDescriptor(callbackContext, gattHandler, gatt, characteristic)) {
-					gattHandler.mCurrentOpContext = null;
 					gattHandler.mDontReportWriteDescriptor = false;
+					gattHandler.mCurrentOpContext = null;
 					gattHandler.process();
 					return;
 				}
@@ -960,6 +960,10 @@ public class BLE
 		}
 
 		// Run the next operation, if any.
+		// TODO: Make another method processNext that sets mCurrentOpContext to
+		// null and calls process. That would clean up repeated code a bit.
+		// Also consider writing method that adds a runnable to the mOperations
+		// queue and calls process, this would also reduce some repeated code.
 		void process()
 		{
 			if (mCurrentOpContext != null) return;

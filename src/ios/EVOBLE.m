@@ -1035,13 +1035,26 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 		}];
 }
 
+// TODO: Should we make this command always write with response?
 - (void) writeCharacteristic: (CDVInvokedUrlCommand*)command
 {
 	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
-	if (nil == myPeripheral) return; // Error.
+	if (nil == myPeripheral)
+	{
+		[self
+			sendErrorMessage: @"device not found"
+			forCallback: command.callbackId];
+		return; // Error.
+	}
 
 	CBCharacteristic* characteristic = [myPeripheral getObjectFromCommand: command atIndex: 1];
-	if (nil == characteristic) return; // Error.
+	if (nil == characteristic)
+	{
+		[self
+			sendErrorMessage: @"characteristic not found"
+			forCallback: command.callbackId];
+		return; // Error.
+	}
 
 	NSData* data = [command.arguments objectAtIndex: 2];
 	if (nil == data)
@@ -1052,23 +1065,46 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 		return;
 	}
 
-	// Determine allowed write type.
+	// Determine allowed write type and write characteristic.
 	//
-	// Note: A characteristic can have both flags
-	// CBCharacteristicWriteWithResponse and
-	// CBCharacteristicWriteWithoutResponse set!
-	// For example this is the case with RFduino.
-	// It is important to check the value of writeType
-	// below when determining if next command should
-	// be executed at once.
-	CBCharacteristicWriteType writeType;
+	// A characteristic can have both flags CBCharacteristicWriteWithResponse and
+	// CBCharacteristicWriteWithoutResponse set! This is the case with e.g. RFduino.
+	//
+	// Write with response has priority over writing without response.
+	//
 	if (CBCharacteristicPropertyWrite & characteristic.properties)
 	{
-		writeType = CBCharacteristicWriteWithResponse;
+		// Write with response.
+		// Result for write type CBCharacteristicWriteWithResponse is delivered in:
+		//	peripheral:didWriteValueForCharacteristic:error:
+		CBPeripheral* __weak peripheral = myPeripheral.peripheral;
+		[myPeripheral
+			addCommandForCallbackId: command.callbackId
+			forObject: characteristic
+			operation: EVO_OPERATION_WRITE_CHARACTERISTIC
+			withBlock: ^{
+				[peripheral
+					writeValue: data
+					forCharacteristic: characteristic
+					type: CBCharacteristicWriteWithResponse];
+			}];
 	}
 	else if (CBCharacteristicPropertyWriteWithoutResponse & characteristic.properties)
 	{
-		writeType = CBCharacteristicWriteWithoutResponse;
+		// Write without response is writing with response is not allowed.
+		// TODO: Should we remove this from writeCharacteristic now when
+		// writeCharacteristicWithoutResponse is implemented?
+		CBPeripheral* peripheral = myPeripheral.peripheral;
+		[peripheral
+			writeValue: data
+			forCharacteristic: characteristic
+			type: CBCharacteristicWriteWithoutResponse];
+
+		// Call success callback now since there will be no notification.
+		[self sendOkClearCallback: command.callbackId];
+
+		// Run next command, if any.
+		[myPeripheral clearActiveCommandAndContinue];
 	}
 	else
 	{
@@ -1076,40 +1112,55 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 		[self
 			sendErrorMessage: @"write characteristic not permitted"
 			forCallback: command.callbackId];
+
+		// Run next command, if any.
+		[myPeripheral clearActiveCommandAndContinue];
+
+		return;
+	}
+}
+
+- (void) writeCharacteristicWithoutResponse: (CDVInvokedUrlCommand*)command
+{
+	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
+	if (nil == myPeripheral)
+	{
+		[self
+			sendErrorMessage: @"device not found"
+			forCallback: command.callbackId];
+		return; // Error.
+	}
+
+	CBCharacteristic* characteristic = [myPeripheral getObjectFromCommand: command atIndex: 1];
+	if (nil == characteristic)
+	{
+		[self
+			sendErrorMessage: @"characteristic not found"
+			forCallback: command.callbackId];
+		return; // Error.
+	}
+
+	NSData* data = [command.arguments objectAtIndex: 2];
+	if (nil == data)
+	{
+		[self
+			sendErrorMessage: @"missing data argument"
+			forCallback: command.callbackId];
 		return;
 	}
 
-	// Result for write type CBCharacteristicWriteWithResponse is delivered in:
-	//	peripheral:didWriteValueForCharacteristic:error:
-	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
-	[myPeripheral
-		addCommandForCallbackId: command.callbackId
-		forObject: characteristic
-		operation: EVO_OPERATION_WRITE_CHARACTERISTIC
-		withBlock: ^{
-			[peripheral
-				writeValue: data
-				forCharacteristic: characteristic
-				type: writeType];
-		}];
+	// Write without response.
+	CBPeripheral* peripheral = myPeripheral.peripheral;
+	[peripheral
+		writeValue: data
+		forCharacteristic: characteristic
+		type: CBCharacteristicWriteWithoutResponse];
 
-	// If the write operation will not generate a response,
-	// peripheral:didWriteValueForCharacteristic:error: will not
-	// be called, and we need to run the next command now.
-	//
-	// Note: Important to check against writeType here since a
-	// characteristic can have both these flags set:
-	// CBCharacteristicWriteWithResponse
-	// CBCharacteristicWriteWithoutResponse
-	// Therefore you cannot check against those flags.
-	if (writeType != CBCharacteristicWriteWithResponse)
-	{
-		// Run next command.
-		[myPeripheral clearActiveCommandAndContinue];
+	// Call success callback now since there will be no notification.
+	[self sendOkClearCallback: command.callbackId];
 
-		// Call success callback now since there will be no notification.
-		[self sendOkClearCallback: command.callbackId];
-	}
+	// Run next command, if any.
+	[myPeripheral clearActiveCommandAndContinue];
 }
 
 // Note: Writing the value of a Client Configuration Descriptor (UUID = 2902)

@@ -95,6 +95,7 @@ typedef void (^EVOCommandBlock)(void);
 - (void) readCharacteristic: (CDVInvokedUrlCommand*)command;
 - (void) readDescriptor: (CDVInvokedUrlCommand*)command;
 - (void) writeCharacteristic: (CDVInvokedUrlCommand*)command;
+- (void) writeCharacteristicWithoutResponse: (CDVInvokedUrlCommand*)command;
 - (void) writeDescriptor: (CDVInvokedUrlCommand*)command;
 - (void) enableNotification: (CDVInvokedUrlCommand*)command;
 - (void) disableNotification: (CDVInvokedUrlCommand*)command;

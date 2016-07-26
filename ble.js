@@ -530,13 +530,11 @@ exports.writeCharacteristic = function(deviceHandle, characteristicHandle, data,
 
 /** Write a characteristic's value without response.
 *
-* Experimental, implemented on Android.
-*
 * Asks the remote device to NOT send a confirmation message.
 * This may be used for increased data throughput.
 *
-* A separate safety protocol will be required to ensure data integrity.
-* Design of such protocols is beyond the scope of this document.
+* If the application needs to ensure data integrity, a separate safety protocol
+* would be required. Design of such protocols is beyond the scope of this document.
 *
 * @param {number} deviceHandle - A handle from {@link connectCallback}.
 * @param {number} characteristicHandle - A handle from {@link characteristicCallback}.

@@ -517,7 +517,14 @@ public class BLE
 					// Each device connection has a GattHandler, which handles the events the can happen to the connection.
 					// The implementation of the GattHandler class is found at the end of this file.
 					GattHandler gh = new GattHandler(mNextGattHandle, callbackContext);
-					gh.mGatt = adapter.getRemoteDevice(args.getString(0)).connectGatt(mContext, true, gh);
+					// Note: We set autoConnect to false since setting
+					// it to true breaks the plugin logic. If support for
+					// auto connect is needed, that should be designed
+					// with updated plugin logic. (Problem is that BLE device
+					// is removed when disconnect occurs, and device resources
+					// are deallocated, therefore true cannot work at present.)
+					boolean autoConnect = false;
+					gh.mGatt = adapter.getRemoteDevice(args.getString(0)).connectGatt(mContext, autoConnect, gh);
 
 					// Note that gh.mGatt and this.mGatt are different object and have different types.
 					// --> Renamed this.mGatt to mConnectedDevices to avoid confusion.

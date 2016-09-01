@@ -68,7 +68,9 @@ exports.startScan = function(uuids, success, fail) {
 	if ('function' == typeof uuids)
 	{
 		// No Service UUIDs specified.
-		exec(uuids, success, 'BLE', 'startScan', []);
+		success = uuids;
+		fail = success;
+		exec(success, fail, 'BLE', 'startScan', []);
 	}
 	else
 	{
@@ -99,7 +101,7 @@ exports.startScan = function(uuids, success, fail) {
 /** Information extracted from a scanRecord. Some or all of the fields may be undefined. This varies between BLE devices.
  * Depending on OS version and BLE device, additional fields, not documented here, may be present.
  * @typedef {Object} AdvertisementData
- * @property {string} kCBAdvDataLocalName - The device's name. Equal to DeviceInfo.name.
+ * @property {string} kCBAdvDataLocalName - The device's name. Might or might not be equal to DeviceInfo.name. iOS caches DeviceInfo.name which means if the name is changed on the device, the new name might not be visible. kCBAdvDataLocalName is not cached and is therefore safer to use, when available.
  * @property {number} kCBAdvDataTxPowerLevel - Transmission power level as advertised by the device.
  * @property {number} kCBAdvDataChannel - A positive integer, the BLE channel on which the device listens for connections. Ignore this number.
  * @property {boolean} kCBAdvDataIsConnectable - True if the device accepts connections. False if it doesn't.
@@ -719,7 +721,7 @@ exports.readAllServiceData = function(deviceHandle, win, fail)
 				service.characteristics = [];
 
 				// Read characteristics for service.
-        exports.characteristics(
+				exports.characteristics(
 					deviceHandle,
 					service.handle,
 					characteristicsCallbackFun(service),
@@ -745,7 +747,7 @@ exports.readAllServiceData = function(deviceHandle, win, fail)
 				characteristic.descriptors = [];
 
 				// Read descriptors for characteristic.
-        exports.descriptors(
+				exports.descriptors(
 					deviceHandle,
 					characteristic.handle,
 					descriptorsCallbackFun(characteristic),

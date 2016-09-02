@@ -7,22 +7,22 @@ var exports = evothings.ble
 
 var isScanning = false;
 
-exports.startScan = function(uuids, success, fail) 
+exports.startScan = function(uuids, success, fail)
 {
 	if (isScanning)
 	{
 		fail('Scan already in progress');
 		return;
 	}
-	
+
 	isScanning = true;
-	
+
 	function onFail(error)
 	{
 		isScanning = false;
 		fail(device);
 	}
-	
+
 	function onSuccess(device)
 	{
 		// Only report results while scanning is requested.
@@ -31,7 +31,7 @@ exports.startScan = function(uuids, success, fail)
 			success(device);
 		}
 	}
-	
+
 	if ('function' == typeof uuids)
 	{
 		// No Service UUIDs specified.
@@ -45,7 +45,7 @@ exports.startScan = function(uuids, success, fail)
 	}
 };
 
-exports.stopScan = function() 
+exports.stopScan = function()
 {
 	isScanning = false;
 	exec(null, null, 'BLE', 'stopScan', []);
@@ -65,7 +65,7 @@ evothings.ble.getService = function(services, uuid)
 			return service
 		}
 	}
-	
+
 	console.log('getService no match for uuid:     ' + uuid)
 	return null
 }
@@ -84,7 +84,7 @@ evothings.ble.getCharacteristic = function(service, uuid)
 			return characteristic
 		}
 	}
-	
+
 	console.log('getCharacteristic no match for uuid:     ' + uuid)
 	return null
 }
@@ -100,7 +100,7 @@ evothings.ble.getDescriptor = function(characteristic, uuid)
 			return descriptor
 		}
 	}
-	
+
 	return null
 }
 
@@ -113,7 +113,7 @@ var base64
  * See ble.js for AdvertisementData reference.
  * @param device - Device object.
  */
-evothings.ble.ensureAdvertisementData = function(device)
+evothings.ble.parseAdvertisementData = function(device)
 {
 	if (!base64) { base64 = cordova.require('cordova/base64'); }
 
@@ -317,7 +317,7 @@ function b64ToUint6(nChr) {
 		:
 			0;
 }
-	
+
 /**
  * Returns the integer i in hexadecimal string form,
  * with leading zeroes, such that

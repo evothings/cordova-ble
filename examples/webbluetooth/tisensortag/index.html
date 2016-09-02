@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+
+<!--
+Demo of using the Web Bluetooth library for reading the luxometer of the TI SensorTag CC2650.
+-->
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, user-scalable=no,
+		shrink-to-fit=no, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0" />
+
+	<title>TI SensorTag Demo - Web Bluetooth</title>
+
+	<script>
+	// Redirect console.log when running from Evothings Workbench.
+	if (window.hyper && window.hyper.log) { console.log = hyper.log }
+	</script>
+
+	<style>
+	@import "app.css";
+	</style>
+</head>
+
+<body>
+	<img class="evo-image" src="https://evomedia.evothings.com/2013/11/evothings_logo_large_white1.png" />
+
+	<h1>TI SensorTag Demo - Web Bluetooth</h1>
+
+	<p>This app demonstrates how to use the Web Bluetooth library for reading the luxometer on the TI SensorTag CC2650.</p>
+
+	<p>Activate the SensorTag. If you don't have a SensorTag you can modify the code in file <code>app.js</code> to work with your device.</p>
+
+	<p id="message">Preparing...</p>
+
+	<!--
+	Including cordova.js will automatically include the JavaScript library
+	for the Cordova BLE plugin.
+	-->
+	<script src="cordova.js"></script>
+
+	<!--
+	Include files for the Web Bluetooth library. Alternatively, you can
+	include only the minified library, as one file:
+	<script src="web-bluetooth.evothings.min.js"></script>
+	-->
+	<script src="bluetooth.helpers.js"></script>
+	<script src="api.web-bluetooth.js"></script>
+	<script src="adapter.evothings.js"></script>
+
+	<!--
+	Include application code.
+	-->
+	<script src="app.js"></script>
+</body>
+
+</html>

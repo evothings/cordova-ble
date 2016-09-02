@@ -1,4 +1,4 @@
-// Demo of the BLE plugin API.
+// Demo of extended BLE plugin API.
 
 // Application code starts here. The code is wrapped in a
 // function closure to prevent overwriting global objects.

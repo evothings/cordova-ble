@@ -1,4 +1,4 @@
-// Demo of the Web Bluetooth plugin API.
+// Demo of the Web Bluetooth API.
 
 // Application code starts here. The code is wrapped in a
 // function closure to prevent overwriting global objects.

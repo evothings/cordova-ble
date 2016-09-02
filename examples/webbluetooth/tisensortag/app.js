@@ -59,7 +59,7 @@ function startLuxometerNotifications()
 	})
 	.catch(function(error)
 	{
-		log(error)
+		showMessage(error)
 	})
 }
 

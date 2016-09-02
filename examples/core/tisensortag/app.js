@@ -1,4 +1,4 @@
-// Demo of the EasyBLE library.
+// Demo of the BLE plugin API.
 
 // Application code starts here. The code is wrapped in a
 // function closure to prevent overwriting global objects.
@@ -17,6 +17,15 @@ var deviceHandle
 var luxometerConfigCharacteristic
 var luxometerDataCharacteristic
 
+function initialize()
+{
+	// Extend plugin API with new functions (see file new-api.js).
+	extendBLEPluginAPI()
+	
+	// Start scanning for a device.
+	findDevice()
+}
+	
 function findDevice()
 {
 	showMessage('Scanning for the TI SensorTag CC2650...')
@@ -31,9 +40,11 @@ function findDevice()
 	// we check if we found the device we are looking for.
 	function deviceFound(device)
 	{
-		showMessage('Found device: ' + device.advertisementData.kCBAdvDataLocalName)
+		showMessage('Found device: ' + device.name)
 		
-		evothings.newble.ensureAdvertisementData(device)
+		evothings.ble.ensureAdvertisementData(device)
+		
+		showMessage('Found device: ' + device.advertisementData.kCBAdvDataLocalName)
 		
 		//console.log(JSON.stringify(device.advertisementData))
 		//"kCBAdvDataServiceUUIDs":["0000aa10-0000-1000-8000-00805f9b34fb"]
@@ -103,9 +114,9 @@ function connectToDevice(device)
 		showMessage('Reading services completed')
 		
 		// Get Luxometer service and characteristics.
-		var service = evothings.newble.getService(services, LUXOMETER_SERVICE)
-		var configCharacteristic = evothings.newble.getCharacteristic(service, LUXOMETER_CONFIG)
-		var dataCharacteristic = evothings.newble.getCharacteristic(service, LUXOMETER_DATA)
+		var service = evothings.ble.getService(services, LUXOMETER_SERVICE)
+		var configCharacteristic = evothings.ble.getCharacteristic(service, LUXOMETER_CONFIG)
+		var dataCharacteristic = evothings.ble.getCharacteristic(service, LUXOMETER_DATA)
 	
 		// Enable notifications for Luxometer.
 		enableLuxometerNotifications(configCharacteristic, dataCharacteristic)
@@ -259,6 +270,6 @@ function showMessage(text)
 }
 
 // Start scanning for devices when the plugin has loaded.
-document.addEventListener('deviceready', findDevice, false)
+document.addEventListener('deviceready', initialize, false)
 
 })(); // End of closure.

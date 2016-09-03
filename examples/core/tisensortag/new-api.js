@@ -57,55 +57,57 @@ evothings.ble.getService = function(services, uuid)
 	console.log('getService looking for uuid:      ' + uuid)
 	for (var i in services)
 	{
-		var service = services[i]
+		var service = services[i];
 		console.log('getService checking service uuid: ' + service.uuid)
 		if (service.uuid == uuid)
 		{
 			console.log('getService match for uuid:        ' + uuid)
-			return service
+			return service;
 		}
 	}
 
 	console.log('getService no match for uuid:     ' + uuid)
-	return null
-}
+	return null;
+};
 
 evothings.ble.getCharacteristic = function(service, uuid)
 {
-	var characteristics = service.characteristics
+	var characteristics = service.characteristics;
 	console.log('getCharacteristic looking for uuid:      ' + uuid)
 	for (var i in characteristics)
 	{
-		var characteristic = characteristics[i]
+		var characteristic = characteristics[i];
 		console.log('getCharacteristic checking charact uuid: ' + characteristic.uuid)
 		if (characteristic.uuid == uuid)
 		{
 			console.log('getCharacteristic match for uuid:        ' + uuid)
-			return characteristic
+			return characteristic;
 		}
 	}
 
 	console.log('getCharacteristic no match for uuid:     ' + uuid)
-	return null
-}
+	return null;
+};
 
 evothings.ble.getDescriptor = function(characteristic, uuid)
 {
-	var descriptors = characteristic.descriptors
+	var descriptors = characteristic.descriptors;
 	for (var i in descriptors)
 	{
-		var descriptor = descriptors[i]
+		var descriptor = descriptors[i];
 		if (descriptor.uuid == uuid)
 		{
-			return descriptor
+			return descriptor;
 		}
 	}
 
-	return null
-}
+	return null;
+};
 
-
-var base64
+// Create closure for parseAdvertisementData and helper functions.
+;(function()
+{
+var base64;
 
 /**
  * If device already has advertisementData, does nothing.
@@ -128,7 +130,7 @@ evothings.ble.parseAdvertisementData = function(device)
 	// See the Bluetooth Specification, v4.0, Volume 3, Part C, Section 11,
 	// for details.
 
-	var byteArray = evothings.ble.base64DecToArr(device.scanRecord);
+	var byteArray = base64DecToArr(device.scanRecord);
 	var pos = 0;
 	var advertisementData = {};
 	var serviceUUIDs;
@@ -167,7 +169,7 @@ evothings.ble.parseAdvertisementData = function(device)
 				}
 				for (var j=0; j<UUID_format[l]; j++, k++)
 				{
-					string += evothings.ble.toHexString(array[offset+k], 1);
+					string += toHexString(array[offset+k], 1);
 				}
 			}
 			return string;
@@ -180,8 +182,8 @@ evothings.ble.parseAdvertisementData = function(device)
 			{
 				serviceUUIDs.push(
 					'0000' +
-					evothings.ble.toHexString(
-						evothings.ble.littleEndianToUint16(byteArray, pos + i),
+					toHexString(
+						littleEndianToUint16(byteArray, pos + i),
 						2) +
 					BLUETOOTH_BASE_UUID);
 			}
@@ -192,8 +194,8 @@ evothings.ble.parseAdvertisementData = function(device)
 			for (var i=0; i<length; i+=4)
 			{
 				serviceUUIDs.push(
-					evothings.ble.toHexString(
-						evothings.ble.littleEndianToUint32(byteArray, pos + i),
+					toHexString(
+						littleEndianToUint32(byteArray, pos + i),
 						4) +
 					BLUETOOTH_BASE_UUID);
 			}
@@ -214,15 +216,15 @@ evothings.ble.parseAdvertisementData = function(device)
 		if (type == 0x0a) // TX Power Level.
 		{
 			advertisementData.kCBAdvDataTxPowerLevel =
-				evothings.ble.littleEndianToInt8(byteArray, pos);
+				littleEndianToInt8(byteArray, pos);
 		}
 		if (type == 0x16) // Service Data, 16-bit UUID.
 		{
 			serviceData = serviceData ? serviceData : {};
 			var uuid =
 				'0000' +
-				evothings.ble.toHexString(
-					evothings.ble.littleEndianToUint16(byteArray, pos),
+				toHexString(
+					littleEndianToUint16(byteArray, pos),
 					2) +
 				BLUETOOTH_BASE_UUID;
 			var data = new Uint8Array(byteArray.buffer, pos+2, length-2);
@@ -232,8 +234,8 @@ evothings.ble.parseAdvertisementData = function(device)
 		{
 			serviceData = serviceData ? serviceData : {};
 			var uuid =
-				evothings.ble.toHexString(
-					evothings.ble.littleEndianToUint32(byteArray, pos),
+				toHexString(
+					littleEndianToUint32(byteArray, pos),
 					4) +
 				BLUETOOTH_BASE_UUID;
 			var data = new Uint8Array(byteArray.buffer, pos+4, length-4);
@@ -267,7 +269,7 @@ evothings.ble.parseAdvertisementData = function(device)
 
 	console.log(JSON.stringify(advertisementData));
 	*/
-}
+};
 
 /**
  * Decodes a Base64 string. Returns a Uint8Array.
@@ -277,7 +279,7 @@ evothings.ble.parseAdvertisementData = function(device)
  * @return {Uint8Array}
  * @public
  */
-evothings.ble.base64DecToArr = function(sBase64, nBlocksSize) {
+function base64DecToArr(sBase64, nBlocksSize) {
 	var sB64Enc = sBase64.replace(/[^A-Za-z0-9\+\/]/g, "");
 	var nInLen = sB64Enc.length;
 	var nOutLen = nBlocksSize ?
@@ -326,7 +328,7 @@ function b64ToUint6(nChr) {
  * @param {int} byteCount
  * @public
  */
-evothings.ble.toHexString = function(i, byteCount) {
+function toHexString(i, byteCount) {
 	var string = (new Number(i)).toString(16);
 	while(string.length < byteCount*2) {
 		string = '0'+string;
@@ -342,10 +344,10 @@ evothings.ble.toHexString = function(i, byteCount) {
  * @return Converted number.
  * @public
  */
-evothings.ble.littleEndianToUint16 = function(data, offset)
+function littleEndianToUint16(data, offset)
 {
-	return (evothings.ble.littleEndianToUint8(data, offset + 1) << 8) +
-		evothings.ble.littleEndianToUint8(data, offset)
+	return (littleEndianToUint8(data, offset + 1) << 8) +
+		littleEndianToUint8(data, offset)
 }
 
 /**
@@ -356,12 +358,12 @@ evothings.ble.littleEndianToUint16 = function(data, offset)
  * @return Converted number.
  * @public
  */
-evothings.ble.littleEndianToUint32 = function(data, offset)
+function littleEndianToUint32 = function(data, offset)
 {
-	return (evothings.ble.littleEndianToUint8(data, offset + 3) << 24) +
-		(evothings.ble.littleEndianToUint8(data, offset + 2) << 16) +
-		(evothings.ble.littleEndianToUint8(data, offset + 1) << 8) +
-		evothings.ble.littleEndianToUint8(data, offset)
+	return (littleEndianToUint8(data, offset + 3) << 24) +
+		(littleEndianToUint8(data, offset + 2) << 16) +
+		(littleEndianToUint8(data, offset + 1) << 8) +
+		littleEndianToUint8(data, offset)
 }
 
 /**
@@ -372,9 +374,9 @@ evothings.ble.littleEndianToUint32 = function(data, offset)
  * @return Converted number.
  * @public
  */
-evothings.ble.littleEndianToInt8 = function(data, offset)
+function littleEndianToInt8(data, offset)
 {
-	var x = evothings.ble.littleEndianToUint8(data, offset)
+	var x = littleEndianToUint8(data, offset)
 	if (x & 0x80) x = x - 256
 	return x
 }
@@ -387,9 +389,11 @@ evothings.ble.littleEndianToInt8 = function(data, offset)
  * @return Converted number.
  * @public
  */
-evothings.ble.littleEndianToUint8 = function(data, offset)
+function littleEndianToUint8(data, offset)
 {
 	return data[offset]
 }
 
-}
+})(); // End of closure for parseAdvertisementData.
+
+} // End of extendBLEPluginAPI.

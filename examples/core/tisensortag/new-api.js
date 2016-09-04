@@ -358,7 +358,7 @@ function littleEndianToUint16(data, offset)
  * @return Converted number.
  * @public
  */
-function littleEndianToUint32 = function(data, offset)
+function littleEndianToUint32(data, offset)
 {
 	return (littleEndianToUint8(data, offset + 3) << 24) +
 		(littleEndianToUint8(data, offset + 2) << 16) +

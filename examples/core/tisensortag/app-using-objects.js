@@ -25,18 +25,14 @@ function findDevice()
 
 	// Start scanning. Two callback functions are specified.
 	evothings.ble.startScan(
-		['0000aa10-0000-1000-8000-00805f9b34fb'],
 		deviceFound,
-		scanError)
+		scanError,
+		{ serviceUUIDs: ['0000aa10-0000-1000-8000-00805f9b34fb'] })
 
 	// This function is called when a device is detected, here
 	// we check if we found the device we are looking for.
 	function deviceFound(device)
 	{
-		// Parse advertisement data record.
-		// TODO: Move to startScan.
-		evothings.ble.parseAdvertisementData(device)
-
 		// For debugging, print advertisement data.
 		//console.log(JSON.stringify(device.advertisementData))
 

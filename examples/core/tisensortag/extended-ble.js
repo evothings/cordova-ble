@@ -150,6 +150,7 @@ exports.startScan = function(arg1, arg2, arg3, arg4)
 	isScanning = true;
 	if (Array.isArray(serviceUUIDs))
 	{
+		serviceUUIDs = canonicalUUIDArray(serviceUUIDs);
 		exec(onSuccess, onFail, 'BLE', 'startScan', [serviceUUIDs]);
 	}
 	else
@@ -157,6 +158,19 @@ exports.startScan = function(arg1, arg2, arg3, arg4)
 		exec(onSuccess, onFail, 'BLE', 'startScan', []);
 	}
 };
+
+/**
+ * Ensure that all UUIDs in an array has canonical form.
+ * @private
+ */
+function canonicalUUIDArray(uuidArray)
+{
+	var result = [];
+	for (var i in uuidArray)
+	{
+		result.push(exports.canonicalUUID(uuidArray[i]));
+	}
+}
 
 /** Options for startScan.
  * @typedef {Object} ScanOptions
@@ -1240,6 +1254,7 @@ exports.readAllServiceData = function(deviceOrHandle, success, fail)
 			for (var i = 0; i < services.length; ++i)
 			{
 				var service = services[i];
+				service.uuid = canonicalUUID(service.uuid);
 				serviceArray.push(service);
 				service.characteristics = [];
 
@@ -1266,6 +1281,7 @@ exports.readAllServiceData = function(deviceOrHandle, success, fail)
 			for (var i = 0; i < characteristics.length; ++i)
 			{
 				var characteristic = characteristics[i];
+				characteristic.uuid = canonicalUUID(characteristic.uuid);
 				service.characteristics.push(characteristic);
 				characteristic.descriptors = [];
 
@@ -1291,6 +1307,7 @@ exports.readAllServiceData = function(deviceOrHandle, success, fail)
 			for (var i = 0; i < descriptors.length; ++i)
 			{
 				var descriptor = descriptors[i];
+				descriptor.uuid = canonicalUUID(descriptor.uuid);
 				characteristic.descriptors.push(descriptor);
 			}
 			if (0 == readCounter)
@@ -1314,6 +1331,8 @@ exports.readAllServiceData = function(deviceOrHandle, success, fail)
 
 exports.getService = function(services, uuid)
 {
+	uuid = canonicalUUID(uuid);
+
 	console.log('getService looking for uuid:      ' + uuid)
 	for (var i in services)
 	{
@@ -1332,6 +1351,8 @@ exports.getService = function(services, uuid)
 
 exports.getCharacteristic = function(service, uuid)
 {
+	uuid = canonicalUUID(uuid);
+
 	var characteristics = service.characteristics;
 	console.log('getCharacteristic looking for uuid:      ' + uuid)
 	for (var i in characteristics)
@@ -1351,6 +1372,8 @@ exports.getCharacteristic = function(service, uuid)
 
 exports.getDescriptor = function(characteristic, uuid)
 {
+	uuid = canonicalUUID(uuid);
+
 	var descriptors = characteristic.descriptors;
 	for (var i in descriptors)
 	{

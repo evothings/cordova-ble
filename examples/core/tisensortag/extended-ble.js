@@ -1254,7 +1254,7 @@ exports.readAllServiceData = function(deviceOrHandle, success, fail)
 			for (var i = 0; i < services.length; ++i)
 			{
 				var service = services[i];
-				service.uuid = canonicalUUID(service.uuid);
+				service.uuid = exports.canonicalUUID(service.uuid);
 				serviceArray.push(service);
 				service.characteristics = [];
 
@@ -1281,7 +1281,7 @@ exports.readAllServiceData = function(deviceOrHandle, success, fail)
 			for (var i = 0; i < characteristics.length; ++i)
 			{
 				var characteristic = characteristics[i];
-				characteristic.uuid = canonicalUUID(characteristic.uuid);
+				characteristic.uuid = exports.canonicalUUID(characteristic.uuid);
 				service.characteristics.push(characteristic);
 				characteristic.descriptors = [];
 
@@ -1307,7 +1307,7 @@ exports.readAllServiceData = function(deviceOrHandle, success, fail)
 			for (var i = 0; i < descriptors.length; ++i)
 			{
 				var descriptor = descriptors[i];
-				descriptor.uuid = canonicalUUID(descriptor.uuid);
+				descriptor.uuid = exports.canonicalUUID(descriptor.uuid);
 				characteristic.descriptors.push(descriptor);
 			}
 			if (0 == readCounter)
@@ -1331,7 +1331,7 @@ exports.readAllServiceData = function(deviceOrHandle, success, fail)
 
 exports.getService = function(services, uuid)
 {
-	uuid = canonicalUUID(uuid);
+	uuid = exports.canonicalUUID(uuid);
 
 	console.log('getService looking for uuid:      ' + uuid)
 	for (var i in services)
@@ -1351,7 +1351,7 @@ exports.getService = function(services, uuid)
 
 exports.getCharacteristic = function(service, uuid)
 {
-	uuid = canonicalUUID(uuid);
+	uuid = exports.canonicalUUID(uuid);
 
 	var characteristics = service.characteristics;
 	console.log('getCharacteristic looking for uuid:      ' + uuid)
@@ -1372,7 +1372,7 @@ exports.getCharacteristic = function(service, uuid)
 
 exports.getDescriptor = function(characteristic, uuid)
 {
-	uuid = canonicalUUID(uuid);
+	uuid = exports.canonicalUUID(uuid);
 
 	var descriptors = characteristic.descriptors;
 	for (var i in descriptors)

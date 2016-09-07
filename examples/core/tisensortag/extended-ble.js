@@ -1175,6 +1175,39 @@ exports.toUtf8 = function(s)
 	return ab;
 };
 
+/**
+ * Returns a canonical UUID.
+ *
+ * Code adopted from the Bleat library by Rob Moran (@thegecko), see this file:
+ * https://github.com/thegecko/bleat/blob/master/dist/bluetooth.helpers.js
+ *
+ * @param {string|number} uuid - The UUID to turn into canonical form.
+ * @return Canonical UUID.
+ */
+exports.canonicalUUID = function(uuid)
+{
+	if (typeof uuid === 'number')
+	{
+		uuid = uuid.toString(16);
+	}
+
+	uuid = uuid.toLowerCase();
+
+	if (uuid.length <= 8)
+	{
+		uuid = ('00000000' + uuid).slice(-8) + '-0000-1000-8000-00805f9b34fb';
+	}
+
+	if (uuid.length === 32)
+	{
+		uuid = uuid
+			.match(/^([0-9a-f]{8})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{12})$/)
+			.splice(1)
+			.join('-');
+	}
+
+	return uuid;
+}
 
 /** Fetch information about a remote device's services,
 * as well as its associated characteristics and descriptors.

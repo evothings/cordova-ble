@@ -71,7 +71,7 @@ var isScanning = false;
  *       {
  *           console.log('startScan error: ' + errorCode);
  *       },
- *       { serviceUUIDs: ['0000FEAA-0000-1000-8000-00805F9B34FB'] }
+ *       { serviceUUIDs: ['0000feaa-0000-1000-8000-00805f9b34fb'] }
  *   );
  */
 exports.startScan = function(arg1, arg2, arg3, arg4)

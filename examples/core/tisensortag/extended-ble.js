@@ -618,6 +618,91 @@ exports.connectionState = {
 };
 
 /**
+ * Connect to a BLE device and discover services. This is a more high-level
+ * function than {evothings.ble.connect}. You can configure which services
+ * to discover and also turn off automatic service discovery by supplying
+ * an options parameter.
+ * @param {DeviceInfo} device - Device object from {scanCallback}.
+ * @param {connectedCallback} connected - Called when connected to the device.
+ * @param {disconnectedCallback} disconnected - Called when disconnected from the device.
+ * @param {failCallback} fail - Called on error.
+ * @param {ConnectOptions} options - Optional connect options object.
+ * @example
+  evothings.ble.connectToDevice(
+    device,
+    function(device)
+    {
+      console.log('Connected to device: ' + device.name);
+    },
+    function(device)
+    {
+      console.log('Disconnected from device: ' + device.name);
+    },
+    function(errorCode)
+    {
+      console.log('Connect error: ' + errorCode);
+    }
+  );
+*/
+exports.connectToDevice = function(device, connected, disconnected, fail, options)
+{
+	// Default options.
+	var discoverServices = true;
+	var serviceUUIDs = null;
+
+	// Set options.
+	if (options && (typeof options == 'object'))
+	{
+		if (options.discoverServices === false)
+		{
+			discoverServices = false;
+		}
+
+		if (Array.isArray(options.serviceUUIDs))
+		{
+			serviceUUIDs = options.serviceUUIDs;
+		}
+	}
+
+	function onConnectEvent(connectInfo)
+	{
+		if (connectInfo.state == evothings.ble.connectionState.STATE_CONNECTED)
+		{
+			if (discoverServices)
+			{
+				// Read services, characteristics and descriptors.
+				evothings.ble.readAllServiceData(
+					device,
+					function readServicesSuccess(services)
+					{
+						// Save discovered services.
+						device.services = services;
+
+						// Notify connected callback.
+						connected(device);
+					},
+					fail,
+					{ serviceUUIDs: serviceUUIDs });
+			}
+			else
+			{
+				// Call connected callback without auto discovery of services.
+				connected(device);
+			}
+		}
+		else if (connectInfo.state == evothings.ble.connectionState.STATE_DISCONNECTED)
+		{
+			// Call disconnected callback.
+			disconnected(device);
+		}
+
+    }
+
+    // Connect to device.
+	exec(onConnectEvent, fail, 'BLE', 'connect', [device.address]);
+};
+
+/**
  * Get the handle of an object. If a handle is passed return it.
  * Allows to pass in either an object or a handle to API functions.
  * @private
@@ -1221,23 +1306,54 @@ exports.canonicalUUID = function(uuid)
 	}
 
 	return uuid;
-}
+};
 
-/** Fetch information about a remote device's services,
-* as well as its associated characteristics and descriptors.
-*
-* This function is an easy-to-use wrapper of the low-level functions
-* ble.services(), ble.characteristics() and ble.descriptors().
-*
-* @param {number} device - Device object or device handle from {@link connectCallback}.
-* @param {serviceCallback} success - Called with array of {@link Service} objects.
-* Those Service objects each have an additional field "characteristics", which is an array of {@link Characteristic} objects.
-* Those Characteristic objects each have an additional field "descriptors", which is an array of {@link Descriptor} objects.
-* @param {failCallback} fail
-*/
-// TODO: Add options object, with option for specifying service UUIDs.
+/**
+ * Read all services, and associated characteristics and descriptors
+ * for the given device.
+ *
+ * This function is an easy-to-use wrapper of the low-level functions
+ * ble.services(), ble.characteristics() and ble.descriptors().
+ *
+ * @param {DeviceInfo} device - Device object or device handle
+ * from {@link connectCallback}.
+ * @param {serviceCallback} success - Called with array of {@link Service} objects.
+ * Those Service objects each have an additional field "characteristics",
+ * which is an array of {@link Characteristic} objects.
+ * Those Characteristic objects each have an additional field "descriptors",
+ * which is an array of {@link Descriptor} objects.
+ * @param {failCallback} fail - Error callback.
+ */
 exports.readAllServiceData = function(deviceOrHandle, success, fail)
 {
+	exports.readServiceData(deviceOrHandle, success, fail);
+}
+
+/**
+ * Read services, and associated characteristics and descriptors
+ * for the given device. Which services to read may be specified
+ * in the options parameter. Leaving out the options parameter
+ * with read all services.
+ *
+ * @param {DeviceInfo} device - Device object or device handle
+ * from {@link connectCallback}.
+ * @param {serviceCallback} success - Called with array of {@link Service} objects.
+ * Those Service objects each have an additional field "characteristics",
+ * which is an array of {@link Characteristic} objects.
+ * Those Characteristic objects each have an additional field "descriptors",
+ * which is an array of {@link Descriptor} objects.
+ * @param {failCallback} fail - Error callback.
+ * @param {ReadServiceDataOptions} fail - Error callback.
+ */
+exports.readServiceData = function(deviceOrHandle, success, fail, options)
+{
+	// Set options.
+	var serviceUUIDs = null;
+	if (options && options.serviceUUIDs)
+	{
+		serviceUUIDs = options.serviceUUIDs;
+	}
+
 	// Array of populated services.
 	var serviceArray = [];
 
@@ -1246,7 +1362,21 @@ exports.readAllServiceData = function(deviceOrHandle, success, fail)
 	// When value is back to zero, all items are read.
 	var readCounter = 0;
 
-	var servicesCallbackFun = function()
+	function includeService(service)
+	{
+		if (serviceUUIDs)
+		{
+			// Include service only if in array.
+			return serviceUUIDs.indexOf(service.uuid) > -1;
+		}
+		else
+		{
+			// Include all services.
+			return true;
+		}
+	}
+
+	function servicesCallbackFun()
 	{
 		return function(services)
 		{
@@ -1255,24 +1385,33 @@ exports.readAllServiceData = function(deviceOrHandle, success, fail)
 			{
 				var service = services[i];
 				service.uuid = exports.canonicalUUID(service.uuid);
-				serviceArray.push(service);
-				service.characteristics = [];
+				if (includeService(service))
+				{
+					// Save service.
+					serviceArray.push(service);
+					service.characteristics = [];
 
-				// Read characteristics for service.
-				exports.characteristics(
-					deviceOrHandle,
-					service,
-					characteristicsCallbackFun(service),
-					function(errorCode)
-					{
-						console.log('characteristics error: ' + errorCode);
-						fail(errorCode);
-					});
+					// Read characteristics for service.
+					exports.characteristics(
+						deviceOrHandle,
+						service,
+						characteristicsCallbackFun(service),
+						function(errorCode)
+						{
+							console.log('characteristics error: ' + errorCode);
+							fail(errorCode);
+						});
+				}
+				else
+				{
+					// Service not included, but reduce readCounter.
+					--readCounter;
+				}
 			}
 		};
-	};
+	}
 
-	var characteristicsCallbackFun = function(service)
+	function characteristicsCallbackFun(service)
 	{
 		return function(characteristics)
 		{
@@ -1297,9 +1436,9 @@ exports.readAllServiceData = function(deviceOrHandle, success, fail)
 					});
 			}
 		};
-	};
+	}
 
-	var descriptorsCallbackFun = function(characteristic)
+	function descriptorsCallbackFun(characteristic)
 	{
 		return function(descriptors)
 		{
@@ -1316,7 +1455,7 @@ exports.readAllServiceData = function(deviceOrHandle, success, fail)
 				success(serviceArray);
 			}
 		};
-	};
+	}
 
 	// Read services for device.
 	exports.services(
@@ -1329,8 +1468,27 @@ exports.readAllServiceData = function(deviceOrHandle, success, fail)
 		});
 };
 
-exports.getService = function(services, uuid)
+exports.getService = function(deviceOrServices, uuid)
 {
+	var services = null;
+
+	if (Array.isArray(deviceOrServices))
+	{
+		// First arg is a service array.
+		services = deviceOrServices;
+	}
+	else if (deviceOrServices && Array.isArray(deviceOrServices.services))
+	{
+		// First arg is a device object.
+		services = deviceOrServices.services;
+	}
+	else
+	{
+		// First arg is invalid.
+		return null;
+	}
+
+	// Normalize UUID.
 	uuid = exports.canonicalUUID(uuid);
 
 	console.log('getService looking for uuid:      ' + uuid)

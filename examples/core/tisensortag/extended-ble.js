@@ -184,8 +184,9 @@ function canonicalUUIDArray(uuidArray)
  * is the same on Android and iOS. Learning out this parameter or
  * setting it to null, will scan for all devices, regardless of
  * advertised services.
- * @property {boolean} parseAdvertisementData - set to false to disable
+ * @property {boolean} parseAdvertisementData - Set to false to disable
  * automatic parsing of advertisement data from the scan record.
+ * Default is true.
  */
 
 /** This function is a parameter to startScan() and is called when a new device is discovered.
@@ -668,10 +669,11 @@ exports.connectToDevice = function(device, connected, disconnected, fail, option
 	{
 		if (connectInfo.state == evothings.ble.connectionState.STATE_CONNECTED)
 		{
+			device.handle = connectInfo.deviceHandle;
 			if (discoverServices)
 			{
 				// Read services, characteristics and descriptors.
-				evothings.ble.readAllServiceData(
+				evothings.ble.readServiceData(
 					device,
 					function readServicesSuccess(services)
 					{
@@ -701,6 +703,16 @@ exports.connectToDevice = function(device, connected, disconnected, fail, option
     // Connect to device.
 	exec(onConnectEvent, fail, 'BLE', 'connect', [device.address]);
 };
+
+/**
+ * Options for connectToDevice.
+ * @typedef {Object} ConnectOptions
+ * @property {boolean} discoverServices - Set to false to disable
+ * automatic service discovery. Default is true.
+ * @property {array} serviceUUIDs - Array with service UUID strings for
+ * services to discover (optional). If empty or null, all services are
+ * read, this is the default.
+ */
 
 /**
  * Get the handle of an object. If a handle is passed return it.
@@ -1217,7 +1229,8 @@ exports.disableNotification = function(deviceOrHandle, characteristicOrHandle, s
 		 flags]);
 };
 
-/** Options for enableNotification and disableNotification.
+/**
+ * Options for enableNotification and disableNotification.
  * @typedef {Object} NotificationOptions
  * @property {boolean} writeConfigDescriptor - set to false to disable
  * automatic writing of the notification or indication descriptor.
@@ -1330,6 +1343,14 @@ exports.readAllServiceData = function(deviceOrHandle, success, fail)
 }
 
 /**
+ * Options for readServiceData.
+ * @typedef {Object} ReadServiceDataOptions
+ * @property {array} serviceUUIDs - Array with service UUID strings for
+ * services to discover (optional). If absent or null, all services are
+ * read, this is the default.
+ */
+
+/**
  * Read services, and associated characteristics and descriptors
  * for the given device. Which services to read may be specified
  * in the options parameter. Leaving out the options parameter
@@ -1343,7 +1364,8 @@ exports.readAllServiceData = function(deviceOrHandle, success, fail)
  * Those Characteristic objects each have an additional field "descriptors",
  * which is an array of {@link Descriptor} objects.
  * @param {failCallback} fail - Error callback.
- * @param {ReadServiceDataOptions} fail - Error callback.
+ * @param {ReadServiceDataOptions} options - Object with options
+ * (optional parameter). If left out, all services are read.
  */
 exports.readServiceData = function(deviceOrHandle, success, fail, options)
 {
@@ -1398,7 +1420,6 @@ exports.readServiceData = function(deviceOrHandle, success, fail, options)
 						characteristicsCallbackFun(service),
 						function(errorCode)
 						{
-							console.log('characteristics error: ' + errorCode);
 							fail(errorCode);
 						});
 				}
@@ -1431,7 +1452,6 @@ exports.readServiceData = function(deviceOrHandle, success, fail, options)
 					descriptorsCallbackFun(characteristic),
 					function(errorCode)
 					{
-						console.log('descriptors error: ' + errorCode);
 						fail(errorCode);
 					});
 			}
@@ -1463,7 +1483,6 @@ exports.readServiceData = function(deviceOrHandle, success, fail, options)
 		servicesCallbackFun(),
 		function(errorCode)
 		{
-			console.log('services error: ' + errorCode);
 			fail(errorCode);
 		});
 };
@@ -1491,19 +1510,15 @@ exports.getService = function(deviceOrServices, uuid)
 	// Normalize UUID.
 	uuid = exports.canonicalUUID(uuid);
 
-	console.log('getService looking for uuid:      ' + uuid)
 	for (var i in services)
 	{
 		var service = services[i];
-		console.log('getService checking service uuid: ' + service.uuid)
 		if (service.uuid == uuid)
 		{
-			console.log('getService match for uuid:        ' + uuid)
 			return service;
 		}
 	}
 
-	console.log('getService no match for uuid:     ' + uuid)
 	return null;
 };
 
@@ -1512,19 +1527,15 @@ exports.getCharacteristic = function(service, uuid)
 	uuid = exports.canonicalUUID(uuid);
 
 	var characteristics = service.characteristics;
-	console.log('getCharacteristic looking for uuid:      ' + uuid)
 	for (var i in characteristics)
 	{
 		var characteristic = characteristics[i];
-		console.log('getCharacteristic checking charact uuid: ' + characteristic.uuid)
 		if (characteristic.uuid == uuid)
 		{
-			console.log('getCharacteristic match for uuid:        ' + uuid)
 			return characteristic;
 		}
 	}
 
-	console.log('getCharacteristic no match for uuid:     ' + uuid)
 	return null;
 };
 

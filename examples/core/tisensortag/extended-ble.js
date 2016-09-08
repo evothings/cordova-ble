@@ -1429,9 +1429,9 @@ exports.readServiceData = function(deviceOrHandle, success, fail, options)
 {
 	// Set options.
 	var serviceUUIDs = null;
-	if (options && options.serviceUUIDs)
+	if (options && Array.isArray(options.serviceUUIDs))
 	{
-		serviceUUIDs = options.serviceUUIDs;
+		serviceUUIDs = getCanonicalUUIDArray(options.serviceUUIDs);
 	}
 
 	// Array of populated services.

@@ -150,7 +150,7 @@ exports.startScan = function(arg1, arg2, arg3, arg4)
 	isScanning = true;
 	if (Array.isArray(serviceUUIDs))
 	{
-		serviceUUIDs = canonicalUUIDArray(serviceUUIDs);
+		serviceUUIDs = getCanonicalUUIDArray(serviceUUIDs);
 		exec(onSuccess, onFail, 'BLE', 'startScan', [serviceUUIDs]);
 	}
 	else
@@ -163,16 +163,17 @@ exports.startScan = function(arg1, arg2, arg3, arg4)
  * Ensure that all UUIDs in an array has canonical form.
  * @private
  */
-function canonicalUUIDArray(uuidArray)
+function getCanonicalUUIDArray(uuidArray)
 {
 	var result = [];
 	for (var i in uuidArray)
 	{
-		result.push(exports.canonicalUUID(uuidArray[i]));
+		result.push(exports.getCanonicalUUID(uuidArray[i]));
 	}
 }
 
-/** Options for startScan.
+/**
+ * Options for startScan.
  * @typedef {Object} ScanOptions
  * @param {array} serviceUUIDs - Array with service UUID strings (optional).
  * On iOS multiple UUIDs are scanned for using logical OR operator,
@@ -189,48 +190,65 @@ function canonicalUUIDArray(uuidArray)
  * Default is true.
  */
 
-/** This function is a parameter to startScan() and is called when a new device is discovered.
-* @callback scanCallback
-* @param {DeviceInfo} device
-*/
-
-/** Info about a BLE device.
-* @typedef {Object} DeviceInfo
-* @property {string} address - Uniquely identifies the device.
-* Pass this to connect().
-* The form of the address depends on the host platform.
-* @property {number} rssi - A negative integer, the signal strength in decibels.
-* @property {string} name - The device's name, or nil.
-* @property {string} scanRecord - Base64-encoded binary data.
-* Its meaning is device-specific. Not available on iOS.
-* @property {AdvertisementData} advertisementData - Object containing some
-* of the data from the scanRecord. Available natively on iOS. Available on
-* Android by parsing the scanRecord, which is implemented in the library EasyBLE:
-* {@link https://github.com/evothings/evothings-libraries/blob/master/libs/evothings/easyble/easyble.js}.
-*/
-
-/** Information extracted from a scanRecord. Some or all of the fields may be undefined. This varies between BLE devices.
- * Depending on OS version and BLE device, additional fields, not documented here, may be present.
- * @typedef {Object} AdvertisementData
- * @property {string} kCBAdvDataLocalName - The device's name. Might or might not be equal to DeviceInfo.name. iOS caches DeviceInfo.name which means if the name is changed on the device, the new name might not be visible. kCBAdvDataLocalName is not cached and is therefore safer to use, when available.
- * @property {number} kCBAdvDataTxPowerLevel - Transmission power level as advertised by the device.
- * @property {number} kCBAdvDataChannel - A positive integer, the BLE channel on which the device listens for connections. Ignore this number.
- * @property {boolean} kCBAdvDataIsConnectable - True if the device accepts connections. False if it doesn't.
- * @property {array} kCBAdvDataServiceUUIDs - Array of strings, the UUIDs of services advertised by the device. Formatted according to RFC 4122, all lowercase.
- * @property {object} kCBAdvDataServiceData - Dictionary of strings to strings. The keys are service UUIDs. The values are base-64-encoded binary data.
- * @property {string} kCBAdvDataManufacturerData - Base-64-encoded binary data. This field is used by BLE devices to advertise custom data that don't fit into any of the other fields.
+/**
+ * This function is a parameter to startScan() and is called when a new device is discovered.
+ * @callback scanCallback
+ * @param {DeviceInfo} device
  */
 
-/** This function is called when an operation fails.
-* @callback failCallback
-* @param {string} errorString - A human-readable string that describes the error that occurred.
-*/
+/**
+ * Info about a BLE device.
+ * @typedef {Object} DeviceInfo
+ * @property {string} address - Uniquely identifies the device.
+ * Pass this to connect().
+ * The form of the address depends on the host platform.
+ * @property {number} rssi - A negative integer, the signal strength in decibels.
+ * @property {string} name - The device's name, or nil.
+ * @property {string} scanRecord - Base64-encoded binary data.
+ * Its meaning is device-specific. Not available on iOS.
+ * @property {AdvertisementData} advertisementData - Object containing some
+ * of the data from the scanRecord. Available natively on iOS. Available on
+ * Android by parsing the scanRecord, which is implemented in the library EasyBLE:
+ * {@link https://github.com/evothings/evothings-libraries/blob/master/libs/evothings/easyble/easyble.js}.
+ */
 
-/** Stops scanning for devices.
-*
-* @example
-evothings.ble.stopScan();
-*/
+/**
+ * Information extracted from a scanRecord. Some or all of the fields may
+ * be undefined. This varies between BLE devices.
+ * Depending on OS version and BLE device, additional fields, not documented
+ * here, may be present.
+ * @typedef {Object} AdvertisementData
+ * @property {string} kCBAdvDataLocalName - The device's name. Might or might
+ * not be equal to DeviceInfo.name. iOS caches DeviceInfo.name which means if
+ * the name is changed on the device, the new name might not be visible.
+ * kCBAdvDataLocalName is not cached and is therefore safer to use, when available.
+ * @property {number} kCBAdvDataTxPowerLevel - Transmission power level as
+ * advertised by the device.
+ * @property {number} kCBAdvDataChannel - A positive integer, the BLE channel
+ * on which the device listens for connections. Ignore this number.
+ * @property {boolean} kCBAdvDataIsConnectable - True if the device accepts
+ * connections. False if it doesn't.
+ * @property {array} kCBAdvDataServiceUUIDs - Array of strings, the UUIDs of
+ * services advertised by the device. Formatted according to RFC 4122, all lowercase.
+ * @property {object} kCBAdvDataServiceData - Dictionary of strings to strings.
+ * The keys are service UUIDs. The values are base-64-encoded binary data.
+ * @property {string} kCBAdvDataManufacturerData - Base-64-encoded binary data.
+ * This field is used by BLE devices to advertise custom data that don't fit into
+ * any of the other fields.
+ */
+
+/**
+ * This function is called when an operation fails.
+ * @callback failCallback
+ * @param {string} errorString - A human-readable string that describes the error that occurred.
+ */
+
+/**
+ * Stops scanning for devices.
+ *
+ * @example
+ *   evothings.ble.stopScan();
+ */
 exports.stopScan = function()
 {
 	isScanning = false;
@@ -532,27 +550,27 @@ function littleEndianToUint8(data, offset)
 
 })(); // End of closure for parseAdvertisementData.
 
-/** Connect to a remote device.
-* @param {DeviceInfo} device - Device object from scanCallback (for backwards
-* compatibility, this parameter may also be the address string of the device object).
-* @param {connectCallback} success
-* @param {failCallback} fail
-* @example
-evothings.ble.connect(
-	device,
-	function(connectInfo)
-	{
-		console.log('Connect status for device: '
-			+ connectInfo.device.name
-			+ ' state: '
-			+ connectInfo.state);
-	},
-	function(errorCode)
-	{
-		console.log('Connect error: ' + errorCode);
-	}
-);
-*/
+/**
+ * Connect to a remote device.
+ * @param {DeviceInfo} device - Device object from scanCallback (for backwards
+ * compatibility, this parameter may also be the address string of the device object).
+ * @param {connectCallback} success
+ * @param {failCallback} fail
+ * @example
+ * evothings.ble.connect(
+ *     device,
+ *     function(connectInfo)
+ *     {
+ *         console.log('Connect status for device: '
+ *             + connectInfo.device.name
+ *             + ' state: '
+ *             + connectInfo.state);
+ *     },
+ *     function(errorCode)
+ *     {
+ *         console.log('Connect error: ' + errorCode);
+ *     });
+ */
 exports.connect = function(deviceOrAddress, success, fail)
 {
 	if (typeof deviceOrAddress == 'string')
@@ -578,26 +596,29 @@ exports.connect = function(deviceOrAddress, success, fail)
 	}
 };
 
-/** Will be called whenever the device's connection state changes.
-* @callback connectCallback
-* @param {ConnectInfo} info
-*/
+/**
+ * Will be called whenever the device's connection state changes.
+ * @callback connectCallback
+ * @param {ConnectInfo} info
+ */
 
-/** Info about connection events and state.
-* @typedef {Object} ConnectInfo
-* @property {DeviceInfo} device - The device object is available in the
-* ConnectInfo if a device object was passed to connect; passing the address
-* string to connect is allowed for backwards compatibility, but this does not
-* set the device field.
-* @property {number} deviceHandle - Handle to the device.
-* @property {number} state - One of the {@link module:cordova-plugin-ble.connectionState} keys.
-*/
+/**
+ * Info about connection events and state.
+ * @typedef {Object} ConnectInfo
+ * @property {DeviceInfo} device - The device object is available in the
+ * ConnectInfo if a device object was passed to connect; passing the address
+ * string to connect is allowed for backwards compatibility, but this does not
+ * set the device field.
+ * @property {number} deviceHandle - Handle to the device.
+ * @property {number} state - One of the {@link module:cordova-plugin-ble.connectionState} keys.
+ */
 
-/** A map describing possible connection states.
-* @alias module:cordova-plugin-ble.connectionState
-* @readonly
-* @enum
-*/
+/**
+ * A map describing possible connection states.
+ * @alias module:cordova-plugin-ble.connectionState
+ * @readonly
+ * @enum
+ */
 exports.connectionState = {
 	/** STATE_DISCONNECTED */
 	0: 'STATE_DISCONNECTED',
@@ -629,22 +650,21 @@ exports.connectionState = {
  * @param {failCallback} fail - Called on error.
  * @param {ConnectOptions} options - Optional connect options object.
  * @example
-  evothings.ble.connectToDevice(
-    device,
-    function(device)
-    {
-      console.log('Connected to device: ' + device.name);
-    },
-    function(device)
-    {
-      console.log('Disconnected from device: ' + device.name);
-    },
-    function(errorCode)
-    {
-      console.log('Connect error: ' + errorCode);
-    }
-  );
-*/
+ *   evothings.ble.connectToDevice(
+ *     device,
+ *     function(device)
+ *     {
+ *       console.log('Connected to device: ' + device.name);
+ *     },
+ *     function(device)
+ *     {
+ *       console.log('Disconnected from device: ' + device.name);
+ *     },
+ *     function(errorCode)
+ *     {
+ *       console.log('Connect error: ' + errorCode);
+ *     });
+ */
 exports.connectToDevice = function(device, connected, disconnected, fail, options)
 {
 	// Default options.
@@ -673,13 +693,12 @@ exports.connectToDevice = function(device, connected, disconnected, fail, option
 			if (discoverServices)
 			{
 				// Read services, characteristics and descriptors.
+				// device.services is set by readServiceData to
+				// the resulting services array.
 				evothings.ble.readServiceData(
 					device,
 					function readServicesSuccess(services)
 					{
-						// Save discovered services.
-						device.services = services;
-
 						// Notify connected callback.
 						connected(device);
 					},
@@ -733,92 +752,98 @@ function objectHandle(objectOrHandle)
 	}
 }
 
-/** Close the connection to a remote device.
-* <p>Frees any native resources associated with the device.
-* <p>Does not cause any callbacks to the function passed to connect().
-
-* @param {DeviceInfo} device - Device object or a device handle from {@link connectCallback}.
-* @example
-evothings.ble.close(device);
-*/
+/**
+ * Close the connection to a remote device.
+ * <p>Frees any native resources associated with the device.
+ * <p>Does not cause any callbacks to the function passed to connect().
+ *
+ * @param {DeviceInfo} device - Device object or a device handle
+ * from {@link connectCallback}.
+ * @example
+ *   evothings.ble.close(device);
+ */
 exports.close = function(deviceOrHandle)
 {
 	exec(null, null, 'BLE', 'close', [objectHandle(deviceOrHandle)]);
 };
 
-/** Fetch the remote device's RSSI (signal strength).
-* @param {DeviceInfo} device - Device object or a device handle from {@link connectCallback}.
-* @param {rssiCallback} success
-* @param {failCallback} fail
-* @example
-evothings.ble.rssi(
-	device,
-	function(rssi)
-	{
-		console.log('rssi: ' + rssi);
-	},
-	function(errorCode)
-	{
-		console.log('rssi error: ' + errorCode);
-	}
-);
-*/
+/**
+ * Fetch the remote device's RSSI (signal strength).
+ * @param {DeviceInfo} device - Device object or a device handle from {@link connectCallback}.
+ * @param {rssiCallback} success
+ * @param {failCallback} fail
+ * @example
+ *   evothings.ble.rssi(
+ *     device,
+ *     function(rssi)
+ *     {
+ *       console.log('rssi: ' + rssi);
+ *     },
+ *     function(errorCode)
+ *     {
+ *       console.log('rssi error: ' + errorCode);
+ *     });
+ */
 exports.rssi = function(deviceOrHandle, success, fail)
 {
 	exec(deviceOrHandle, success, fail, 'BLE', 'rssi', [objectHandle(deviceOrHandle)]);
 };
 
-/** This function is called with an RSSI value.
-* @callback rssiCallback
-* @param {number} rssi - A negative integer, the signal strength in decibels.
-*/
+/**
+ * This function is called with an RSSI value.
+ * @callback rssiCallback
+ * @param {number} rssi - A negative integer, the signal strength in decibels.
+ */
 
-/** Fetch information about a remote device's services.
-* @param {DeviceInfo} device - Device object or a device handle from {@link connectCallback}.
-* @param {serviceCallback} success - Called with array of {@link Service} objects.
-* @param {failCallback} fail
-* @example
-evothings.ble.services(
-	device,
-	function(services)
-	{
-		console.log('found services:');
-		for (var i = 0; i < services.length; i++)
-		{
-			var service = services[i];
-			console.log('  service:');
-			console.log('    ' + service.handle);
-			console.log('    ' + service.uuid);
-			console.log('    ' + service.serviceType);
-		}
-	},
-	function(errorCode)
-	{
-		console.log('services error: ' + errorCode);
-	});
-*/
+/**
+ * Fetch information about a remote device's services.
+ * @param {DeviceInfo} device - Device object or a device handle from {@link connectCallback}.
+ * @param {serviceCallback} success - Called with array of {@link Service} objects.
+ * @param {failCallback} fail
+ * @example
+ *     evothings.ble.services(
+ *     device,
+ *     function(services)
+ *     {
+ *       console.log('found services:');
+ *       for (var i = 0; i < services.length; i++)
+ *       {
+ *         var service = services[i];
+ *         console.log('  service:');
+ *         console.log('    ' + service.handle);
+ *         console.log('    ' + service.uuid);
+ *         console.log('    ' + service.serviceType);
+ *       }
+ *     },
+ *     function(errorCode)
+ *     {
+ *       console.log('services error: ' + errorCode);
+ *     });
+ */
 exports.services = function(deviceOrHandle, success, fail)
 {
 	exec(success, fail, 'BLE', 'services', [objectHandle(deviceOrHandle)]);
 };
 
 /**
-* @callback serviceCallback
-* @param {Array} services - Array of {@link Service} objects.
-*/
+ * @callback serviceCallback
+ * @param {Array} services - Array of {@link Service} objects.
+ */
 
-/** Describes a GATT service.
-* @typedef {Object} Service
-* @property {number} handle
-* @property {string} uuid - Formatted according to RFC 4122, all lowercase.
-* @property {module:cordova-plugin-ble.serviceType} type
-*/
+/**
+ * Describes a GATT service.
+ * @typedef {Object} Service
+ * @property {number} handle
+ * @property {string} uuid - Formatted according to RFC 4122, all lowercase.
+ * @property {module:cordova-plugin-ble.serviceType} type
+ */
 
-/** A map describing possible service types.
-* @readonly
-* @alias module:cordova-plugin-ble.serviceType
-* @enum
-*/
+/**
+ * A map describing possible service types.
+ * @readonly
+ * @alias module:cordova-plugin-ble.serviceType
+ * @enum
+ */
 exports.serviceType = {
 	/** SERVICE_TYPE_PRIMARY */
 	0: 'SERVICE_TYPE_PRIMARY',
@@ -832,28 +857,28 @@ exports.serviceType = {
 };
 
 /** Fetch information about a service's characteristics.
-* @param {DeviceInfo} device - Device object or a device handle from {@link connectCallback}.
-* @param {Service} service - Service object or handle from {@link serviceCallback}.
-* @param {characteristicCallback} success - Called with array of {@link Characteristic} objects.
-* @param {failCallback} fail
-* @example
-evothings.ble.characteristics(
-	device,
-	service,
-	function(characteristics)
-	{
-		console.log('found characteristics:');
-		for (var i = 0; i < characteristics.length; i++)
-		{
-			var characteristic = characteristics[i];
-			console.log('  characteristic: ' + characteristic.uuid);
-		}
-	},
-	function(errorCode)
-	{
-		console.log('characteristics error: ' + errorCode);
-	});
-*/
+ * @param {DeviceInfo} device - Device object or a device handle from {@link connectCallback}.
+ * @param {Service} service - Service object or handle from {@link serviceCallback}.
+ * @param {characteristicCallback} success - Called with array of {@link Characteristic} objects.
+ * @param {failCallback} fail
+ * @example
+ *   evothings.ble.characteristics(
+ *     device,
+ *     service,
+ *     function(characteristics)
+ *     {
+ *       console.log('found characteristics:');
+ *       for (var i = 0; i < characteristics.length; i++)
+ *       {
+ *         var characteristic = characteristics[i];
+ *         console.log('  characteristic: ' + characteristic.uuid);
+ *       }
+ *     },
+ *     function(errorCode)
+ *     {
+ *       console.log('characteristics error: ' + errorCode);
+ *     });
+ */
 exports.characteristics = function(deviceOrHandle, serviceOrHandle, success, fail)
 {
 	exec(success, fail, 'BLE', 'characteristics',
@@ -862,24 +887,28 @@ exports.characteristics = function(deviceOrHandle, serviceOrHandle, success, fai
 };
 
 /**
-* @callback characteristicCallback
-* @param {Array} characteristics - Array of {@link Characteristic} objects.
-*/
+ * @callback characteristicCallback
+ * @param {Array} characteristics - Array of {@link Characteristic} objects.
+ */
 
-/** Describes a GATT characteristic.
-* @typedef {Object} Characteristic
-* @property {number} handle
-* @property {string} uuid - Formatted according to RFC 4122, all lowercase.
-* @property {module:cordova-plugin-ble.permission} permissions - Bitmask of zero or more permission flags.
-* @property {module:cordova-plugin-ble.property} properties - Bitmask of zero or more property flags.
-* @property {module:cordova-plugin-ble.writeType} writeType
-*/
+/**
+ * Describes a GATT characteristic.
+ * @typedef {Object} Characteristic
+ * @property {number} handle
+ * @property {string} uuid - Formatted according to RFC 4122, all lowercase.
+ * @property {module:cordova-plugin-ble.permission} permissions - Bitmask of
+ * zero or more permission flags.
+ * @property {module:cordova-plugin-ble.property} properties - Bitmask of
+ * zero or more property flags.
+ * @property {module:cordova-plugin-ble.writeType} writeType
+ */
 
-/** A map describing possible permission flags.
-* @alias module:cordova-plugin-ble.permission
-* @readonly
-* @enum
-*/
+/**
+ * A map describing possible permission flags.
+ * @alias module:cordova-plugin-ble.permission
+ * @readonly
+ * @enum
+ */
 exports.permission = {
 	/** PERMISSION_READ */
 	1: 'PERMISSION_READ',
@@ -916,11 +945,12 @@ exports.permission = {
 	'PERMISSION_WRITE_SIGNED_MITM': 256,
 };
 
-/** A map describing possible property flags.
-* @alias module:cordova-plugin-ble.property
-* @readonly
-* @enum
-*/
+/**
+ * A map describing possible property flags.
+ * @alias module:cordova-plugin-ble.property
+ * @readonly
+ * @enum
+ */
 exports.property = {
 	/** PROPERTY_BROADCAST */
 	1: 'PROPERTY_BROADCAST',
@@ -957,11 +987,12 @@ exports.property = {
 	'PROPERTY_EXTENDED_PROPS': 128,
 };
 
-/** A map describing possible write types.
-* @alias module:cordova-plugin-ble.writeType
-* @readonly
-* @enum
-*/
+/**
+ * A map describing possible write types.
+ * @alias module:cordova-plugin-ble.writeType
+ * @readonly
+ * @enum
+ */
 exports.writeType = {
 	/** WRITE_TYPE_NO_RESPONSE */
 	1: 'WRITE_TYPE_NO_RESPONSE',
@@ -978,29 +1009,32 @@ exports.writeType = {
 	'WRITE_TYPE_SIGNED': 4,
 };
 
-/** Fetch information about a characteristic's descriptors.
-* @param {DeviceInfo} device - Device object or a device handle from {@link connectCallback}.
-* @param {Characteristic} characteristic - Characteristic object or handle from {@link characteristicCallback}.
-* @param {descriptorCallback} success - Called with array of {@link Descriptor} objects.
-* @param {failCallback} fail
-* @example
-evothings.ble.descriptors(
-	device,
-	characteristic,
-	function(descriptors)
-	{
-		console.log('found descriptors:');
-		for (var i = 0; i < descriptors.length; i++)
-		{
-			var descriptor = descriptors[i];
-			console.log('  descriptor: ' + descriptor.uuid);
-		}
-	},
-	function(errorCode)
-	{
-		console.log('descriptors error: ' + errorCode);
-	});
-*/
+/**
+ * Fetch information about a characteristic's descriptors.
+ * @param {DeviceInfo} device - Device object or a device handle from
+ * {@link connectCallback}.
+ * @param {Characteristic} characteristic - Characteristic object or handle
+ * from {@link characteristicCallback}.
+ * @param {descriptorCallback} success - Called with array of {@link Descriptor} objects.
+ * @param {failCallback} fail
+ * @example
+ *   evothings.ble.descriptors(
+ *     device,
+ *     characteristic,
+ *     function(descriptors)
+ *     {
+ *       console.log('found descriptors:');
+ *       for (var i = 0; i < descriptors.length; i++)
+ *       {
+ *         var descriptor = descriptors[i];
+ *         console.log('  descriptor: ' + descriptor.uuid);
+ *       }
+ *     },
+ *     function(errorCode)
+ *     {
+ *       console.log('descriptors error: ' + errorCode);
+ *     });
+ */
 exports.descriptors = function(deviceOrHandle, characteristicOrHandle, success, fail)
 {
 	exec(success, fail, 'BLE', 'descriptors',
@@ -1009,40 +1043,45 @@ exports.descriptors = function(deviceOrHandle, characteristicOrHandle, success, 
 };
 
 /**
-* @callback descriptorCallback
-* @param {Array} descriptors - Array of {@link Descriptor} objects.
-*/
-
-/** Describes a GATT descriptor.
-* @typedef {Object} Descriptor
-* @property {number} handle
-* @property {string} uuid - Formatted according to RFC 4122, all lowercase.
-* @property {module:cordova-plugin-ble.permission} permissions - Bitmask of zero or more permission flags.
-*/
+ * @callback descriptorCallback
+ * @param {Array} descriptors - Array of {@link Descriptor} objects.
+ */
 
 /**
-* @callback dataCallback
-* @param {ArrayBuffer} data
-*/
+ * Describes a GATT descriptor.
+ * @typedef {Object} Descriptor
+ * @property {number} handle
+ * @property {string} uuid - Formatted according to RFC 4122, all lowercase.
+ * @property {module:cordova-plugin-ble.permission} permissions - Bitmask of
+ * zero or more permission flags.
+ */
 
-/** Reads a characteristic's value from a remote device.
-* @param {DeviceInfo} device - Device object or a device handle from {@link connectCallback}.
-* @param {Characteristic} characteristic - Characteristic object or handle from {@link characteristicCallback}.
-* @param {dataCallback} success
-* @param {failCallback} fail
-* @example
-evothings.ble.readCharacteristic(
-	device,
-	characteristic,
-	function(data)
-	{
-		console.log('characteristic data: ' + evothings.ble.fromUtf8(data));
-	},
-	function(errorCode)
-	{
-		console.log('readCharacteristic error: ' + errorCode);
-	});
-*/
+/**
+ * @callback dataCallback
+ * @param {ArrayBuffer} data
+ */
+
+/**
+ * Reads a characteristic's value from a remote device.
+ * @param {DeviceInfo} device - Device object or a device handle from
+ * {@link connectCallback}.
+ * @param {Characteristic} characteristic - Characteristic object or handle
+ * from {@link characteristicCallback}.
+ * @param {dataCallback} success
+ * @param {failCallback} fail
+ * @example
+ *   evothings.ble.readCharacteristic(
+ *     device,
+ *     characteristic,
+ *     function(data)
+ *     {
+ *       console.log('characteristic data: ' + evothings.ble.fromUtf8(data));
+ *     },
+ *     function(errorCode)
+ *     {
+ *       console.log('readCharacteristic error: ' + errorCode);
+ *     });
+ */
 exports.readCharacteristic = function(deviceOrHandle, characteristicOrHandle, success, fail)
 {
 	exec(success, fail, 'BLE', 'readCharacteristic',
@@ -1050,24 +1089,25 @@ exports.readCharacteristic = function(deviceOrHandle, characteristicOrHandle, su
 		 objectHandle(characteristicOrHandle)]);
 };
 
-/** Reads a descriptor's value from a remote device.
-* @param {DeviceInfo} device - Device object or a device handle from {@link connectCallback}.
-* @param {Descriptor} descriptor - Descriptor object or handle from {@link descriptorCallback}.
-* @param {dataCallback} success
-* @param {failCallback} fail
-* @example
-evothings.ble.readDescriptor(
-	device,
-	descriptor,
-	function(data)
-	{
-		console.log('descriptor data: ' + evothings.ble.fromUtf8(data));
-	},
-	function(errorCode)
-	{
-		console.log('readDescriptor error: ' + errorCode);
-	});
-*/
+/**
+ * Reads a descriptor's value from a remote device.
+ * @param {DeviceInfo} device - Device object or a device handle from {@link connectCallback}.
+ * @param {Descriptor} descriptor - Descriptor object or handle from {@link descriptorCallback}.
+ * @param {dataCallback} success
+ * @param {failCallback} fail
+ * @example
+ * evothings.ble.readDescriptor(
+ *   device,
+ *   descriptor,
+ *   function(data)
+ *   {
+ *     console.log('descriptor data: ' + evothings.ble.fromUtf8(data));
+ *   },
+ *   function(errorCode)
+ *   {
+ *     console.log('readDescriptor error: ' + errorCode);
+ *   });
+ */
 exports.readDescriptor = function(deviceOrHandle, descriptorOrHandle, success, fail)
 {
 	exec(success, fail, 'BLE', 'readDescriptor',
@@ -1076,23 +1116,27 @@ exports.readDescriptor = function(deviceOrHandle, descriptorOrHandle, success, f
 };
 
 /**
-* @callback emptyCallback - Callback that takes no parameters.
-This callback indicates that an operation was successful,
-without specifying and additional information.
-*/
+ * @callback emptyCallback - Callback that takes no parameters.
+ * This callback indicates that an operation was successful,
+ * without specifying and additional information.
+ */
 
-/** Write a characteristic's value to the remote device.
-*
-* Writes with response, the remote device sends back a confirmation message.
-* This is safe but slower than writing without response.
-*
-* @param {DeviceInfo} device - Device object or a device handle from {@link connectCallback}.
-* @param {Characteristic} characteristic - Characteristic object or handle from {@link characteristicCallback}.
-* @param {ArrayBufferView} data - The value to be written.
-* @param {emptyCallback} success - Called when the remote device has confirmed the write.
-* @param {failCallback} fail - Called if the operation fails.
-* @example TODO: Add example.
-*/
+/**
+ * Write a characteristic's value to the remote device.
+ *
+ * Writes with response, the remote device sends back a confirmation message.
+ * This is safe but slower than writing without response.
+ *
+ * @param {DeviceInfo} device - Device object or a device handle from
+ * {@link connectCallback}.
+ * @param {Characteristic} characteristic - Characteristic object or handle
+ * from {@link characteristicCallback}.
+ * @param {ArrayBufferView} data - The value to be written.
+ * @param {emptyCallback} success - Called when the remote device has
+ * confirmed the write.
+ * @param {failCallback} fail - Called if the operation fails.
+ * @example TODO: Add example.
+ */
 exports.writeCharacteristic = function(deviceOrHandle, characteristicOrHandle, data, success, fail)
 {
 	exec(success, fail, 'BLE', 'writeCharacteristic',
@@ -1101,20 +1145,23 @@ exports.writeCharacteristic = function(deviceOrHandle, characteristicOrHandle, d
 		 data.buffer]);
 };
 
-/** Write a characteristic's value without response.
-*
-* Asks the remote device to NOT send a confirmation message.
-* This may be used for increased data throughput.
-*
-* If the application needs to ensure data integrity, a separate safety protocol
-* would be required. Design of such protocols is beyond the scope of this document.
-*
-* @param {DeviceInfo} device - Device object or a device handle from {@link connectCallback}.
-* @param {Characteristic} characteristic - Characteristic object or handle from {@link characteristicCallback}.
-* @param {ArrayBufferView} data - The value to be written.
-* @param {emptyCallback} success - Called when the data has been sent.
-* @param {failCallback} fail - Called if the operation fails.
-*/
+/**
+ * Write a characteristic's value without response.
+ *
+ * Asks the remote device to NOT send a confirmation message.
+ * This may be used for increased data throughput.
+ *
+ * If the application needs to ensure data integrity, a separate safety protocol
+ * would be required. Design of such protocols is beyond the scope of this document.
+ *
+ * @param {DeviceInfo} device - Device object or a device handle from
+ * {@link connectCallback}.
+ * @param {Characteristic} characteristic - Characteristic object or handle
+ * from {@link characteristicCallback}.
+ * @param {ArrayBufferView} data - The value to be written.
+ * @param {emptyCallback} success - Called when the data has been sent.
+ * @param {failCallback} fail - Called if the operation fails.
+ */
 exports.writeCharacteristicWithoutResponse = function(deviceOrHandle, characteristicOrHandle, data, success, fail)
 {
 	exec(success, fail, 'BLE', 'writeCharacteristicWithoutResponse',
@@ -1123,14 +1170,15 @@ exports.writeCharacteristicWithoutResponse = function(deviceOrHandle, characteri
 		 data.buffer]);
 };
 
-/** Write a descriptor's value to a remote device.
-* @param {DeviceInfo} device - Device object or a device handle from {@link connectCallback}.
-* @param {Descriptor} descriptor - Descriptor object or handle from {@link descriptorCallback}.
-* @param {ArrayBufferView} data - The value to be written.
-* @param {emptyCallback} success
-* @param {failCallback} fail
-* @example TODO: Add example.
-*/
+/**
+ * Write a descriptor's value to a remote device.
+ * @param {DeviceInfo} device - Device object or a device handle from {@link connectCallback}.
+ * @param {Descriptor} descriptor - Descriptor object or handle from {@link descriptorCallback}.
+ * @param {ArrayBufferView} data - The value to be written.
+ * @param {emptyCallback} success
+ * @param {failCallback} fail
+ * @example TODO: Add example.
+ */
 exports.writeDescriptor = function(deviceOrHandle, descriptorOrHandle, data, success, fail)
 {
 	exec(success, fail, 'BLE', 'writeDescriptor',
@@ -1139,42 +1187,45 @@ exports.writeDescriptor = function(deviceOrHandle, descriptorOrHandle, data, suc
 		 data.buffer]);
 };
 
-/** Request notification or indication on changes to a characteristic's value.
-* This is more efficient than polling the value using readCharacteristic().
-* This function automatically detects if the characteristic supports
-* notification or indication.
-*
-* <p>Android only: To disable this functionality and write
-* the configuration descriptor yourself, supply an options object as
-* last parameter, see example below.</p>
-*
-* @param {DeviceInfo} device - Device object or a device handle from {@link connectCallback}.
-* @param {Characteristic} characteristic - Characteristic object or handle from {@link characteristicCallback}.
-* @param {dataCallback} success - Called every time the value changes.
-* @param {failCallback} fail - Error callback.
-* @param {NotificationOptions} options - Android only: Optional object with options.
-* Set field writeConfigDescriptor to false to disable automatic writing of
-* notification or indication descriptor value. This is useful if full control
-* of writing the config descriptor is needed.
-*
-* @example
-// Example call:
-evothings.ble.enableNotification(
-	device,
-	characteristic,
-	function(data)
-	{
-		console.log('characteristic data: ' + evothings.ble.fromUtf8(data));
-	},
-	function(errorCode)
-	{
-		console.log('enableNotification error: ' + errorCode);
-	});
-
-// To disable automatic writing of the config descriptor
-// supply this as last parameter to enableNotification:
-{ writeConfigDescriptor: false }
-*/
+/**
+ * Request notification or indication on changes to a characteristic's value.
+ * This is more efficient than polling the value using readCharacteristic().
+ * This function automatically detects if the characteristic supports
+ * notification or indication.
+ *
+ * <p>Android only: To disable this functionality and write
+ * the configuration descriptor yourself, supply an options object as
+ * last parameter, see example below.</p>
+ *
+ * @param {DeviceInfo} device - Device object or a device handle from
+ * {@link connectCallback}.
+ * @param {Characteristic} characteristic - Characteristic object or handle
+ * from {@link characteristicCallback}.
+ * @param {dataCallback} success - Called every time the value changes.
+ * @param {failCallback} fail - Error callback.
+ * @param {NotificationOptions} options - Android only: Optional object with options.
+ * Set field writeConfigDescriptor to false to disable automatic writing of
+ * notification or indication descriptor value. This is useful if full control
+ * of writing the config descriptor is needed.
+ *
+ * @example
+ *   // Example call:
+ *   evothings.ble.enableNotification(
+ *     device,
+ *     characteristic,
+ *     function(data)
+ *     {
+ *       console.log('characteristic data: ' + evothings.ble.fromUtf8(data));
+ *     },
+ *     function(errorCode)
+ *     {
+ *       console.log('enableNotification error: ' + errorCode);
+ *     });
+ *
+ *   // To disable automatic writing of the config descriptor
+ *   // supply this as last parameter to enableNotification:
+ *   { writeConfigDescriptor: false }
+ */
 exports.enableNotification = function(deviceOrHandle, characteristicOrHandle, success, fail, options)
 {
 	var flags = 0;
@@ -1188,35 +1239,38 @@ exports.enableNotification = function(deviceOrHandle, characteristicOrHandle, su
 		 flags]);
 };
 
-/** Disable notification or indication of a characteristic's value.
-*
-* @param {DeviceInfo} device - Device object or a device handle from {@link connectCallback}.
-* @param {Characteristic} characteristic - Characteristic object or handle from {@link characteristicCallback}.
-* @param {emptyCallback} success - Success callback.
-* @param {failCallback} fail - Error callback.
-* @param {NotificationOptions} options - Android only: Optional object with options.
-* Set field writeConfigDescriptor to false to disable automatic writing of
-* notification or indication descriptor value. This is useful if full control
-* of writing the config descriptor is needed.
-*
-* @example
-// Example call:
-evothings.ble.disableNotification(
-	device,
-	characteristic,
-	function()
-	{
-		console.log('characteristic notification disabled');
-	},
-	function(errorCode)
-	{
-		console.log('disableNotification error: ' + errorCode);
-	});
-
-// To disable automatic writing of the config descriptor
-// supply this as last parameter to enableNotification:
-{ writeConfigDescriptor: false }
-*/
+/**
+ * Disable notification or indication of a characteristic's value.
+ *
+ * @param {DeviceInfo} device - Device object or a device handle from
+ * {@link connectCallback}.
+ * @param {Characteristic} characteristic - Characteristic object or handle
+ * from {@link characteristicCallback}.
+ * @param {emptyCallback} success - Success callback.
+ * @param {failCallback} fail - Error callback.
+ * @param {NotificationOptions} options - Android only: Optional object with options.
+ * Set field writeConfigDescriptor to false to disable automatic writing of
+ * notification or indication descriptor value. This is useful if full control
+ * of writing the config descriptor is needed.
+ *
+ * @example
+ *   // Example call:
+ *   evothings.ble.disableNotification(
+ *     device,
+ *     characteristic,
+ *     function()
+ *     {
+ *       console.log('characteristic notification disabled');
+ *     },
+ *     function(errorCode)
+ *     {
+ *       console.log('disableNotification error: ' + errorCode);
+ *     });
+ *
+ *   // To disable automatic writing of the config descriptor
+ *   // supply this as last parameter to enableNotification:
+ *   { writeConfigDescriptor: false }
+ */
 exports.disableNotification = function(deviceOrHandle, characteristicOrHandle, success, fail, options) {
 	var flags = 0;
 	if (options && (false === options.writeConfigDescriptor))
@@ -1237,45 +1291,49 @@ exports.disableNotification = function(deviceOrHandle, characteristicOrHandle, s
  * This is useful if full control of writing the config descriptor is needed.
  */
 
-/** i is an integer. It is converted to byte and put in an array[1].
-* The array is returned.
-* <p>assert(string.charCodeAt(0) == i).
-*
-* @param {number} i
-* @param {dataCallback} success - Called every time the value changes.
-*/
+/**
+ * i is an integer. It is converted to byte and put in an array[1].
+ * The array is returned.
+ * <p>assert(string.charCodeAt(0) == i).
+ *
+ * @param {number} i
+ * @param {dataCallback} success - Called every time the value changes.
+ */
 exports.testCharConversion = function(i, success)
 {
 	exec(success, null, 'BLE', 'testCharConversion', [i]);
 };
 
-/** Resets the device's Bluetooth system.
-* This is useful on some buggy devices where BLE functions stops responding until reset.
-* Available on Android 4.3+. This function takes 3-5 seconds to reset BLE.
-* On iOS this function stops any ongoing scan operation and disconnects
-* all connected devices.
-*
-* @param {emptyCallback} success
-* @param {failCallback} fail
-*/
+/**
+ * Resets the device's Bluetooth system.
+ * This is useful on some buggy devices where BLE functions stops responding until reset.
+ * Available on Android 4.3+. This function takes 3-5 seconds to reset BLE.
+ * On iOS this function stops any ongoing scan operation and disconnects
+ * all connected devices.
+ *
+ * @param {emptyCallback} success
+ * @param {failCallback} fail
+ */
 exports.reset = function(success, fail)
 {
 	exec(success, fail, 'BLE', 'reset', []);
 };
 
-/** Converts an ArrayBuffer containing UTF-8 data to a JavaScript String.
-* @param {ArrayBuffer} a
-* @returns string
-*/
+/**
+ * Converts an ArrayBuffer containing UTF-8 data to a JavaScript String.
+ * @param {ArrayBuffer} a
+ * @returns string
+ */
 exports.fromUtf8 = function(a)
 {
 	return decodeURIComponent(escape(String.fromCharCode.apply(null, new Uint8Array(a))));
 };
 
-/** Converts a JavaScript String to an Uint8Array containing UTF-8 data.
-* @param {string} s
-* @returns Uint8Array
-*/
+/**
+ * Converts a JavaScript String to an Uint8Array containing UTF-8 data.
+ * @param {string} s
+ * @returns Uint8Array
+ */
 exports.toUtf8 = function(s)
 {
 	var strUtf8 = unescape(encodeURIComponent(s));
@@ -1296,7 +1354,7 @@ exports.toUtf8 = function(s)
  * @param {string|number} uuid - The UUID to turn into canonical form.
  * @return Canonical UUID.
  */
-exports.canonicalUUID = function(uuid)
+exports.getCanonicalUUID = function(uuid)
 {
 	if (typeof uuid === 'number')
 	{
@@ -1406,7 +1464,7 @@ exports.readServiceData = function(deviceOrHandle, success, fail, options)
 			for (var i = 0; i < services.length; ++i)
 			{
 				var service = services[i];
-				service.uuid = exports.canonicalUUID(service.uuid);
+				service.uuid = exports.getCanonicalUUID(service.uuid);
 				if (includeService(service))
 				{
 					// Save service.
@@ -1441,7 +1499,7 @@ exports.readServiceData = function(deviceOrHandle, success, fail, options)
 			for (var i = 0; i < characteristics.length; ++i)
 			{
 				var characteristic = characteristics[i];
-				characteristic.uuid = exports.canonicalUUID(characteristic.uuid);
+				characteristic.uuid = exports.getCanonicalUUID(characteristic.uuid);
 				service.characteristics.push(characteristic);
 				characteristic.descriptors = [];
 
@@ -1466,12 +1524,19 @@ exports.readServiceData = function(deviceOrHandle, success, fail, options)
 			for (var i = 0; i < descriptors.length; ++i)
 			{
 				var descriptor = descriptors[i];
-				descriptor.uuid = exports.canonicalUUID(descriptor.uuid);
+				descriptor.uuid = exports.getCanonicalUUID(descriptor.uuid);
 				characteristic.descriptors.push(descriptor);
 			}
 			if (0 == readCounter)
 			{
-				// Everything is read.
+				// Everything is read. If a device object is supplied,
+				// set the services array of the device to the result.
+				if (typeof deviceOrHandle == 'object')
+				{
+					deviceOrHandle.services = serviceArray;
+				}
+
+				// Call result function.
 				success(serviceArray);
 			}
 		};
@@ -1487,6 +1552,11 @@ exports.readServiceData = function(deviceOrHandle, success, fail, options)
 		});
 };
 
+/**
+ * Get a service object from a device or array.
+ * @param {DeviceInfo} device - Device object (or array of {@link Service} objects).
+ * @param {string} uuid - UUID of service to get.
+ */
 exports.getService = function(deviceOrServices, uuid)
 {
 	var services = null;
@@ -1508,7 +1578,7 @@ exports.getService = function(deviceOrServices, uuid)
 	}
 
 	// Normalize UUID.
-	uuid = exports.canonicalUUID(uuid);
+	uuid = exports.getCanonicalUUID(uuid);
 
 	for (var i in services)
 	{
@@ -1522,9 +1592,19 @@ exports.getService = function(deviceOrServices, uuid)
 	return null;
 };
 
+/**
+ * Get a characteristic object of a service. (Characteristics
+ * within a service that share the same UUID (rare case) must
+ * be retrieved by manurally traversing the characteristics
+ * array of the service. This function till return the first
+ * characteristic found, which may not be the one you want.
+ * Note that this is a rare case.)
+ * @param {Service} device - Service object.
+ * @param {string} uuid - UUID of characteristic to get.
+ */
 exports.getCharacteristic = function(service, uuid)
 {
-	uuid = exports.canonicalUUID(uuid);
+	uuid = exports.getCanonicalUUID(uuid);
 
 	var characteristics = service.characteristics;
 	for (var i in characteristics)
@@ -1539,9 +1619,14 @@ exports.getCharacteristic = function(service, uuid)
 	return null;
 };
 
+/**
+ * Get a descriptor object of a characteristic.
+ * @param {Characteristic} characteristic - Characteristic object.
+ * @param {string} uuid - UUID of descriptor to get.
+ */
 exports.getDescriptor = function(characteristic, uuid)
 {
-	uuid = exports.canonicalUUID(uuid);
+	uuid = exports.getCanonicalUUID(uuid);
 
 	var descriptors = characteristic.descriptors;
 	for (var i in descriptors)
@@ -1627,7 +1712,8 @@ function gattServerCallbackHandler(winFunc, settings) {
 	};
 }
 
-/** Starts the GATT server.
+/**
+* Starts the GATT server.
 * There can be only one server. If this function is called while the server is still running, the call will fail.
 * Once this function succeeds, the server may be stopped by calling stopGattServer.
 *
@@ -1640,20 +1726,23 @@ exports.peripheral.startGattServer = function(settings, win, fail) {
 };
 
 // GattSettings
-/** Describes a GATT server.
+/**
+* Describes a GATT server.
 * @typedef {Object} GattSettings
 * @property {Array} services - An array of GattService objects.
 * @property {connectionStateChangeCallback} onConnectionStateChange
 */
 
-/** Describes a GATT service.
+/**
+* Describes a GATT service.
 * @typedef {Object} GattService
 * @property {string} uuid - Formatted according to RFC 4122, all lowercase.
 * @property {serviceType} type
 * @property {Array} characteristics - An array of GattCharacteristic objects.
 */
 
-/** Describes a GATT characteristic.
+/**
+* Describes a GATT characteristic.
 * @typedef {Object} GattCharacteristic
 * @property {int} handle - Optional. Used in notify(). If set, must be unique among all other GattCharacteristic handles.
 * @property {string} uuid - Formatted according to RFC 4122, all lowercase.
@@ -1665,7 +1754,8 @@ exports.peripheral.startGattServer = function(settings, win, fail) {
 * @property {Array} descriptors - Optional. An array of GattDescriptor objects.
 */
 
-/** Describes a GATT descriptor.
+/**
+* Describes a GATT descriptor.
 * @typedef {Object} GattDescriptor
 * @property {string} uuid - Formatted according to RFC 4122, all lowercase.
 * @property {module:cordova-plugin-ble.permission} permissions - Bitmask of zero or more permission flags.
@@ -1675,21 +1765,24 @@ exports.peripheral.startGattServer = function(settings, win, fail) {
 
 
 // GattServer callbacks
-/** This function is a part of GattSettings and is called when a remote device connects to, or disconnects from, your server.
+/**
+* This function is a part of GattSettings and is called when a remote device connects to, or disconnects from, your server.
 * @callback connectionStateChangeCallback
 * @param {int} deviceHandle - Will be used in other callbacks.
 * @param {boolean} connected - If true, the device just connected, and the handle is now valid for use in close() and other functions.
 * If false, it just disconnected, and the handle is now invalid for use in close() and other functions.
 */
 
-/** Called when a remote device asks to read a characteristic or descriptor.
+/**
+* Called when a remote device asks to read a characteristic or descriptor.
 * You must call sendResponse() to complete the request.
 * @callback readRequestCallback
 * @param {int} deviceHandle
 * @param {int} requestId
 */
 
-/** Called when a remote device asks to write a characteristic or descriptor.
+/**
+* Called when a remote device asks to write a characteristic or descriptor.
 * You must call sendResponse() to complete the request.
 * @callback writeRequestCallback
 * @param {int} deviceHandle
@@ -1698,7 +1791,8 @@ exports.peripheral.startGattServer = function(settings, win, fail) {
 */
 
 
-/** Stops the GATT server.
+/**
+* Stops the GATT server.
 * This stops any active advertisements and forcibly disconnects any clients.
 * There can be only one server. If startGattServer() returned success, you may call this function once.
 * Calling it more will result in failure.
@@ -1710,7 +1804,8 @@ exports.peripheral.stopGattServer = function(win, fail) {
 	exec(win, fail, 'BLE', 'stopGattServer', []);
 };
 
-/** Sends a response to a read or write request.
+/**
+* Sends a response to a read or write request.
 * @param {int} deviceHandle - From a requestCallback.
 * @param {int} requestId - From the same requestCallback as deviceHandle.
 * @param {ArrayBufferView} data - Required for responses to read requests. May be set to null for write requests.
@@ -1721,7 +1816,8 @@ exports.peripheral.sendResponse = function(deviceHandle, requestId, data, win, f
 	exec(win, fail, 'BLE', 'sendResponse', [deviceHandle, requestId, data.buffer]);
 }
 
-/** Sends a notification to a remote device that a characteristic's value has been updated.
+/**
+* Sends a notification to a remote device that a characteristic's value has been updated.
 * @param {int} deviceHandle - From a connectionStateChangeCallback.
 * @param {int} characteristicHandle - GattCharacteristic.handle
 * @param {ArrayBufferView} data - The characteristic's new value.
@@ -1739,7 +1835,8 @@ exports.closeClient = function(clientHandle, win, fail) {
 */
 
 
-/** Starts BLE advertise.
+/**
+* Starts BLE advertise.
 * Fails if advertise is running. In that case, call stopAdvertise first.
 *
 * @param {AdvertiseSettings} settings
@@ -1750,7 +1847,8 @@ exports.peripheral.startAdvertise = function(settings, win, fail) {
 	exec(win, fail, 'BLE', 'startAdvertise', [settings]);
 }
 
-/** Stops BLE advertise.
+/**
+* Stops BLE advertise.
 *
 * @param {emptyCallback} win
 * @param {failCallback} fail
@@ -1760,7 +1858,8 @@ exports.peripheral.stopAdvertise = function(win, fail) {
 }
 
 // AdvertiseSettings
-/** Describes a BLE advertisement.
+/**
+* Describes a BLE advertisement.
 *
 * All the properties are optional, except broadcastData.
 *
@@ -1778,7 +1877,8 @@ exports.peripheral.stopAdvertise = function(win, fail) {
 * Should be an extension to the broadcastData; should not contain the same data.
 */
 
-/** Describes BLE advertisement data.
+/**
+* Describes BLE advertisement data.
 *
 * Data size is limited to 31 bytes. Each property set consumes some bytes.
 * If too much data is added, startAdvertise will fail with "ADVERTISE_FAILED_DATA_TOO_LARGE" or something similar.

@@ -1,4 +1,4 @@
-## Cordova BLE Plugin
+# Cordova BLE Plugin
 
 This plugin implements BLE support for Android, iOS and Windows 8.1 (partial support). Enable your Cordova and PhoneGap mobile applications to communicate with all sorts of BLE devices.
 
@@ -12,13 +12,13 @@ Available functionality:
 * Poll RSSI (signal strength) of a device (Android and iOS only)
 * Experimental support for Peripheral mode on Android
 
-### Installation
+## Installation
 
 Install using the Apache Cordova command line:
 
     cordova plugin add cordova-plugin-ble
 
-### Updated BLE Plugin API
+## Updated BLE Plugin API
 
 We have extended the BLE plugin API to make it more high-level and easy to use.
 
@@ -30,9 +30,9 @@ We recommend using the new style with object parameters.
 
 Below is tour of the new BLE plugin API.
 
-### Quick Guide
+## Quick Guide
 
-#### Scan for devices
+### Scan for devices
 
 Use function `evothings.ble.startScan` to scan for devices:
 
@@ -78,7 +78,7 @@ Examples:
     );
 
 
-#### Connect to a device
+### Connect to a device
 
 Use function `evothings.ble.connectToDevice` to connect to a device:
 
@@ -116,7 +116,9 @@ Example:
 
 It is recommended to use this functions in place of the low-level `evothings.ble.connect` function, which does not do automatic service discovery and has a different callback interface.
 
-#### Get services, characteristics and descriptors
+### Get services, characteristics and descriptors
+
+#### evothings.ble.getService
 
 Use `evothings.ble.getService` to get a service by UUID:
 
@@ -126,6 +128,8 @@ Parameters:
 
     @param {DeviceInfo} device - Device object.
     @param {string} uuid - UUID of service to get.
+
+#### evothings.ble.getCharacteristic
 
 Use `evothings.ble.getCharacteristic` to get a characteristic by UUID:
 
@@ -138,6 +142,8 @@ Parameters:
 
 Characteristics within a service that share the same UUID (rare case) must be retrieved by manually traversing the characteristics array of the service. The function getCharacteristic will return the first characteristic found, which may not be the one you want. Note that this is a rare case.
 
+#### evothings.ble.getDescriptor
+
 Use `evothings.ble.getDescriptor` to get a characteristic by UUID:
 
     evothings.ble.getDescriptor(characteristic, uuid)
@@ -147,7 +153,42 @@ Parameters:
     @param {Characteristic} characteristic - Characteristic object.
     @param {string} uuid - UUID of descriptor to get.
 
-#### Reading, writing and notifications
+### Reading, writing and notifications
+
+#### evothings.ble.readCharacteristic
+
+Use `evothings.ble.readCharacteristic` to write a characteristic:
+
+    evothings.ble.readCharacteristic(device, characteristic, success, fail)
+
+Parameters:
+
+    @param {DeviceInfo} device - Device object.
+    @param {Characteristic} characteristic - Characteristic object.
+    @param {dataCallback} success
+    @param {failCallback} fail
+
+Example:
+
+    // When connected to the device, get the desired service and characteristic.
+    var service = evothings.ble.getService(device, SERVICE_UUID)
+    var characteristic = evothings.ble.getCharacteristic(service, CHARACTERISTIC_UUID)
+
+    // Read the characteristic.
+    evothings.ble.readCharacteristic(
+        device,
+        characteristic,
+        function(data)
+        {
+            console.log('characteristic data: ' + evothings.ble.fromUtf8(data));
+        },
+        function(errorCode)
+        {
+            console.log('readCharacteristic error: ' + errorCode);
+        });
+
+
+#### evothings.ble.writeCharacteristic
 
 Use `evothings.ble.writeCharacteristic` to write a characteristic:
 
@@ -182,35 +223,7 @@ Example:
             console.log('writeCharacteristic error: ' + errorCode);
         });
 
-Use `evothings.ble.readCharacteristic` to write a characteristic:
-
-    evothings.ble.readCharacteristic(device, characteristic, success, fail)
-
-Parameters:
-
-    @param {DeviceInfo} device - Device object.
-    @param {Characteristic} characteristic - Characteristic object.
-    @param {dataCallback} success
-    @param {failCallback} fail
-
-Example:
-
-    // When connected to the device, get the desired service and characteristic.
-    var service = evothings.ble.getService(device, SERVICE_UUID)
-    var characteristic = evothings.ble.getCharacteristic(service, CHARACTERISTIC_UUID)
-
-    // Read the characteristic.
-    evothings.ble.readCharacteristic(
-        device,
-        characteristic,
-        function(data)
-        {
-            console.log('characteristic data: ' + evothings.ble.fromUtf8(data));
-        },
-        function(errorCode)
-        {
-            console.log('readCharacteristic error: ' + errorCode);
-        });
+#### evothings.ble.enableNotification
 
 Use `evothings.ble.enableNotification` to start notifications on a characteristic:
 
@@ -244,7 +257,7 @@ Example:
             console.log('readCharacteristic error: ' + errorCode);
         });
 
-### Documentation
+## Documentation
 
 Reference documentation is available as jsdoc comments in the [ble.js](https://github.com/evothings/cordova-ble/blob/master/ble.js) source file.
 
@@ -256,11 +269,11 @@ To build the documentation using [jsdoc](https://github.com/jsdoc3/jsdoc), run t
 
 The file [introduction.md](introduction.md) contains a general introduction to BLE programming.
 
-### Getting started tutorial
+## Getting started tutorial
 
 Read the [BLE app development tutorial](http://evothings.com/ble-app-development-explained/) to get started with your BLE mobile application.
 
-### Libraries
+## Libraries
 
 This section lists libraries that runs on top of the BLE plugin.
 
@@ -272,6 +285,9 @@ Early support for Web Bluetooth is available using the Bleat library.
 * Example app: https://github.com/evothings/cordova-ble/blob/master/examples/webbluetooth
 * Tutorial: https://evothings.com/evothings-studio-with-support-for-web-bluetooth-and-ecmascript-6/
 
+### EasyBLE
+
+The EasyBLE library has been deprecated and is replaced with the extended BLE plugin API.
 
 ### Eddystone
 
@@ -286,13 +302,9 @@ To use the Eddystone library, include this in index.html:
 
     <script src="eddystone.dist.js"></script>
 
-#### EasyBLE
-
-The EasyBLE library has been deprecated and is replaced with the extended BLE plugin API.
+## Use Evothings Studio for fast and easy BLE mobile app development
 
 [![BLE Mobile App Development Video](http://evomedia.evothings.com/2013/11/youtube_ble_example_start.png)](http://www.youtube.com/watch?v=A7uxNS_0QOI)
-
-### Use Evothings Studio for fast and easy BLE mobile app development
 
 This plugin is used in Evothings Studio, and is compatible with Apache Cordova and PhoneGap.
 
@@ -302,6 +314,6 @@ This plugin is used in Evothings Studio, and is compatible with Apache Cordova a
 
 See [Evothings Examples](http://evothings.com/doc/examples/examples.html) for comprehensive examples of mobile apps that communicate over Bluetooth Low Energy, and which you can use for your own projects to get quickly up and running.
 
-### Download Evothings Studio
+## Download Evothings Studio
 
 [Download Evothings Studio](http://evothings.com/download/) - It is easy to get started!

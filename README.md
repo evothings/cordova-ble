@@ -259,6 +259,8 @@ Example:
 
 ## Documentation
 
+The [BLE API Guide](http://evothings.com/doc/tutorials/evothings-ble-api-guide.html) contains step-by-step instructions for how to scan and connect to BLE devices.
+
 Reference documentation is available as jsdoc comments in the [ble.js](https://github.com/evothings/cordova-ble/blob/master/ble.js) source file.
 
 To build the documentation using [jsdoc](https://github.com/jsdoc3/jsdoc), run this command:
@@ -267,11 +269,9 @@ To build the documentation using [jsdoc](https://github.com/jsdoc3/jsdoc), run t
 
 [Generated documentation](https://evothings.com/doc/lib-doc/module-cordova-plugin-ble.html) is available at the Evothings documentation web site (note that this documentation may not reflect the latest updates of the plugin, it may lag to sync with Evothings releases).
 
-The file [introduction.md](introduction.md) contains a general introduction to BLE programming.
+<!--The file [introduction.md](introduction.md) contains a general introduction to BLE programming.-->
 
-## Getting started tutorial
-
-Read the [BLE app development tutorial](http://evothings.com/ble-app-development-explained/) to get started with your BLE mobile application.
+<!-- Read the [BLE app development tutorial](http://evothings.com/ble-app-development-explained/) to get started with your BLE mobile application. -->
 
 ## Libraries
 

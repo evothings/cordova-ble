@@ -1,4 +1,4 @@
-// Demo of extended BLE plugin API.
+// Demo of the high-level extended BLE plugin API.
 
 // Application code starts here. The code is wrapped in a
 // function closure to prevent overwriting global objects.
@@ -12,9 +12,6 @@ var LUXOMETER_DATA = 'f000aa71-0451-4000-b000-000000000000'
 
 function initialize()
 {
-	// Extend plugin API with new functions (see file new-api.js).
-	extendBLEPluginAPI()
-
 	// Start scanning for a device.
 	findDevice()
 }
@@ -25,18 +22,14 @@ function findDevice()
 
 	// Start scanning. Two callback functions are specified.
 	evothings.ble.startScan(
-		['0000aa10-0000-1000-8000-00805f9b34fb'],
-		deviceFound,
-		scanError)
+		onDeviceFound,
+		onScanError,
+		{ serviceUUIDs: ['0000aa10-0000-1000-8000-00805f9b34fb'] })
 
 	// This function is called when a device is detected, here
 	// we check if we found the device we are looking for.
-	function deviceFound(device)
+	function onDeviceFound(device)
 	{
-		// Parse advertisement data record.
-		// TODO: Move to startScan.
-		evothings.ble.parseAdvertisementData(device)
-
 		// For debugging, print advertisement data.
 		//console.log(JSON.stringify(device.advertisementData))
 
@@ -62,7 +55,7 @@ function findDevice()
 	}
 
 	// Function called when a scan error occurs.
-	function scanError(error)
+	function onScanError(error)
 	{
 		showMessage('Scan error: ' + error)
 	}
@@ -70,97 +63,78 @@ function findDevice()
 
 function connectToDevice(device)
 {
-	// Handle of connected device.
-	var deviceHandle
+	showMessage('Connecting to device...')
 
-	evothings.ble.connect(device.address, connectSuccess, connectError)
+	evothings.ble.connectToDevice(
+		device,
+		onConnected,
+		onDisconnected,
+		onConnectError,
+		{ serviceUUIDs: [LUXOMETER_SERVICE] })
 
-	function connectSuccess(connectInfo)
+	function onConnected(device)
 	{
-		if (connectInfo.state == evothings.ble.connectionState.STATE_CONNECTED)
-		{
-			// Save device handle.
-			deviceHandle = connectInfo.deviceHandle
-
-			showMessage('Connected to device, reading services...')
-
-			// Read all services, characteristics and descriptors.
-			evothings.ble.readAllServiceData(
-				deviceHandle,
-				readServicesSuccess,
-				readServicesError)
-				// Options not implemented.
-				// { serviceUUIDs: [LUXOMETER_SERVICE] }
-		}
-		if (connectInfo.state == evothings.ble.connectionState.STATE_DISCONNECTED)
-		{
-			showMessage('Device disconnected')
-		}
-	}
-
-	function readServicesSuccess(services)
-	{
-		showMessage('Reading services completed')
+		showMessage('Connected')
 
 		// Get Luxometer service and characteristics.
-		var service = evothings.ble.getService(services, LUXOMETER_SERVICE)
+		var service = evothings.ble.getService(device, LUXOMETER_SERVICE)
 		var configCharacteristic = evothings.ble.getCharacteristic(service, LUXOMETER_CONFIG)
 		var dataCharacteristic = evothings.ble.getCharacteristic(service, LUXOMETER_DATA)
 
 		// Enable notifications for Luxometer.
-		enableLuxometerNotifications(deviceHandle, configCharacteristic, dataCharacteristic)
+		enableLuxometerNotifications(device, configCharacteristic, dataCharacteristic)
 	}
 
-	function readServicesError(error)
+	function onDisconnected(device)
 	{
-		showMessage('Read services error: ' + error)
+		showMessage('Device disconnected')
 	}
 
 	// Function called when a connect error or disconnect occurs.
-	function connectError(error)
+	function onConnectError(error)
 	{
 		showMessage('Connect error: ' + error)
 	}
 }
 
 // Use notifications to get the luxometer value.
-function enableLuxometerNotifications(deviceHandle, configCharacteristic, dataCharacteristic)
+function enableLuxometerNotifications(device, configCharacteristic, dataCharacteristic)
 {
 	// Turn Luxometer ON.
 	evothings.ble.writeCharacteristic(
-		deviceHandle,
-		configCharacteristic.handle,
+		device,
+		configCharacteristic,
 		new Uint8Array([1]),
-		turnOnLuxometerSuccess,
-		turnOnLuxometerError)
+		onLuxometerActivated,
+		onLuxometerActivatedError)
 
-	// Enable notifications from the Luxometer.
-	evothings.ble.enableNotification(
-		deviceHandle,
-		dataCharacteristic.handle,
-		readLuxometerSuccess,
-		readLuxometerError)
-
-	function turnOnLuxometerSuccess()
+	function onLuxometerActivated()
 	{
 		showMessage('Luxometer is ON')
 
+		// Enable notifications from the Luxometer.
+		evothings.ble.enableNotification(
+			device,
+			dataCharacteristic,
+			onLuxometerNotification,
+			onLuxometerNotificationError)
 	}
-	function turnOnLuxometerError(error)
+
+	function onLuxometerActivatedError(error)
 	{
-		showMessage('Write Luxometer error: ' + error)
+		showMessage('Luxometer activate error: ' + error)
 	}
 
 	// Called repeatedly until disableNotification is called.
-	function readLuxometerSuccess(data)
+	function onLuxometerNotification(data)
 	{
 		var lux = calculateLux(data)
 		showMessage('Luxometer value: ' + lux)
 	}
 
-	function readLuxometerError(error)
+	function onLuxometerNotificationError(error)
 	{
-		showMessage('Read Luxometer error: ' + error)
+		showMessage('Luxometer notification error: ' + error)
 	}
 }
 

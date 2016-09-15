@@ -539,7 +539,8 @@ function littleEndianToUint8(data, offset)
 })(); // End of closure for parseAdvertisementData.
 
 /**
- * Connect to a remote device.
+ * Connect to a remote device. It is recommended that you use the high-level
+ * function {evothings.ble.connectToDevice} in place of this function.
  * @param {DeviceInfo} device - Device object from scanCallback (for backwards
  * compatibility, this parameter may also be the address string of the device object).
  * @param {connectCallback} success

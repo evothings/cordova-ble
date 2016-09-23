@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+
+<!--
+Demo of using the BLE Plugin API for scanning for BLE devices.
+-->
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, user-scalable=no
+		initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0" />
+	<title>Cordova BLE Demo</title>
+
+	<script>
+	// Redirect console.log when running from Evothings Workbench.
+	if (window.hyper && window.hyper.log) { console.log = hyper.log }
+	</script>
+
+	<style>
+	@import "app.css";
+	</style>
+</head>
+
+<body>
+	<img class="evo-image" src="https://evomedia.evothings.com/2013/11/evothings_logo_large_white1.png" />
+
+	<h1>Cordova BLE Demo</h1>
+
+	<p id="message">Preparing...</p>
+
+	<div id="found-devices"></div>
+
+	<!--
+	Including cordova.js will automatically include the JavaScript library
+	for the Cordova BLE plugin.
+	-->
+	<script src="cordova.js"></script>
+
+	<!--
+	Include application code.
+	-->
+	<script src="app.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,32 @@
+body
+{
+	font-family: sans-serif;
+	font-size: 14px;
+	margin: 10px;
+}
+
+h1
+{
+	font-size: 150%;
+	margin-right: 120px;
+}
+
+p
+{
+	font-size: 110%;
+}
+
+#message
+{
+	font-weight: bold;
+}
+
+.evo-image
+{
+	position: fixed;
+	right: 10px;
+	top: 10px;
+	width: 100px;
+	height: auto;
+	background: white;
+}

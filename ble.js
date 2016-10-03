@@ -71,14 +71,6 @@ exports.startScan = function(arg1, arg2, arg3, arg4)
 	var options;
 	var parseAdvertisementData = true;
 
-	if (isScanning)
-	{
-		fail('Scan already in progress');
-		return;
-	}
-
-	isScanning = true;
-
 	function onFail(error)
 	{
 		isScanning = false;
@@ -115,6 +107,14 @@ exports.startScan = function(arg1, arg2, arg3, arg4)
 		fail = arg2;
 		options = arg3;
 	}
+
+	if (isScanning)
+	{
+		fail('Scan already in progress');
+		return;
+	}
+
+	isScanning = true;
 
 	// Set options.
 	if (options)

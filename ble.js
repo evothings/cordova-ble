@@ -539,6 +539,44 @@ function littleEndianToUint8(data, offset)
 })(); // End of closure for parseAdvertisementData.
 
 /**
+ * Get a list of bonded devices.
+ * @param {getBondedDevicesCallback} success Callback function
+ * called with list of bonded devices.
+ * @param {failCallback} fail Error callback function.
+ * @param {GetBondedDevicesOptions} options - Mandatory object
+ * that specifies service UUIDs to search for.
+ * @example
+ * evothings.ble.getBondedDevices(
+ *     function(devices)
+ *     {
+ *         console.log('Bonded devices: ' + JSON.stringify(devices));
+ *     },
+ *     function(errorCode)
+ *     {
+ *         console.log('getBondedDevices error: ' + errorCode);
+ *     },
+ *     { serviceUUIDs: ['0000180a-0000-1000-8000-00805f9b34fb'] });
+ */
+exports.getBondedDevices = function(success, fail, options)
+{
+	exec(success, fail, 'BLE', 'getBondedDevices', [options.serviceUUIDs]);
+}
+
+/**
+ * Success callback function for getBondedDevices.
+ * Called with array of bonded devices (may be empty).
+ * @callback connectCallback
+ * @param {Array} devices Array of {DeviceInfo} objects. Note that
+ * only fields name and address are available in the device info object.
+ */
+
+/**
+ * Options for getBondedDevices.
+ * @typedef {Object} GetBondedDevicesOptions
+ * @param {array} serviceUUIDs - Array with or or more service UUID strings (mandatory).
+ */
+
+/**
  * Connect to a remote device. It is recommended that you use the high-level
  * function {evothings.ble.connectToDevice} in place of this function.
  * @param {DeviceInfo} device - Device object from scanCallback (for backwards

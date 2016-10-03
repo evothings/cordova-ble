@@ -822,6 +822,64 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 }
 
 /**
+ * BLE API call: getBondedDevices
+ */
+- (void) getBondedDevices: (CDVInvokedUrlCommand*)command
+{
+	if (self.central.state != CBCentralManagerStatePoweredOn)
+	{
+		NSLog(@"@@@ getBondedDevices BLE off");
+		// BLE is off, set command object, this method will be called
+		// again in centralManagerDidUpdateState: when BLE is powered on.
+		self.getBondedDevicesPostponedCommand = command;
+		return;
+	}
+
+	self.getBondedDevicesPostponedCommand = nil;
+
+	NSLog(@"@@@ getBondedDevices");
+
+	// Get services param.
+	NSArray* services = [command argumentAtIndex: 0];
+
+	// Collect service UUIDs.
+	NSMutableArray* serviceUUIDs = [NSMutableArray array];
+	for (NSString* uuidString in services)
+	{
+		CBUUID* uuid = [CBUUID UUIDWithString: uuidString];
+		[serviceUUIDs addObject: uuid];
+	}
+
+	// Get bonded devices.
+	NSArray* peripherals = [self.central
+		retrieveConnectedPeripheralsWithServices: serviceUUIDs];
+
+	NSLog(@"@@@ getBondedDevices: %@", peripherals);
+
+	// Create array for the callback result containing device info.
+	NSMutableArray* devices = [NSMutableArray arrayWithCapacity: peripherals.count];
+
+	for (int i = 0; i < peripherals.count; ++i)
+	{
+		CBPeripheral* peripheral = [peripherals objectAtIndex: i];
+
+		// Create device info object.
+		NSDictionary* deviceInfo =
+			@{
+				@"address" : [peripheral.identifier UUIDString],
+				@"name" : (peripheral.name != nil) ? peripheral.name : [NSNull null],
+			};
+
+		// Add to result array.
+		[devices addObject: deviceInfo];
+	}
+
+	[self sendArray: devices
+		forCallback: command.callbackId
+		keepCallback: NO];
+}
+
+/**
  * BLE API call: connect
  */
 - (void) connect: (CDVInvokedUrlCommand*)command
@@ -1284,7 +1342,9 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
  */
 - (void) pluginInitialize
 {
+	// TODO: Fix scan variables.
 	self.scanIsWaiting = NO;
+	self.getBondedDevicesPostponedCommand = nil;
 
 	// CBCentralManagerOptionShowPowerAlertKey - "A Boolean value that
 	// specifies whether the system should display a warning dialog to
@@ -1308,6 +1368,10 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
  */
 - (void) onReset
 {
+	// TODO: Fix scan variables.
+	self.scanIsWaiting = NO;
+	self.getBondedDevicesPostponedCommand = nil;
+
 	[self freePeripherals];
 }
 
@@ -1408,6 +1472,12 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 		&& self.scanIsWaiting)
 	{
 		[self scanForPeripherals: self.scanIsWaitingServices];
+	}
+
+	if (central.state == CBCentralManagerStatePoweredOn
+		&& nil != self.getBondedDevicesPostponedCommand)
+	{
+		[self getBondedDevices: self.getBondedDevicesPostponedCommand];
 	}
 }
 

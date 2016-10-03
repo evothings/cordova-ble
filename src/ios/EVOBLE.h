@@ -82,10 +82,12 @@ typedef void (^EVOCommandBlock)(void);
 @property BOOL scanIsWaiting;
 @property NSArray* scanIsWaitingServices;
 @property NSString* scanCallbackId;
+@property CDVInvokedUrlCommand* getBondedDevicesPostponedCommand;
 
 // Public Cordova API.
 - (void) startScan: (CDVInvokedUrlCommand*)command;
 - (void) stopScan: (CDVInvokedUrlCommand*)command;
+- (void) getBondedDevices: (CDVInvokedUrlCommand*)command;
 - (void) connect: (CDVInvokedUrlCommand*)command;
 - (void) close: (CDVInvokedUrlCommand*)command;
 - (void) rssi: (CDVInvokedUrlCommand*)command;

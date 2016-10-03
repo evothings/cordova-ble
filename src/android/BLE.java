@@ -28,6 +28,7 @@ import android.app.Activity;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.Iterator;
 import java.util.UUID;
 import java.io.UnsupportedEncodingException;
@@ -49,9 +50,9 @@ public class BLE
 		LeScanCallback
 {
 	// ************* BLE CENTRAL ROLE *************
-	
+
 	// Implementation of BLE Central API.
-	
+
 	private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
 
 	private static final int ACTIVITY_REQUEST_ENABLE_BLUETOOTH = 1;
@@ -113,6 +114,9 @@ public class BLE
 			}
 			else if ("stopScan".equals(action)) {
 				stopScan(args, callbackContext);
+			}
+			else if ("getBondedDevices".equals(action)) {
+				getBondedDevices(args, callbackContext);
 			}
 			else if ("connect".equals(action)) {
 				connect(args, callbackContext);
@@ -505,6 +509,41 @@ public class BLE
 	}
 
 	// API implementation.
+	private void getBondedDevices(final CordovaArgs args, final CallbackContext callbackContext)
+	{
+		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+
+		checkPowerState(adapter, callbackContext, new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				// Result array.
+				JSONArray devices = new JSONArray();
+
+				Set<BluetoothDevice> bondedDevices = adapter.getBondedDevices();
+				for (BluetoothDevice bondedDevice : bondedDevices)
+				{
+					if (bondedDevice.getType() == BluetoothDevice.DEVICE_TYPE_LE)
+					{
+						try
+						{
+							JSONObject device = new JSONObject();
+							device.put("address", bondedDevice.getAddress());
+							device.put("name", null == bondedDevice.getName() ?
+								JSONObject.NULL : bondedDevice.getName());
+							devices.put(device);
+						}
+						catch (JSONException e) {}
+					}
+				}
+
+				callbackContext.success(devices);
+			}
+		});
+	}
+
+	// API implementation.
 	private void connect(final CordovaArgs args, final CallbackContext callbackContext)
 	{
 		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
@@ -778,7 +817,7 @@ public class BLE
 		});
 		gh.process();
 	}
-	
+
 	// Notification options flag.
 	private final int NOTIFICATION_OPTIONS_DISABLE_AUTOMATIC_CONFIG = 1;
 
@@ -792,7 +831,7 @@ public class BLE
 
 		// Get characteristic.
 		BluetoothGattCharacteristic characteristic = gh.mCharacteristics.get(args.getInt(1));
-		
+
 		// Turn notification on.
 		boolean success = gh.mGatt.setCharacteristicNotification(characteristic, true);
 		if (!success) {
@@ -804,7 +843,7 @@ public class BLE
 		// When turning notification on, the success callback will be
 		// called on every notification event.
 		gh.mNotifications.put(characteristic, callbackContext);
-		
+
 		// Write config descriptor if not disabled in options.
 		int options = args.getInt(2);
 		boolean writeConfigDescriptor = (options == 0);
@@ -827,10 +866,10 @@ public class BLE
 			{
 				// Mark operation in process.
 				gattHandler.mCurrentOpContext = callbackContext;
-					
+
 				// Don't report result from writing descriptor.
 				gattHandler.mDontReportWriteDescriptor = true;
-				
+
 				// Write the config descriptor.
 				if (!enableConfigDescriptor(callbackContext, gattHandler, gatt, characteristic)) {
 					gattHandler.mDontReportWriteDescriptor = false;
@@ -842,7 +881,7 @@ public class BLE
 		});
 		gattHandler.process();
 	}
-	
+
 	// Helper method.
 	private boolean enableConfigDescriptor(
 		final CallbackContext callbackContext,
@@ -860,19 +899,19 @@ public class BLE
 
 		// Config descriptor value.
 		byte[] descriptorValue;
-		
+
 		// Check if notification or indication should be used.
 		if (0 != (characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_NOTIFY)) {
 			descriptorValue = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE;
-		} 
+		}
 		else if (0 != (characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_INDICATE)) {
 			descriptorValue = BluetoothGattDescriptor.ENABLE_INDICATION_VALUE;
-		} 
+		}
 		else {
 			callbackContext.error("Characteristic does not support notification or indication.");
 			return false;
-		} 
-		
+		}
+
 		// Set value of config descriptor.
 		configDescriptor.setValue(descriptorValue);
 
@@ -882,10 +921,10 @@ public class BLE
 			callbackContext.error("Could not write config descriptor");
 			return false;
 		}
-		
+
 		return true;
 	}
-	
+
 	// API implementation.
 	private void disableNotification(
 		final CordovaArgs args,
@@ -903,8 +942,8 @@ public class BLE
 			callbackContext.error("Could not disable notification");
 			return;
 		}
-		
-		// Remove callback context for the characteristic 
+
+		// Remove callback context for the characteristic
 		// when turning off notification.
 		gh.mNotifications.remove(characteristic);
 
@@ -933,10 +972,10 @@ public class BLE
 			{
 				// Mark operation in process.
 				gattHandler.mCurrentOpContext = callbackContext;
-					
+
 				// Don't report result from writing descriptor.
 				gattHandler.mDontReportWriteDescriptor = true;
-				
+
 				// Write the config descriptor.
 				if (!disableConfigDescriptor(callbackContext, gattHandler, gatt, characteristic)) {
 					gattHandler.mDontReportWriteDescriptor = false;
@@ -944,14 +983,14 @@ public class BLE
 					gattHandler.process();
 					return;
 				}
-				
+
 				// Call success callback for notification turned off.
 				callbackContext.success();
 			}
 		});
 		gattHandler.process();
 	}
-	
+
 	// Helper method.
 	private boolean disableConfigDescriptor(
 		final CallbackContext callbackContext,
@@ -966,7 +1005,7 @@ public class BLE
 			callbackContext.error("Could not get config descriptor");
 			return false;
 		}
-		
+
 		// Set value of config descriptor.
 		byte[] descriptorValue = BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE;
 		configDescriptor.setValue(descriptorValue);
@@ -977,10 +1016,10 @@ public class BLE
 			callbackContext.error("Could not write config descriptor");
 			return false;
 		}
-		
+
 		return true;
 	}
-	
+
 	// API implementation.
 	private void testCharConversion(
 		final CordovaArgs args,
@@ -1240,10 +1279,10 @@ public class BLE
 			keepCallback(cc, c.getValue());
 		}
 	}
-	
-	
+
+
 	// ************* BLE PERIPHERAL ROLE *************
-	
+
 	// Implementation of advertisement API.
 
 	private BluetoothLeAdvertiser mAdvertiser;

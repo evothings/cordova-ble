@@ -901,6 +901,8 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 			@{
 				@"address" : [peripheral.identifier UUIDString],
 				@"name" : (peripheral.name != nil) ? peripheral.name : [NSNull null],
+				// TODO: Should we add state? This is not available on Android.
+				//@"state" : peripheral.state,
 			};
 
 		// Add to result array.

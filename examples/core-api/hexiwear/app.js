@@ -186,8 +186,17 @@ function scanForDevice()
 			// Stop scanning.
 			evothings.ble.stopScan()
 
-			// Connect.
-			connectToDevice(device)
+			// Bond and connect.
+			evothings.ble.bond(
+				device,
+				function()
+				{
+					connectToDevice(device)
+				},
+				function(error)
+				{
+					showMessage('Bond error: ' + error)
+				})
 		}
 	}
 
@@ -220,7 +229,7 @@ function connectToDevice(device)
 			device: device,
 			onBonded: readDevice,
 			onNotBonded: deviceNotBonded,
-			timeout: 10000,
+			timeout: 60000,
 			serviceUUIDs: [INFO_SERVICE]
 			})
 	}
@@ -294,13 +303,13 @@ function readAccelerometer()
 
 function deviceNotBonded(device)
 {
-	//disconnectDevice()
+	disconnectDevice()
 	showMessage('Device not bonded')
 
 	// Lets try reading anyhow. This works on Android in
 	// the "semi-bonded" state where the device is paired
 	// but does not show up among bonded devices.
-	readDevice()
+	//readDevice()
 }
 
 function dataToAscii(data)

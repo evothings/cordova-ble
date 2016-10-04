@@ -788,14 +788,44 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
  */
 - (void) startScan: (CDVInvokedUrlCommand*)command
 {
-	// Save callbackId.
-	self.scanCallbackId = command.callbackId;
+	// Bluetooth must be on.
+	if (self.central.state != CBCentralManagerStatePoweredOn)
+	{
+		// Save postponed command.
+		self.startScanPostponedCommand = command;
+		return;
+	}
+
+	// Clear postponed command.
+	self.startScanPostponedCommand = nil;
+
+	// Save scan command object.
+	self.startScanCommand = command;
+
+	// Scan options.
+	NSDictionary* options = @{CBCentralManagerScanOptionAllowDuplicatesKey: @YES};
 
 	// Get services to scan for.
 	NSArray* services = [command argumentAtIndex: 0];
 
+	// Add services to scan for. Create array with service UUIDs.
+	NSMutableArray* serviceUUIDs = nil;
+	if (services)
+	{
+		serviceUUIDs = [NSMutableArray array];
+		for (NSString* uuidString in services)
+		{
+			CBUUID* uuid = [CBUUID UUIDWithString: uuidString];
+			[serviceUUIDs addObject: uuid];
+		}
+	}
+
+	//NSLog(@"scanForPeripherals serviceUUIDs: %@", serviceUUIDs);
+
 	// Start scanning.
-	[self scanForPeripherals: services];
+	[self.central
+		scanForPeripheralsWithServices: serviceUUIDs
+		options: options];
 }
 
 /**
@@ -805,18 +835,21 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 {
 	if (self.central.state != CBCentralManagerStatePoweredOn)
 	{
-		self.scanIsWaiting = NO;
+		// Clear postponed command if Bluetooth is off.
+		self.startScanPostponedCommand = nil;
 	}
 	else
 	{
 		// Call native stopScan only if BLE is powered on.
 		[self.central stopScan];
 
-		if (self.scanCallbackId)
+		if (nil != self.startScanCommand)
 		{
 			// Clear JS scan callback if scan is in progress.
-			[self sendNoResultClearCallback: self.scanCallbackId];
-			self.scanCallbackId = nil;
+			[self sendNoResultClearCallback: self.startScanCommand.callbackId];
+
+			// Clear command object.
+			self.startScanCommand = nil;
 		}
 	}
 }
@@ -1342,8 +1375,8 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
  */
 - (void) pluginInitialize
 {
-	// TODO: Fix scan variables.
-	self.scanIsWaiting = NO;
+	self.startScanCommand = nil;
+	self.startScanPostponedCommand = nil;
 	self.getBondedDevicesPostponedCommand = nil;
 
 	// CBCentralManagerOptionShowPowerAlertKey - "A Boolean value that
@@ -1368,8 +1401,8 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
  */
 - (void) onReset
 {
-	// TODO: Fix scan variables.
-	self.scanIsWaiting = NO;
+	self.startScanCommand = nil;
+	self.startScanPostponedCommand = nil;
 	self.getBondedDevicesPostponedCommand = nil;
 
 	[self freePeripherals];
@@ -1466,18 +1499,19 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
  */
 - (void) centralManagerDidUpdateState: (CBCentralManager*)central
 {
-	// Start scan if we have a waiting scan that failed because
-	// of the Central Manager not being on.
-	if (central.state == CBCentralManagerStatePoweredOn
-		&& self.scanIsWaiting)
+	// Execute commands that have been postponed because
+	// of Bluetooth not being on.
+	if (central.state == CBCentralManagerStatePoweredOn)
 	{
-		[self scanForPeripherals: self.scanIsWaitingServices];
-	}
+		if (nil != self.startScanPostponedCommand)
+		{
+			[self startScan: self.startScanPostponedCommand];
+		}
 
-	if (central.state == CBCentralManagerStatePoweredOn
-		&& nil != self.getBondedDevicesPostponedCommand)
-	{
-		[self getBondedDevices: self.getBondedDevicesPostponedCommand];
+		if (nil != self.getBondedDevicesPostponedCommand)
+		{
+			[self getBondedDevices: self.getBondedDevicesPostponedCommand];
+		}
 	}
 }
 
@@ -1578,7 +1612,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	evoPerhiperal.connectCallbackId = nil;
 
 	// Optionally disconnect the peripheral.
-	if (shouldDisconnect)
+	if (shouldDisconnect && (CBPeripheralStateConnected == peripheral.state))
 	{
 		[self.central cancelPeripheralConnection: peripheral];
 	}
@@ -1589,7 +1623,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
  */
 - (void) freePeripherals
 {
-	// Stop scanning.
+	// Stop any ongoing scanning.
 	[self.central stopScan];
 
 	// Remove the EvoPeripheral and disconnect its associated peripheral.
@@ -1606,49 +1640,6 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 - (NSNumber*) nextHandle
 {
 	return [NSNumber numberWithInt: ++(self.handleCounter)];
-}
-
-/**
- * Internal helper method.
- */
-- (int) scanForPeripherals: (NSArray*)services
-{
-	if (self.central.state != CBCentralManagerStatePoweredOn)
-	{
-		// BLE is off, set flag that scan is waiting, scan will be restarted
-		// in centralManagerDidUpdateState: when BLE is powered on.
-		self.scanIsWaiting = YES;
-		self.scanIsWaitingServices = services;
-		return -1;
-	}
-
-	self.scanIsWaiting = NO;
-	self.scanIsWaitingServices = nil;
-
-	//NSLog(@"scanForPeripherals services: %@", services);
-
-	NSDictionary* options = @{CBCentralManagerScanOptionAllowDuplicatesKey: @YES};
-
-	// Add services to scan for. Create array with service UUIDs.
-	NSMutableArray* serviceUUIDs = nil;
-	if (services)
-	{
-		serviceUUIDs = [NSMutableArray array];
-		for (NSString* uuidString in services)
-		{
-			CBUUID* uuid = [CBUUID UUIDWithString: uuidString];
-			[serviceUUIDs addObject: uuid];
-		}
-	}
-
-	//NSLog(@"scanForPeripherals serviceUUIDs: %@", serviceUUIDs);
-
-	// Start scanning.
-	[self.central
-		scanForPeripheralsWithServices: serviceUUIDs
-		options: options];
-
-	return 0;
 }
 
 /**
@@ -1695,11 +1686,11 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	};
 
 	// Send back data to JS.
-	if (self.scanCallbackId)
+	if (nil != self.startScanCommand)
 	{
 		[self
 			sendDictionary: info
-			forCallback: self.scanCallbackId
+			forCallback: self.startScanCommand.callbackId
 			keepCallback: YES];
 	}
 }

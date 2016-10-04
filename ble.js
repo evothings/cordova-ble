@@ -562,6 +562,21 @@ exports.getBondedDevices = function(success, fail, options)
 	exec(success, fail, 'BLE', 'getBondedDevices', [options.serviceUUIDs]);
 }
 
+exports.isBonded = function(device, success, fail)
+{
+	exec(success, fail, 'BLE', 'isBonded', [device.address]);
+}
+
+exports.bond = function(device, success, fail)
+{
+	exec(success, fail, 'BLE', 'bond', [device.address]);
+}
+
+exports.unbond = function(device, success, fail)
+{
+	exec(success, fail, 'BLE', 'unbond', [device.address]);
+}
+
 /**
  * Success callback function for getBondedDevices.
  * Called with array of bonded devices (may be empty).

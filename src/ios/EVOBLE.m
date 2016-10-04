@@ -915,6 +915,48 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 }
 
 /**
+ * BLE API call: isBonded
+ */
+- (void) isBonded: (CDVInvokedUrlCommand*)command
+{
+	NSLog(@"@@@ isBonded");
+
+	[self
+		sendErrorMessage: @"not implemented"
+		forCallback: command.callbackId];
+}
+
+/**
+ * BLE API call: bond
+ */
+- (void) bond: (CDVInvokedUrlCommand*)command
+{
+	NSLog(@"@@@ bond");
+
+	CDVPluginResult* result = [CDVPluginResult
+		resultWithStatus: CDVCommandStatus_OK
+		messageAsString: @"unknown"];
+	[self.commandDelegate
+		sendPluginResult: result
+		callbackId: command.callbackId];
+}
+
+/**
+ * BLE API call: unbond
+ */
+- (void) unbond: (CDVInvokedUrlCommand*)command
+{
+	NSLog(@"@@@ unbond");
+
+	CDVPluginResult* result = [CDVPluginResult
+		resultWithStatus: CDVCommandStatus_OK
+		messageAsString: @"unknown"];
+	[self.commandDelegate
+		sendPluginResult: result
+		callbackId: command.callbackId];
+}
+
+/**
  * BLE API call: connect
  */
 - (void) connect: (CDVInvokedUrlCommand*)command

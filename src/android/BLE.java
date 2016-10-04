@@ -62,13 +62,17 @@ public class BLE
 	private CallbackContext mScanCallbackContext;
 	private CordovaArgs mScanArgs;
 
+	// Used by bond and unbond.
+	private CallbackContext mBondCallbackContext = null;
+	private String mBondDeviceAddress;
+
 	// Used by reset().
 	private CallbackContext mResetCallbackContext;
 
 	// The Android application Context.
 	private Context mContext;
 
-	private boolean mRegisteredReceiver = false;
+	private boolean mRegisteredReceivers = false;
 
 	// Called when the device's Bluetooth powers on.
 	// Used by startScan() and connect() to wait for power-on if Bluetooth was
@@ -89,13 +93,20 @@ public class BLE
 	public void initialize(final CordovaInterface cordova, CordovaWebView webView)
 	{
 		super.initialize(cordova, webView);
+
 		mContext = webView.getContext();
 
-		if (!mRegisteredReceiver) {
+		if (!mRegisteredReceivers)
+		{
 			mContext.registerReceiver(
 				new BluetoothStateReceiver(),
 				new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
-			mRegisteredReceiver = true;
+
+			mContext.registerReceiver(
+				new BondStateReceiver(),
+				new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED));
+
+			mRegisteredReceivers = true;
 		}
 	}
 
@@ -120,6 +131,12 @@ public class BLE
 			}
 			else if ("isBonded".equals(action)) {
 				isBonded(args, callbackContext);
+			}
+			else if ("bond".equals(action)) {
+				bond(args, callbackContext);
+			}
+			else if ("unbond".equals(action)) {
+				unbond(args, callbackContext);
 			}
 			else if ("connect".equals(action)) {
 				connect(args, callbackContext);
@@ -537,7 +554,11 @@ public class BLE
 								JSONObject.NULL : bondedDevice.getName());
 							devices.put(device);
 						}
-						catch (JSONException e) {}
+						catch (Exception e)
+						{
+							callbackContext.error("getBondedDevices error: " + e);
+							return;
+						}
 					}
 				}
 
@@ -563,7 +584,94 @@ public class BLE
 					boolean bonded = device.getBondState() == BluetoothDevice.BOND_BONDED;
 					callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, bonded));
 				}
-				catch (JSONException e) {}
+				catch (Exception e)
+				{
+					callbackContext.error("isBonded error: " + e);
+				}
+			}
+		});
+	}
+
+	// API implementation.
+	private void bond(final CordovaArgs args, final CallbackContext callbackContext)
+	{
+		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+
+		checkPowerState(adapter, callbackContext, new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				try
+				{
+					String address = args.getString(0);
+					mBondDeviceAddress = address;
+					BluetoothDevice device = adapter.getRemoteDevice(address);
+
+    				int bondState = device.getBondState();
+    				if (bondState == BluetoothDevice.BOND_BONDED)
+    				{
+						callbackContext.success("bonded");
+						return;
+					}
+
+					// Start bonding.
+    				if (!device.createBond())
+    				{
+						callbackContext.error("Could not bond");
+						return;
+					}
+
+					// Save callback context.
+					mBondCallbackContext = callbackContext;
+				}
+				catch (Exception e)
+				{
+					callbackContext.error("Bond error: " + e);
+				}
+			}
+		});
+	}
+
+	// API implementation.
+	private void unbond(final CordovaArgs args, final CallbackContext callbackContext)
+	{
+		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+
+		checkPowerState(adapter, callbackContext, new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				try
+				{
+					String address = args.getString(0);
+					mBondDeviceAddress = address;
+					BluetoothDevice device = adapter.getRemoteDevice(address);
+
+    				int bondState = device.getBondState();
+    				if (bondState == BluetoothDevice.BOND_NONE)
+    				{
+						callbackContext.success("unbonded");
+						return;
+					}
+
+					// Stop bonding.
+					java.lang.reflect.Method m = device.getClass().getMethod("removeBond");
+					Boolean result = (Boolean) m.invoke(device);
+    				if (!result.booleanValue())
+    				{
+						callbackContext.error("Could not unbond");
+						return;
+					}
+
+					// Save callback context.
+					mBondCallbackContext = callbackContext;
+				}
+				catch (Exception e)
+				{
+					callbackContext.error("Unbond error: " + e);
+				}
 			}
 		});
 	}
@@ -1119,7 +1227,40 @@ public class BLE
 				}
 			}
 		}
-	};
+	}
+
+	/**
+	 * Used for both bond and unbond. We assume these are called one at a time.
+	 */
+	class BondStateReceiver extends BroadcastReceiver
+	{
+		public void onReceive(Context context, Intent intent)
+		{
+			if (intent.getAction().equals(BluetoothDevice.ACTION_BOND_STATE_CHANGED))
+			{
+				BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+				int state = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, -1);
+				//int previousState = intent.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, -1);
+
+				// Check that the event is for the device address given in bond/unbond,
+				// and skip the BOND_BONDING state.
+				String deviceAddress = device.getAddress();
+				if (null != mBondCallbackContext && deviceAddress.equals(mBondDeviceAddress))
+				{
+					if (state == BluetoothDevice.BOND_BONDED)
+					{
+						mBondCallbackContext.success("bonded");
+						mBondCallbackContext = null;
+					}
+					else if (state == BluetoothDevice.BOND_NONE)
+					{
+						mBondCallbackContext.success("unbonded");
+						mBondCallbackContext = null;
+					}
+				}
+			}
+		}
+	}
 
 	/* Running more than one operation of certain types on remote Gatt devices
 	* seem to cause it to stop responding.

@@ -118,6 +118,9 @@ public class BLE
 			else if ("getBondedDevices".equals(action)) {
 				getBondedDevices(args, callbackContext);
 			}
+			else if ("isBonded".equals(action)) {
+				isBonded(args, callbackContext);
+			}
 			else if ("connect".equals(action)) {
 				connect(args, callbackContext);
 			}
@@ -539,6 +542,28 @@ public class BLE
 				}
 
 				callbackContext.success(devices);
+			}
+		});
+	}
+
+	// API implementation.
+	private void isBonded(final CordovaArgs args, final CallbackContext callbackContext)
+	{
+		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+
+		checkPowerState(adapter, callbackContext, new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				try
+				{
+					String address = args.getString(0);
+					BluetoothDevice device = adapter.getRemoteDevice(address);
+					boolean bonded = device.getBondState() == BluetoothDevice.BOND_BONDED;
+					callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, bonded));
+				}
+				catch (JSONException e) {}
 			}
 		});
 	}

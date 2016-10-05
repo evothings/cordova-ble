@@ -270,7 +270,6 @@ function readDevice(device)
 	// Periodically read accelerometer.
 	clearInterval(mPollingTimer)
 	mPollingTimer = setInterval(readAccelerometer, 1000)
-
 }
 
 function readCharacteristic(device, serviceUUID, characteristicUUID, elementId, dataConversionFunction)

@@ -562,9 +562,44 @@ exports.getBondedDevices = function(success, fail, options)
 	exec(success, fail, 'BLE', 'getBondedDevices', [options.serviceUUIDs]);
 }
 
-exports.isBonded = function(device, success, fail)
+exports.getBondState = function(device, success, fail, options)
 {
-	exec(success, fail, 'BLE', 'isBonded', [device.address]);
+	// On iOS we must provide a service UUID.
+	var serviceUUID = (options && options.serviceUUID) ? options.serviceUUID : null;
+
+	if (exports.os.isAndroid())
+	{
+		// On Android we call the native getBondState function.
+		// Note that serviceUUID is ignored on Android.
+		exec(success, fail, 'BLE', 'getBondState', [device.address, serviceUUID]);
+	}
+	else
+	{
+		// On iOS (and other platforms in the future) we get the list of
+		// bonded devices and search it.
+		exports.getBondedDevices(
+			// Success function.
+			function(devices)
+			{
+				for (var i in devices)
+				{
+					var d = devices[i];
+					if (d.address == device.address)
+					{
+						success("bonded");
+						return; // bonded device found
+					}
+				}
+				success("unbonded")
+			},
+			// Error function.
+			function(error)
+			{
+				success("unknown");
+			},
+			{ serviceUUIDs: [serviceUUID] }
+		);
+	}
 }
 
 exports.bond = function(device, success, fail)
@@ -782,7 +817,7 @@ exports.connectToDevice = function(device, connected, disconnected, fail, option
  */
 function objectHandle(objectOrHandle)
 {
-	if (typeof objectOrHandle == 'object')
+	if ((typeof objectOrHandle == 'object') && objectOrHandle.handle)
 	{
 		// It's an object, return the handle.
 		return objectOrHandle.handle;
@@ -1683,6 +1718,31 @@ exports.getDescriptor = function(characteristic, uuid)
 	}
 
 	return null;
+};
+
+
+/********** Platform utilities **********/
+
+exports.os = (window.evothings && window.evothings.os) ? window.evothings.os : {}
+
+/**
+ * Returns true if current platform is iOS, false if not.
+ * @return {boolean} true if platform is iOS, false if not.
+ * @public
+ */
+exports.os.isIOS = function()
+{
+	return /iP(hone|ad|od)/.test(navigator.userAgent);
+};
+
+/**
+ * Returns true if current platform is Android, false if not.
+ * @return {boolean} true if platform is Android, false if not.
+ * @public
+ */
+exports.os.isAndroid = function()
+{
+	return /Android|android/.test(navigator.userAgent);
 };
 
 /********** BLE Peripheral API **********/

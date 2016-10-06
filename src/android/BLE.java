@@ -38,6 +38,7 @@ import android.os.ParcelUuid;
 import android.util.Log;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Handler;
 import android.Manifest;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
@@ -65,12 +66,16 @@ public class BLE
 	// Used by bond and unbond.
 	private CallbackContext mBondCallbackContext = null;
 	private String mBondDeviceAddress;
+	private CallbackContext mUnbondCallbackContext = null;
+	private String mUnbondDeviceAddress;
 
 	// Used by reset().
 	private CallbackContext mResetCallbackContext;
 
 	// The Android application Context.
 	private Context mContext;
+
+	private Handler mHandler;
 
 	private boolean mRegisteredReceivers = false;
 
@@ -88,6 +93,17 @@ public class BLE
 	// Monotonically incrementing key to the Gatt map.
 	int mNextGattHandle = 1;
 
+	private void runAction(Runnable action)
+	{
+		// Old.
+		//action.run();
+
+		// New.
+		//http://stackoverflow.com/questions/28894111/android-ble-gatt-error133-on-connecting-to-device
+		//http://stackoverflow.com/questions/20839018/while-connecting-to-ble113-from-android-4-3-is-logging-client-registered-waiti/23478737#23478737
+		mHandler.post(action);
+	}
+
 	// Called each time cordova.js is loaded.
 	@Override
 	public void initialize(final CordovaInterface cordova, CordovaWebView webView)
@@ -95,6 +111,8 @@ public class BLE
 		super.initialize(cordova, webView);
 
 		mContext = webView.getContext();
+
+		mHandler = new Handler(mContext.getMainLooper());
 
 		if (!mRegisteredReceivers)
 		{
@@ -129,8 +147,8 @@ public class BLE
 			else if ("getBondedDevices".equals(action)) {
 				getBondedDevices(args, callbackContext);
 			}
-			else if ("isBonded".equals(action)) {
-				isBonded(args, callbackContext);
+			else if ("getBondState".equals(action)) {
+				getBondState(args, callbackContext);
 			}
 			else if ("bond".equals(action)) {
 				bond(args, callbackContext);
@@ -264,7 +282,7 @@ public class BLE
 		}
 		if (adapter.getState() == BluetoothAdapter.STATE_ON) {
 			// Bluetooth is ON
-			onPowerOn.run();
+			runAction(onPowerOn);
 		} else {
 			mOnPowerOn = onPowerOn;
 			mPowerOnCallbackContext = cc;
@@ -284,7 +302,7 @@ public class BLE
 			mPowerOnCallbackContext = null;
 			if (resultCode == Activity.RESULT_OK) {
 				if (null != onPowerOn) {
-					onPowerOn.run();
+					runAction(onPowerOn);
 				} else {
 					// Runnable was null.
 					if (null != cc) cc.error("Runnable is null in onActivityResult (internal error)");
@@ -568,7 +586,7 @@ public class BLE
 	}
 
 	// API implementation.
-	private void isBonded(final CordovaArgs args, final CallbackContext callbackContext)
+	private void getBondState(final CordovaArgs args, final CallbackContext callbackContext)
 	{
 		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
 
@@ -580,13 +598,28 @@ public class BLE
 				try
 				{
 					String address = args.getString(0);
+					// Not used on Android: String serviceUUID = args.getString(1);
 					BluetoothDevice device = adapter.getRemoteDevice(address);
-					boolean bonded = device.getBondState() == BluetoothDevice.BOND_BONDED;
-					callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, bonded));
+					int state = device.getBondState();
+					String result = "unknown";
+					if (state == BluetoothDevice.BOND_BONDED)
+					{
+						result = "bonded";
+					}
+					else if (state == BluetoothDevice.BOND_BONDING)
+					{
+						result = "bonding";
+					}
+					else if (state == BluetoothDevice.BOND_NONE)
+					{
+						result = "unbonded";
+					}
+
+					callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, result));
 				}
 				catch (Exception e)
 				{
-					callbackContext.error("isBonded error: " + e);
+					callbackContext.error("getBondState error: " + e);
 				}
 			}
 		});
@@ -604,6 +637,8 @@ public class BLE
 			{
 				try
 				{
+					Log.i("@@@@@@", "@@@ bond");
+
 					String address = args.getString(0);
 					mBondDeviceAddress = address;
 					BluetoothDevice device = adapter.getRemoteDevice(address);
@@ -618,7 +653,7 @@ public class BLE
 					// Start bonding.
     				if (!device.createBond())
     				{
-						callbackContext.error("Could not bond");
+						callbackContext.error("could not bond");
 						return;
 					}
 
@@ -627,7 +662,7 @@ public class BLE
 				}
 				catch (Exception e)
 				{
-					callbackContext.error("Bond error: " + e);
+					callbackContext.error("bond error: " + e);
 				}
 			}
 		});
@@ -645,8 +680,10 @@ public class BLE
 			{
 				try
 				{
+					Log.i("@@@@@@", "@@@ unbond");
+
 					String address = args.getString(0);
-					mBondDeviceAddress = address;
+					mUnbondDeviceAddress = address;
 					BluetoothDevice device = adapter.getRemoteDevice(address);
 
     				int bondState = device.getBondState();
@@ -661,16 +698,16 @@ public class BLE
 					Boolean result = (Boolean) m.invoke(device);
     				if (!result.booleanValue())
     				{
-						callbackContext.error("Could not unbond");
+						callbackContext.error("could not unbond");
 						return;
 					}
 
 					// Save callback context.
-					mBondCallbackContext = callbackContext;
+					mUnbondCallbackContext = callbackContext;
 				}
 				catch (Exception e)
 				{
-					callbackContext.error("Unbond error: " + e);
+					callbackContext.error("unbond error: " + e);
 				}
 			}
 		});
@@ -696,7 +733,8 @@ public class BLE
 					// is removed when disconnect occurs, and device resources
 					// are deallocated, therefore true cannot work at present.)
 					boolean autoConnect = false;
-					gh.mGatt = adapter.getRemoteDevice(args.getString(0)).connectGatt(mContext, autoConnect, gh);
+					BluetoothDevice device = adapter.getRemoteDevice(args.getString(0));
+					gh.mGatt = device.connectGatt(mContext, autoConnect, gh);
 
 					// Note that gh.mGatt and this.mGatt are different object and have different types.
 					// --> Renamed this.mGatt to mConnectedDevices to avoid confusion.
@@ -1240,22 +1278,53 @@ public class BLE
 			{
 				BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
 				int state = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, -1);
-				//int previousState = intent.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, -1);
+				int previousState = intent.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, -1);
 
-				// Check that the event is for the device address given in bond/unbond,
-				// and skip the BOND_BONDING state.
+				// Check that the event is for the device address given in bond/unbond.
 				String deviceAddress = device.getAddress();
+
+				Log.i("@@@@@@", "@@@ Bond state changed: " + state + " previous: " + previousState
+					+ " address: " + deviceAddress + " mBondCallbackContext: " + mBondCallbackContext + " mUnbondCallbackContext: " + mUnbondCallbackContext);
+
+				// Handle bond callback.
 				if (null != mBondCallbackContext && deviceAddress.equals(mBondDeviceAddress))
 				{
+					Log.i("@@@@@@", "@@@ bond device address: " + mBondDeviceAddress);
+
 					if (state == BluetoothDevice.BOND_BONDED)
 					{
 						mBondCallbackContext.success("bonded");
 						mBondCallbackContext = null;
 					}
+					else if (state == BluetoothDevice.BOND_BONDING)
+					{
+						keepCallback(mBondCallbackContext, "bonding");
+					}
 					else if (state == BluetoothDevice.BOND_NONE)
 					{
 						mBondCallbackContext.success("unbonded");
 						mBondCallbackContext = null;
+					}
+				}
+
+				// Handle unbond callback.
+				if (null != mUnbondCallbackContext && deviceAddress.equals(mUnbondDeviceAddress))
+				{
+					Log.i("@@@@@@", "@@@ unbond device address: " + mUnbondDeviceAddress);
+
+					if (state == BluetoothDevice.BOND_BONDED)
+					{
+						mUnbondCallbackContext.success("bonded");
+						mUnbondCallbackContext = null;
+					}
+					else if (state == BluetoothDevice.BOND_BONDING)
+					{
+						keepCallback(mUnbondCallbackContext, "bonding");
+					}
+					else if (state == BluetoothDevice.BOND_NONE)
+					{
+						mUnbondCallbackContext.success("unbonded");
+						mUnbondCallbackContext = null;
 					}
 				}
 			}
@@ -1320,7 +1389,7 @@ public class BLE
 			if (mCurrentOpContext != null) return;
 			Runnable runnable = mOperations.poll();
 			if (runnable == null) return;
-			runnable.run();
+			runAction(runnable);
 		}
 
 		@Override

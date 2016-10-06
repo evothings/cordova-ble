@@ -40,8 +40,6 @@ var MODE_CHARACTERISTIC = '00002041-0000-1000-8000-00805f9b34fb'
 // Connected device.
 var mDevice = null
 
-var mConnectInProgress = false
-
 var mPollingTimer = null
 
 function initialize()
@@ -59,24 +57,29 @@ function initialize()
 
 function findDevice()
 {
-	if (mConnectInProgress) return
-	mConnectInProgress = true
+	disconnectDevice()
 
 	searchForBondedDevice({
+		name: 'HEXIWEAR',
+		serviceUUIDs: [INFO_SERVICE],
 		onFound: connectToDevice,
 		onNotFound: scanForDevice,
-		serviceUUIDs: [INFO_SERVICE]
 		})
 }
 
 function disconnectDevice()
 {
+	evothings.ble.stopScan()
 	clearInterval(mPollingTimer)
-	evothings.ble.close(mDevice)
-	mConnectInProgress = false
+	if (mDevice) { evothings.ble.close(mDevice) }
+	mDevice = null
 	showMessage('Disconnected')
 }
 
+/**
+ * Search for bonded device with a given name.
+ * Useful if the address is not known.
+ */
 function searchForBondedDevice(params)
 {
 	evothings.ble.getBondedDevices(
@@ -86,7 +89,7 @@ function searchForBondedDevice(params)
 			for (var i in devices)
 			{
 				var device = devices[i]
-				if (device.name == 'HEXIWEAR')
+				if (device.name == params.name)
 				{
 					params.onFound(device)
 					return // bonded device found
@@ -98,70 +101,6 @@ function searchForBondedDevice(params)
 		function(error)
 		{
 			params.onNotFound()
-		},
-		{ serviceUUIDs: params.serviceUUIDs })
-}
-
-/*
-// Not used.
-function isDeviceBonded(params)
-{
-	evothings.ble.getBondedDevices(
-		// Success function.
-		function(devices)
-		{
-			for (var i in devices)
-			{
-				var device = devices[i]
-				if (device.address == params.device.address)
-				{
-					params.onIsBonded(device)
-					return
-				}
-			}
-			params.onIsNotBonded()
-		},
-		// Error function.
-		params.onIsNotBonded,
-		{ serviceUUIDs: params.serviceUUIDs })
-}
-*/
-
-function waitUntilBonded(params, timeout)
-{
-	if (timeout == undefined)
-	{
-		timeout = params.timeout
-	}
-
-	evothings.ble.getBondedDevices(
-		// Success function.
-		function(devices)
-		{
-			for (var i in devices)
-			{
-				var device = devices[i]
-				if (device.address == params.device.address)
-				{
-					params.onBonded(params.device)
-					return // bonded device found
-				}
-			}
-
-			if (timeout > 500)
-			{
-				timeout -= 1000
-				setTimeout(function() { waitUntilBonded(params, timeout) }, 1000)
-			}
-			else
-			{
-				params.onNotBonded(params.device)
-			}
-		},
-		// Error function.
-		function(error)
-		{
-			params.onNotBonded(params.device)
 		},
 		{ serviceUUIDs: params.serviceUUIDs })
 }
@@ -179,6 +118,8 @@ function scanForDevice()
 	// we check if we found the device we are looking for.
 	function onDeviceFound(device)
 	{
+		console.log('Found device: ' + device.name)
+
 		if (device.advertisementData.kCBAdvDataLocalName == 'HEXIWEAR')
 		{
 			showMessage('Found HexiWear Sensor Tag')
@@ -189,9 +130,20 @@ function scanForDevice()
 			// Bond and connect.
 			evothings.ble.bond(
 				device,
-				function()
+				function(state)
 				{
-					connectToDevice(device)
+					if (state == 'bonded' || state == 'unknown')
+					{
+						connectToDevice(device)
+					}
+					else if (state == 'bonding')
+					{
+						showMessage('Bonding in progress')
+					}
+					else if (state == 'unbonded')
+					{
+						showMessage('Bonding aborted')
+					}
 				},
 				function(error)
 				{
@@ -223,32 +175,47 @@ function connectToDevice(device)
 	function onConnected(device)
 	{
 		showMessage('Connected')
-
-		// Wait until we have bonded before reading device.
-		waitUntilBonded({
-			device: device,
-			onBonded: readDevice,
-			onNotBonded: deviceNotBonded,
-			timeout: 60000,
-			serviceUUIDs: [INFO_SERVICE]
-			})
+		testIfBonded()
 	}
 
 	function onDisconnected(device)
 	{
-		disconnectDevice()
 		showMessage('Device disconnected')
 	}
 
 	// Function called when a connect error or disconnect occurs.
 	function onConnectError(error)
 	{
-		disconnectDevice()
 		showMessage('Connect error: ' + error)
 	}
 }
 
-function readDevice(device)
+function testIfBonded()
+{
+console.log('test if bonded')
+	// Read encrypted characteristic to test if device is bonded.
+	// This will fail (on iOS) if not bonded.
+	var service = evothings.ble.getService(mDevice, WEATHER_SERVICE)
+	var characteristic = evothings.ble.getCharacteristic(service, WEATHER_TEMPERATURE)
+	evothings.ble.readCharacteristic(
+		mDevice,
+		characteristic,
+		function(data)
+		{
+		console.log('bonded')
+			// We are bonded. Continue to read device data.
+			readDevice()
+		},
+		function(errorCode)
+		{
+			// Not bonded, try again.
+
+		console.log('not bonded')
+			showMessage('Device not bonded. Please Connect again.')
+		})
+}
+
+function readDevice()
 {
 	showMessage('Reading device data')
 
@@ -269,7 +236,13 @@ function readDevice(device)
 
 	// Periodically read accelerometer.
 	clearInterval(mPollingTimer)
-	mPollingTimer = setInterval(readAccelerometer, 1000)
+	mPollingTimer = setInterval(
+		function()
+		{
+			readAccelerometer()
+			readTemperature()
+		},
+		1000)
 }
 
 function readCharacteristic(device, serviceUUID, characteristicUUID, elementId, dataConversionFunction)
@@ -286,7 +259,7 @@ function readCharacteristic(device, serviceUUID, characteristicUUID, elementId, 
 		},
 		function(errorCode)
 		{
-			showMessage('readCharacteristic error: ' + errorCode);
+			showMessage('readCharacteristic error: ' + errorCode)
 		})
 }
 
@@ -300,15 +273,14 @@ function readAccelerometer()
 		convert3x16bitDataToString)
 }
 
-function deviceNotBonded(device)
+function readTemperature()
 {
-	disconnectDevice()
-	showMessage('Device not bonded')
-
-	// Lets try reading anyhow. This works on Android in
-	// the "semi-bonded" state where the device is paired
-	// but does not show up among bonded devices.
-	//readDevice()
+	readCharacteristic(
+		mDevice,
+		WEATHER_SERVICE,
+		WEATHER_TEMPERATURE,
+		'device-temperature',
+		convertTemperatureDataToString)
 }
 
 function dataToAscii(data)
@@ -320,6 +292,11 @@ function convert3x16bitDataToString(data)
 {
 	var array = new Int16Array(data)
 	return array[0] + ' ' + array[1] + ' ' + array[2]
+}
+
+function convertTemperatureDataToString(data)
+{
+	return (new Int16Array(data)[0]) / 100.0
 }
 
 function showMessage(text)

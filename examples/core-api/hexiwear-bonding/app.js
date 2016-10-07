@@ -59,6 +59,10 @@ function findDevice()
 {
 	disconnectDevice()
 
+	// Used for debugging/testing.
+	//scanForDevice()
+	//return
+
 	searchForBondedDevice({
 		name: 'HEXIWEAR',
 		serviceUUIDs: [INFO_SERVICE],
@@ -91,6 +95,7 @@ function searchForBondedDevice(params)
 				var device = devices[i]
 				if (device.name == params.name)
 				{
+					console.log('Found bonded device: ' + device.name)
 					params.onFound(device)
 					return // bonded device found
 				}
@@ -126,6 +131,11 @@ function scanForDevice()
 
 			// Stop scanning.
 			evothings.ble.stopScan()
+
+			// Connect directly.
+			// Used for debugging/testing.
+			//connectToDevice(device)
+			//return
 
 			// Bond and connect.
 			evothings.ble.bond(
@@ -192,7 +202,8 @@ function connectToDevice(device)
 
 function testIfBonded()
 {
-console.log('test if bonded')
+	console.log('test if bonded')
+
 	// Read encrypted characteristic to test if device is bonded.
 	// This will fail (on iOS) if not bonded.
 	var service = evothings.ble.getService(mDevice, WEATHER_SERVICE)
@@ -209,8 +220,7 @@ console.log('test if bonded')
 		function(errorCode)
 		{
 			// Not bonded, try again.
-
-		console.log('not bonded')
+			console.log('not bonded')
 			showMessage('Device not bonded. Please Connect again.')
 		})
 }

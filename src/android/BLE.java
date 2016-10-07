@@ -95,13 +95,13 @@ public class BLE
 
 	private void runAction(Runnable action)
 	{
-		// Old.
-		//action.run();
+		// Original way.
+		action.run();
 
-		// New.
+		// Possibly safer alternative.
 		//http://stackoverflow.com/questions/28894111/android-ble-gatt-error133-on-connecting-to-device
 		//http://stackoverflow.com/questions/20839018/while-connecting-to-ble113-from-android-4-3-is-logging-client-registered-waiti/23478737#23478737
-		mHandler.post(action);
+		//mHandler.post(action);
 	}
 
 	// Called each time cordova.js is loaded.
@@ -541,9 +541,17 @@ public class BLE
 	// API implementation.
 	private void stopScan(final CordovaArgs args, final CallbackContext callbackContext)
 	{
-		BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-		adapter.stopLeScan(this);
-		mScanCallbackContext = null;
+		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+		final BluetoothAdapter.LeScanCallback callback = this;
+		checkPowerState(adapter, callbackContext, new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				mScanCallbackContext = null;
+				adapter.stopLeScan(callback);
+			}
+		});
 	}
 
 	// API implementation.
@@ -716,16 +724,24 @@ public class BLE
 	// API implementation.
 	private void connect(final CordovaArgs args, final CallbackContext callbackContext)
 	{
+		Log.i("@@@@@@", "@@@ connect");
+
 		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
 		checkPowerState(adapter, callbackContext, new Runnable()
 		{
 			@Override
 			public void run()
 			{
-				try {
-					// Each device connection has a GattHandler, which handles the events the can happen to the connection.
+				try
+				{
+					// Each device connection has a GattHandler, which handles
+					// the events the can happen to the connection.
+
+					Log.i("@@@@@@", "@@@ creating gatt handler");
+
 					// The implementation of the GattHandler class is found at the end of this file.
 					GattHandler gh = new GattHandler(mNextGattHandle, callbackContext);
+
 					// Note: We set autoConnect to false since setting
 					// it to true breaks the plugin logic. If support for
 					// auto connect is needed, that should be designed
@@ -733,17 +749,26 @@ public class BLE
 					// is removed when disconnect occurs, and device resources
 					// are deallocated, therefore true cannot work at present.)
 					boolean autoConnect = false;
+
+					Log.i("@@@@@@", "@@@ getRemoteDevice");
 					BluetoothDevice device = adapter.getRemoteDevice(args.getString(0));
+
+					Log.i("@@@@@@", "@@@ connectGatt");
 					gh.mGatt = device.connectGatt(mContext, autoConnect, gh);
 
 					// Note that gh.mGatt and this.mGatt are different object and have different types.
 					// --> Renamed this.mGatt to mConnectedDevices to avoid confusion.
 					if (mConnectedDevices == null)
+					{
 						mConnectedDevices = new HashMap<Integer, GattHandler>();
+					}
 					Object res = mConnectedDevices.put(mNextGattHandle, gh);
 					assert(res == null);
 					mNextGattHandle++;
-				} catch(Exception e) {
+				}
+				catch(Exception e)
+				{
+					Log.i("@@@@@@", "@@@ connect exception: " + e);
 					e.printStackTrace();
 					callbackContext.error(e.toString());
 				}
@@ -1284,7 +1309,8 @@ public class BLE
 				String deviceAddress = device.getAddress();
 
 				Log.i("@@@@@@", "@@@ Bond state changed: " + state + " previous: " + previousState
-					+ " address: " + deviceAddress + " mBondCallbackContext: " + mBondCallbackContext + " mUnbondCallbackContext: " + mUnbondCallbackContext);
+					+ " address: " + deviceAddress + " mBondCallbackContext: " + mBondCallbackContext
+					+ " mUnbondCallbackContext: " + mUnbondCallbackContext);
 
 				// Handle bond callback.
 				if (null != mBondCallbackContext && deviceAddress.equals(mBondDeviceAddress))
@@ -1395,17 +1421,30 @@ public class BLE
 		@Override
 		public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState)
 		{
-			if (status == BluetoothGatt.GATT_SUCCESS) {
-				try {
-					JSONObject o = new JSONObject();
-					o.put("deviceHandle", mHandle);
-					o.put("state", newState);
-					keepCallback(mConnectContext, o);
-				} catch(JSONException e) {
-					e.printStackTrace();
-					assert(false);
+			Log.i("@@@@@@", "@@@ onConnectionStateChange status: " + status + " newState: " + newState);
+
+			if (status == BluetoothGatt.GATT_SUCCESS)
+			{
+				try
+				{
+					JSONObject result = new JSONObject();
+					result.put("deviceHandle", mHandle);
+					result.put("state", newState);
+					Log.i("@@@@@@", "@@@ connect success");
+					keepCallback(mConnectContext, result);
 				}
-			} else {
+				catch(JSONException e)
+				{
+					Log.i("@@@@@@", "@@@ connect error: " + e);
+					e.printStackTrace();
+					mConnectContext.error("Connect error: " + e);
+					//assert(false);
+				}
+			}
+			else
+			{
+				// Could this be where we get 133? Yes it is.
+				Log.i("@@@@@@", "@@@ connect error - status: " + status);
 				mConnectContext.error(status);
 			}
 		}

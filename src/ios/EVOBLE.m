@@ -915,15 +915,25 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 }
 
 /**
- * BLE API call: isBonded
+ * BLE API call: getBondState
  */
-- (void) isBonded: (CDVInvokedUrlCommand*)command
+- (void) getBondState: (CDVInvokedUrlCommand*)command
 {
-	NSLog(@"@@@ isBonded");
+	NSLog(@"@@@ getBondState");
 
+	/*
+	// Send unknown in success callback instead.
 	[self
 		sendErrorMessage: @"not implemented"
 		forCallback: command.callbackId];
+	*/
+
+	CDVPluginResult* result = [CDVPluginResult
+		resultWithStatus: CDVCommandStatus_OK
+		messageAsString: @"unknown"];
+	[self.commandDelegate
+		sendPluginResult: result
+		callbackId: command.callbackId];
 }
 
 /**

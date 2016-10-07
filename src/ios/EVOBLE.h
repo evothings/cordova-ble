@@ -85,7 +85,7 @@ typedef void (^EVOCommandBlock)(void);
 - (void) startScan: (CDVInvokedUrlCommand*)command;
 - (void) stopScan: (CDVInvokedUrlCommand*)command;
 - (void) getBondedDevices: (CDVInvokedUrlCommand*)command;
-- (void) isBonded: (CDVInvokedUrlCommand*)command;
+- (void) getBondState: (CDVInvokedUrlCommand*)command;
 - (void) bond: (CDVInvokedUrlCommand*)command;
 - (void) unbond: (CDVInvokedUrlCommand*)command;
 - (void) connect: (CDVInvokedUrlCommand*)command;

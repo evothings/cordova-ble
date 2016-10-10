@@ -47,8 +47,7 @@ import android.text.TextUtils;
 
 public class BLE
 	extends CordovaPlugin
-	implements
-		LeScanCallback
+	implements LeScanCallback
 {
 	// ************* BLE CENTRAL ROLE *************
 
@@ -60,7 +59,7 @@ public class BLE
 	private static final int ACTIVITY_REQUEST_ENABLE_LOCATION = 2;
 
 	// Used by startScan().
-	private CallbackContext mScanCallbackContext;
+	private CallbackContext mScanCallbackContext = null;
 	private CordovaArgs mScanArgs;
 
 	// Used by bond and unbond.
@@ -74,8 +73,6 @@ public class BLE
 
 	// The Android application Context.
 	private Context mContext;
-
-	private Handler mHandler;
 
 	private boolean mRegisteredReceivers = false;
 
@@ -95,13 +92,18 @@ public class BLE
 
 	private void runAction(Runnable action)
 	{
-		// Original way.
-		action.run();
+		// Original method, call directly.
+		//action.run();
 
-		// Possibly safer alternative.
+		// Possibly safer alternative, call on UI thread.
+		cordova.getActivity().runOnUiThread(action);
+
+		// See issue: https://github.com/evothings/cordova-ble/issues/122
+		// Some links:
 		//http://stackoverflow.com/questions/28894111/android-ble-gatt-error133-on-connecting-to-device
 		//http://stackoverflow.com/questions/20839018/while-connecting-to-ble113-from-android-4-3-is-logging-client-registered-waiti/23478737#23478737
-		//mHandler.post(action);
+		// http://stackoverflow.com/questions/23762278/status-codes-132-and-133-from-ble112
+
 	}
 
 	// Called each time cordova.js is loaded.
@@ -111,8 +113,6 @@ public class BLE
 		super.initialize(cordova, webView);
 
 		mContext = webView.getContext();
-
-		mHandler = new Handler(mContext.getMainLooper());
 
 		if (!mRegisteredReceivers)
 		{
@@ -361,6 +361,12 @@ public class BLE
 	// API implementation. See ble.js for documentation.
 	private void startScan(final CordovaArgs args, final CallbackContext callbackContext)
 	{
+		// Scanning must not be in progress.
+		if (mScanCallbackContext != null)
+		{
+			return;
+		}
+
 		// Save callback context.
 		mScanCallbackContext = callbackContext;
 		mScanArgs = args;
@@ -541,6 +547,9 @@ public class BLE
 	// API implementation.
 	private void stopScan(final CordovaArgs args, final CallbackContext callbackContext)
 	{
+		// No pending scan results will be reported.
+		mScanCallbackContext = null;
+
 		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
 		final BluetoothAdapter.LeScanCallback callback = this;
 		checkPowerState(adapter, callbackContext, new Runnable()
@@ -548,7 +557,6 @@ public class BLE
 			@Override
 			public void run()
 			{
-				mScanCallbackContext = null;
 				adapter.stopLeScan(callback);
 			}
 		});

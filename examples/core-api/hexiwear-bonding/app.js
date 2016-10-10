@@ -1,4 +1,5 @@
-// Demo of the high-level extended BLE plugin API.
+// Demo of bonding using the BLE plugin API.
+// This code is fairly experimental.
 
 // Application code starts here. The code is wrapped in a
 // function closure to prevent overwriting global objects.
@@ -46,6 +47,7 @@ function initialize()
 {
 	document.getElementById('connect').addEventListener(
 		'click',
+		//initiateTestSequence, // Used for testing.
 		findDevice,
 		false)
 	document.getElementById('disconnect').addEventListener(
@@ -54,6 +56,42 @@ function initialize()
 		false)
 	showMessage('Ready')
 }
+
+// Code used for testing repeated connect and disconnect.
+var testCount = 0
+var connectErrorCount = 0
+
+function initiateTestSequence()
+{
+	testCount = 0
+
+	console.log('Initiate test sequence')
+	runTestSequence()
+}
+
+function runTestSequence()
+{
+	if (testCount < 10)
+	{
+		++testCount
+
+		console.log('Running test sequence')
+		console.log('testCount: ' + testCount)
+		console.log('connectErrorCount: ' + connectErrorCount)
+
+		findDevice()
+		setTimeout(disconnectDevice, 20000)
+		setTimeout(runTestSequence, 30000)
+	}
+	else
+	{
+		console.log('Test sequence done')
+		console.log('testCount: ' + testCount)
+		console.log('connectErrorCount: ' + connectErrorCount)
+
+	}
+}
+// End of code used for testing.
 
 function findDevice()
 {
@@ -86,6 +124,7 @@ function disconnectDevice()
  */
 function searchForBondedDevice(params)
 {
+	console.log('Searching for bonded device')
 	evothings.ble.getBondedDevices(
 		// Success function.
 		function(devices)
@@ -142,6 +181,9 @@ function scanForDevice()
 				device,
 				function(state)
 				{
+					// Android returns 'bonded' when bonding is complete.
+					// iOS will return 'unknown' and show paring dialog
+					// when connecting.
 					if (state == 'bonded' || state == 'unknown')
 					{
 						connectToDevice(device)
@@ -176,11 +218,19 @@ function connectToDevice(device)
 	// Save device.
 	mDevice = device
 
-	evothings.ble.connectToDevice(
-		device,
-		onConnected,
-		onDisconnected,
-		onConnectError)
+	// Android connect error 133 might be prevented by waiting a
+	// little before connect (to make sure previous BLE operation
+	// has completed).
+	setTimeout(
+		function()
+		{
+			evothings.ble.connectToDevice(
+				device,
+				onConnected,
+				onDisconnected,
+				onConnectError)
+		},
+	    500)
 
 	function onConnected(device)
 	{
@@ -196,7 +246,20 @@ function connectToDevice(device)
 	// Function called when a connect error or disconnect occurs.
 	function onConnectError(error)
 	{
+		++connectErrorCount
 		showMessage('Connect error: ' + error)
+
+		// If we get Android connect error 133, we wait and try to connect again.
+		// This can resolve connect problems on Android when error 133 is seen.
+		// In a production app you may want to have a function for aborting or
+		// maximising the number of connect attempts. Note that attempting reconnect
+		// does not block the app however, so you can still do other tasks and
+		// update the UI of the app.
+		if (133 == error)
+		{
+			showMessage('Reconnecting...')
+			setTimeout(function() { connectToDevice(device) }, 1000)
+		}
 	}
 }
 

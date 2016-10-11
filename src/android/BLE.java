@@ -552,6 +552,19 @@ public class BLE
 
 		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
 		final BluetoothAdapter.LeScanCallback callback = this;
+
+		// Call stopLeScan without checking if bluetooth is on.
+		adapter.stopLeScan(callback);
+
+		/*
+		// TODO: Since there is no callback given to stopScan, there can be other
+		// calls (typically startScan) that are called before the BLE enable dialog
+		// is closed, causing BLE enabling to be aborted. We therefore call stopLeScan
+		// directly, without checking if BLE is on. It would be better design to queue
+		// calls, and to also add callbacks for stopScan (and also to close).
+		// All operations that are not related to a device should be queued
+		// (the operations for a device are already queued, but close is
+		// missing callbacks).
 		checkPowerState(adapter, callbackContext, new Runnable()
 		{
 			@Override
@@ -560,6 +573,7 @@ public class BLE
 				adapter.stopLeScan(callback);
 			}
 		});
+		*/
 	}
 
 	// API implementation.

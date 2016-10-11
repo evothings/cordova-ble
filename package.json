@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/evothings/cordova-ble.git#1.4.4"
+    "url": "git+https://github.com/evothings/cordova-ble.git#2.0.0"
   },
   "keywords": [
     "bluetooth",

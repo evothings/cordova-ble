@@ -71,18 +71,10 @@ exports.startScan = function(arg1, arg2, arg3, arg4)
 	var options;
 	var parseAdvertisementData = true;
 
-	if (isScanning)
-	{
-		fail('Scan already in progress');
-		return;
-	}
-
-	isScanning = true;
-
 	function onFail(error)
 	{
 		isScanning = false;
-		fail(device);
+		fail(error);
 	}
 
 	function onSuccess(device)
@@ -115,6 +107,14 @@ exports.startScan = function(arg1, arg2, arg3, arg4)
 		fail = arg2;
 		options = arg3;
 	}
+
+	if (isScanning)
+	{
+		fail('Scan already in progress');
+		return;
+	}
+
+	isScanning = true;
 
 	// Set options.
 	if (options)
@@ -538,9 +538,206 @@ function littleEndianToUint8(data, offset)
 
 })(); // End of closure for parseAdvertisementData.
 
+
+/**
+ * Success callback function for getBondedDevices.
+ * Called with array of bonded devices (may be empty).
+ * @callback getBondedDevicesCallback
+ * @param {Array} devices - Array of {DeviceInfo} objects. Note that
+ * only fields name and address are available in the device info object.
+ */
+
+/**
+ * Options for getBondedDevices.
+ * @typedef {Object} GetBondedDevicesOptions
+ * @param {array} serviceUUIDs - Array with or or more service UUID strings (mandatory).
+ */
+
+/**
+ * Get a list of bonded devices.
+ * @param {getBondedDevicesCallback} success - Callback function
+ * called with list of bonded devices.
+ * @param {failCallback} fail - Error callback function.
+ * @param {GetBondedDevicesOptions} options - Mandatory object
+ * that specifies service UUIDs to search for.
+ * @example
+ * evothings.ble.getBondedDevices(
+ *     function(devices)
+ *     {
+ *         console.log('Bonded devices: ' + JSON.stringify(devices));
+ *     },
+ *     function(errorCode)
+ *     {
+ *         console.log('getBondedDevices error: ' + errorCode);
+ *     },
+ *     { serviceUUIDs: ['0000180a-0000-1000-8000-00805f9b34fb'] });
+ */
+exports.getBondedDevices = function(success, fail, options)
+{
+	exec(success, fail, 'BLE', 'getBondedDevices', [options.serviceUUIDs]);
+}
+
+/**
+ * Success callback function for getBondState.
+ * @callback getBondStateCallback
+ * @param {string} state - The bond state of the device.
+ * Possible values are: 'bonded', 'bonding' (Android only),
+ * 'unbonded', and 'unknown'.
+ */
+
+/**
+ * Options for getBondState.
+ * @typedef {Object} GetBondStateOptions
+ * @param {string} serviceUUID - String with service UUID (mandatory on iOS,
+ * ignored on Android).
+ */
+
+/**
+ * Get bond state for device.
+ * @param {DeviceInfo} device - Object with address of the device
+ * (a device object that contains just the address field may be used).
+ * On iOS the address is a UUID, on Android the address is a MAC address.
+ * This value can be found in the device objects obtained using startScan().
+ * @param {getBondStateCallback} success - Callback function
+ * called with the current bond state (a string).
+ * @param {failCallback} fail - Error callback function.
+ * @param {GetBondStateOptions} options - Mandatory on iOS where
+ * a serviceUUID of the device must be specified. Ignored on Android.
+ * @example
+ * evothings.ble.getBondState(
+ *     { address: uuidOrMacAddress }
+ *     function(state)
+ *     {
+ *         console.log('Bond state: ' + state);
+ *     },
+ *     function(errorCode)
+ *     {
+ *         console.log('getBondState error: ' + errorCode);
+ *     },
+ *     { serviceUUID: '0000180a-0000-1000-8000-00805f9b34fb' });
+ */
+exports.getBondState = function(device, success, fail, options)
+{
+	// On iOS we must provide a service UUID.
+	var serviceUUID = (options && options.serviceUUID) ? options.serviceUUID : null;
+
+	if (exports.os.isAndroid())
+	{
+		// On Android we call the native getBondState function.
+		// Note that serviceUUID is ignored on Android.
+		exec(success, fail, 'BLE', 'getBondState', [device.address, serviceUUID]);
+	}
+	else
+	{
+		// On iOS (and other platforms in the future) we get the list of
+		// bonded devices and search it.
+		exports.getBondedDevices(
+			// Success function.
+			function(devices)
+			{
+				for (var i in devices)
+				{
+					var d = devices[i];
+					if (d.address == device.address)
+					{
+						success("bonded");
+						return; // bonded device found
+					}
+				}
+				success("unbonded")
+			},
+			// Error function.
+			function(error)
+			{
+				success("unknown");
+			},
+			{ serviceUUIDs: [serviceUUID] }
+		);
+	}
+}
+
+/**
+ * Success callback function for bond. On iOS the bond state returned
+ * will always be 'unknown' (this function is a NOP on iOS). Note that
+ * bonding on Android may fail and then this function is called with
+ * 'unbonded' as the new state.
+ * @callback bondCallback
+ * @param {string} newState - The new bond state of the device.
+ * Possible values are: 'bonded' (Android), 'bonding' (Android),
+ * 'unbonded' (Android), and 'unknown' (iOS).
+ */
+
+/**
+ * Bond with device. This function shows a pairing UI on Android.
+ * Does nothing on iOS (on iOS paring cannot be requested programatically).
+ * @param {DeviceInfo} device - Object with address of the device
+ * (a device object that contains just the address field may be used).
+ * On iOS the address is a UUID, on Android the address is a MAC address.
+ * This value can be found in the device objects obtained using startScan().
+ * @param {bondCallback} success - Callback function
+ * called with the new bond state (a string). On iOS the result is
+ * always 'unknown'.
+ * @param {failCallback} fail - Error callback function.
+ * @example
+ * evothings.ble.bond(
+ *     { address: uuidOrMacAddress }
+ *     function(newState)
+ *     {
+ *         console.log('New bond state: ' + newState);
+ *     },
+ *     function(errorCode)
+ *     {
+ *         console.log('bond error: ' + errorCode);
+ *     });
+ */
+exports.bond = function(device, success, fail)
+{
+	exec(success, fail, 'BLE', 'bond', [device.address]);
+}
+
+/**
+ * Success callback function for unbond. On iOS the bond state returned
+ * will always be 'unknown' (this function is a NOP on iOS). On Anroid
+ * the result should be 'unbonded', but other states are possible. Check
+ * the state to make sure the function was successful.
+ * @callback unbondCallback
+ * @param {string} newState - The new bond state of the device.
+ * Possible values are: 'unbonded' (Android), 'bonding' (Android),
+ * 'bonded' (Android), and 'unknown' (iOS).
+ */
+
+/**
+ * Unbond with device. This function does nothing on iOS.
+ * @param {DeviceInfo} device - Object with address of the device
+ * (a device object that contains just the address field may be used).
+ * On iOS the address is a UUID, on Android the address is a MAC address.
+ * This value can be found in the device objects obtained using startScan().
+ * @param {unbondCallback} success - Callback function
+ * called with the new bond state (a string). On iOS the result is
+ * always 'unknown'.
+ * @param {failCallback} fail - Error callback function.
+ * @example
+ * evothings.ble.unbond(
+ *     { address: uuidOrMacAddress }
+ *     function(newState)
+ *     {
+ *         console.log('New bond state: ' + newState);
+ *     },
+ *     function(errorCode)
+ *     {
+ *         console.log('bond error: ' + errorCode);
+ *     });
+ */
+exports.unbond = function(device, success, fail)
+{
+	exec(success, fail, 'BLE', 'unbond', [device.address]);
+}
+
 /**
  * Connect to a remote device. It is recommended that you use the high-level
  * function {evothings.ble.connectToDevice} in place of this function.
+ * On Android connect may fail with error 133. If this happens, wait about 500ms
+ * and connect again.
  * @param {DeviceInfo} device - Device object from scanCallback (for backwards
  * compatibility, this parameter may also be the address string of the device object).
  * @param {connectCallback} success
@@ -633,6 +830,8 @@ exports.connectionState = {
  * function than {evothings.ble.connect}. You can configure which services
  * to discover and also turn off automatic service discovery by supplying
  * an options parameter.
+ * On Android connect may fail with error 133. If this happens, wait about 500ms
+ * and connect again.
  * @param {DeviceInfo} device - Device object from {scanCallback}.
  * @param {connectedCallback} connected - Called when connected to the device.
  * @param {disconnectedCallback} disconnected - Called when disconnected from the device.
@@ -729,7 +928,7 @@ exports.connectToDevice = function(device, connected, disconnected, fail, option
  */
 function objectHandle(objectOrHandle)
 {
-	if (typeof objectOrHandle == 'object')
+	if ((typeof objectOrHandle == 'object') && objectOrHandle.handle)
 	{
 		// It's an object, return the handle.
 		return objectOrHandle.handle;
@@ -1630,6 +1829,31 @@ exports.getDescriptor = function(characteristic, uuid)
 	}
 
 	return null;
+};
+
+
+/********** Platform utilities **********/
+
+exports.os = (window.evothings && window.evothings.os) ? window.evothings.os : {}
+
+/**
+ * Returns true if current platform is iOS, false if not.
+ * @return {boolean} true if platform is iOS, false if not.
+ * @public
+ */
+exports.os.isIOS = function()
+{
+	return /iP(hone|ad|od)/.test(navigator.userAgent);
+};
+
+/**
+ * Returns true if current platform is Android, false if not.
+ * @return {boolean} true if platform is Android, false if not.
+ * @public
+ */
+exports.os.isAndroid = function()
+{
+	return /Android|android/.test(navigator.userAgent);
 };
 
 /********** BLE Peripheral API **********/

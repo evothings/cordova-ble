@@ -91,23 +91,23 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 
 @interface CBPeripheral (BLEPluginSupport)
 
-- (void) setMyPerhiperal: (EVOPeripheral*)myPeripheral;
-- (EVOPeripheral*) getMyPerhiperal;
+- (void) setEvoPeripheral: (EVOPeripheral*)evoPerhiperal;
+- (EVOPeripheral*) getEvoPerhiperal;
 
 @end
 
 @implementation CBPeripheral (BLEPluginSupport)
 
-- (void) setMyPerhiperal: (EVOPeripheral*)myPeripheral
+- (void) setEvoPeripheral: (EVOPeripheral*)evoPerhiperal
 {
 	objc_setAssociatedObject(
 		self,
 		&EVOPerhiperalAssociatedObjectKey,
-		myPeripheral,
+		evoPerhiperal,
 		OBJC_ASSOCIATION_ASSIGN);
 }
 
-- (EVOPeripheral*) getMyPerhiperal
+- (EVOPeripheral*) getEvoPerhiperal
 {
 	return objc_getAssociatedObject(
 		self,
@@ -200,21 +200,21 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	periperal: (CBPeripheral*) peripheral
 {
 	// Create instance.
-	EVOPeripheral* my = [EVOPeripheral new];
+	EVOPeripheral* evoPeripheral = [EVOPeripheral new];
 
 	// Set handle and connect with associated objects.
-	my.handle = [ble nextHandle];
-	my.ble = ble;
-	my.peripheral = peripheral;
-	peripheral.delegate = my;
-	[peripheral setMyPerhiperal: my];
+	evoPeripheral.handle = [ble nextHandle];
+	evoPeripheral.ble = ble;
+	evoPeripheral.peripheral = peripheral;
+	peripheral.delegate = evoPeripheral;
+	[peripheral setEvoPeripheral: evoPeripheral];
 
 	// Store in central dictionary.
 	[ble.peripherals
-		setObject: my
-		forKey: my.handle];
+		setObject: evoPeripheral
+		forKey: evoPeripheral.handle];
 
-	return my;
+	return evoPeripheral;
 }
 
 /****************************************************************/
@@ -788,14 +788,44 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
  */
 - (void) startScan: (CDVInvokedUrlCommand*)command
 {
-	// Save callbackId.
-	self.scanCallbackId = command.callbackId;
+	// Bluetooth must be on.
+	if (self.central.state != CBCentralManagerStatePoweredOn)
+	{
+		// Save postponed command.
+		self.startScanPostponedCommand = command;
+		return;
+	}
+
+	// Clear postponed command.
+	self.startScanPostponedCommand = nil;
+
+	// Save scan command object.
+	self.startScanCommand = command;
+
+	// Scan options.
+	NSDictionary* options = @{CBCentralManagerScanOptionAllowDuplicatesKey: @YES};
 
 	// Get services to scan for.
 	NSArray* services = [command argumentAtIndex: 0];
 
+	// Add services to scan for. Create array with service UUIDs.
+	NSMutableArray* serviceUUIDs = nil;
+	if (services)
+	{
+		serviceUUIDs = [NSMutableArray array];
+		for (NSString* uuidString in services)
+		{
+			CBUUID* uuid = [CBUUID UUIDWithString: uuidString];
+			[serviceUUIDs addObject: uuid];
+		}
+	}
+
+	//NSLog(@"scanForPeripherals serviceUUIDs: %@", serviceUUIDs);
+
 	// Start scanning.
-	[self scanForPeripherals: services];
+	[self.central
+		scanForPeripheralsWithServices: serviceUUIDs
+		options: options];
 }
 
 /**
@@ -805,20 +835,135 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 {
 	if (self.central.state != CBCentralManagerStatePoweredOn)
 	{
-		self.scanIsWaiting = NO;
+		// Clear postponed command if Bluetooth is off.
+		self.startScanPostponedCommand = nil;
 	}
 	else
 	{
 		// Call native stopScan only if BLE is powered on.
 		[self.central stopScan];
 
-		if (self.scanCallbackId)
+		if (nil != self.startScanCommand)
 		{
 			// Clear JS scan callback if scan is in progress.
-			[self sendNoResultClearCallback: self.scanCallbackId];
-			self.scanCallbackId = nil;
+			[self sendNoResultClearCallback: self.startScanCommand.callbackId];
+
+			// Clear command object.
+			self.startScanCommand = nil;
 		}
 	}
+}
+
+/**
+ * BLE API call: getBondedDevices
+ */
+- (void) getBondedDevices: (CDVInvokedUrlCommand*)command
+{
+	if (self.central.state != CBCentralManagerStatePoweredOn)
+	{
+		NSLog(@"@@@ getBondedDevices BLE off");
+		// BLE is off, set command object, this method will be called
+		// again in centralManagerDidUpdateState: when BLE is powered on.
+		self.getBondedDevicesPostponedCommand = command;
+		return;
+	}
+
+	self.getBondedDevicesPostponedCommand = nil;
+
+	NSLog(@"@@@ getBondedDevices");
+
+	// Get services param.
+	NSArray* services = [command argumentAtIndex: 0];
+
+	// Collect service UUIDs.
+	NSMutableArray* serviceUUIDs = [NSMutableArray array];
+	for (NSString* uuidString in services)
+	{
+		CBUUID* uuid = [CBUUID UUIDWithString: uuidString];
+		[serviceUUIDs addObject: uuid];
+	}
+
+	// Get bonded devices.
+	NSArray* peripherals = [self.central
+		retrieveConnectedPeripheralsWithServices: serviceUUIDs];
+
+	NSLog(@"@@@ getBondedDevices: %@", peripherals);
+
+	// Create array for the callback result containing device info.
+	NSMutableArray* devices = [NSMutableArray arrayWithCapacity: peripherals.count];
+
+	for (int i = 0; i < peripherals.count; ++i)
+	{
+		CBPeripheral* peripheral = [peripherals objectAtIndex: i];
+
+		// Create device info object.
+		NSDictionary* deviceInfo =
+			@{
+				@"address" : [peripheral.identifier UUIDString],
+				@"name" : (peripheral.name != nil) ? peripheral.name : [NSNull null],
+				// TODO: Should we add state? This is not available on Android.
+				//@"state" : peripheral.state,
+			};
+
+		// Add to result array.
+		[devices addObject: deviceInfo];
+	}
+
+	[self sendArray: devices
+		forCallback: command.callbackId
+		keepCallback: NO];
+}
+
+/**
+ * BLE API call: getBondState
+ */
+- (void) getBondState: (CDVInvokedUrlCommand*)command
+{
+	NSLog(@"@@@ getBondState");
+
+	/*
+	// Send unknown in success callback instead.
+	[self
+		sendErrorMessage: @"not implemented"
+		forCallback: command.callbackId];
+	*/
+
+	CDVPluginResult* result = [CDVPluginResult
+		resultWithStatus: CDVCommandStatus_OK
+		messageAsString: @"unknown"];
+	[self.commandDelegate
+		sendPluginResult: result
+		callbackId: command.callbackId];
+}
+
+/**
+ * BLE API call: bond
+ */
+- (void) bond: (CDVInvokedUrlCommand*)command
+{
+	NSLog(@"@@@ bond");
+
+	CDVPluginResult* result = [CDVPluginResult
+		resultWithStatus: CDVCommandStatus_OK
+		messageAsString: @"unknown"];
+	[self.commandDelegate
+		sendPluginResult: result
+		callbackId: command.callbackId];
+}
+
+/**
+ * BLE API call: unbond
+ */
+- (void) unbond: (CDVInvokedUrlCommand*)command
+{
+	NSLog(@"@@@ unbond");
+
+	CDVPluginResult* result = [CDVPluginResult
+		resultWithStatus: CDVCommandStatus_OK
+		messageAsString: @"unknown"];
+	[self.commandDelegate
+		sendPluginResult: result
+		callbackId: command.callbackId];
 }
 
 /**
@@ -866,7 +1011,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	}
 
 	// Check if periheral is already connected.
-	if (nil != [peripheral getMyPerhiperal])
+	if (nil != [peripheral getEvoPerhiperal])
 	{
 		// Debug log.
 		NSLog(@"BLE.m: Periheral was already connected");
@@ -881,17 +1026,17 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 		// Not connected yet.
 
 		// Create custom peripheral object.
-		EVOPeripheral* myPeripheral = [EVOPeripheral
+		EVOPeripheral* evoPerhiperal = [EVOPeripheral
 			withBLE: self
 			periperal: peripheral];
 
 		// Save Cordova callback id.
-		myPeripheral.connectCallbackId = command.callbackId;
+		evoPerhiperal.connectCallbackId = command.callbackId;
 
 		// Send 'connecting' state to JS side.
 		[self
 			sendConnectionState: @1 // STATE_CONNECTING
-			forMyPeriperhal: myPeripheral];
+			forEvoPeripheral: evoPerhiperal];
 
 		// Connect. Result is given in methods:
 		//   centralManager:didConnectPeripheral:
@@ -907,11 +1052,11 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
  */
 - (void) close: (CDVInvokedUrlCommand*)command
 {
-	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
-	if (nil == myPeripheral) return; // Error.
+	EVOPeripheral* evoPerhiperal = [self getPeripheralFromCommand: command];
+	if (nil == evoPerhiperal) return; // Error.
 
 	// Disconnect the CBPeripheral.
-	[self freePeripheral: myPeripheral.peripheral disconnect: YES];
+	[self freePeripheral: evoPerhiperal.peripheral disconnect: YES];
 }
 
 /**
@@ -919,13 +1064,13 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
  */
 - (void) rssi: (CDVInvokedUrlCommand*)command
 {
-	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
-	if (nil == myPeripheral) return; // Error.
+	EVOPeripheral* evoPerhiperal = [self getPeripheralFromCommand: command];
+	if (nil == evoPerhiperal) return; // Error.
 
 	// Read RSSI. Result is given in callback method:
 	//   peripheralDidUpdateRSSI:error:
-	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
-	[myPeripheral
+	CBPeripheral* __weak peripheral = evoPerhiperal.peripheral;
+	[evoPerhiperal
 		addCommandForCallbackId: command.callbackId
 		forObject: peripheral
 		operation: EVO_OPERATION_RSSI
@@ -939,13 +1084,13 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
  */
 - (void) services: (CDVInvokedUrlCommand*)command
 {
-	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
-	if (nil == myPeripheral) return; // Error.
+	EVOPeripheral* evoPerhiperal = [self getPeripheralFromCommand: command];
+	if (nil == evoPerhiperal) return; // Error.
 
 	// Read services. Result is given in callback method:
 	//   peripheral:didDiscoverServices:
-	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
-	[myPeripheral
+	CBPeripheral* __weak peripheral = evoPerhiperal.peripheral;
+	[evoPerhiperal
 		addCommandForCallbackId: command.callbackId
 		forObject: peripheral
 		operation: EVO_OPERATION_SERVICES
@@ -956,16 +1101,16 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 
 - (void) characteristics: (CDVInvokedUrlCommand*)command
 {
-	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
-	if (nil == myPeripheral) return; // Error.
+	EVOPeripheral* evoPerhiperal = [self getPeripheralFromCommand: command];
+	if (nil == evoPerhiperal) return; // Error.
 
-	CBService* service = [myPeripheral getObjectFromCommand: command atIndex: 1];
+	CBService* service = [evoPerhiperal getObjectFromCommand: command atIndex: 1];
 	if (nil == service) return; // Error.
 
 	// Result is delivered in:
 	//	peripheral:didDiscoverCharacteristicsForService:
-	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
-	[myPeripheral
+	CBPeripheral* __weak peripheral = evoPerhiperal.peripheral;
+	[evoPerhiperal
 		addCommandForCallbackId: command.callbackId
 		forObject: service
 		operation: EVO_OPERATION_CHARACTERISTICS
@@ -978,16 +1123,16 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 
 - (void) descriptors: (CDVInvokedUrlCommand*)command
 {
-	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
-	if (nil == myPeripheral) return; // Error.
+	EVOPeripheral* evoPerhiperal = [self getPeripheralFromCommand: command];
+	if (nil == evoPerhiperal) return; // Error.
 
-	CBCharacteristic* characteristic = [myPeripheral getObjectFromCommand: command atIndex: 1];
+	CBCharacteristic* characteristic = [evoPerhiperal getObjectFromCommand: command atIndex: 1];
 	if (nil == characteristic) return; // Error.
 
 	// Result is delivered in:
 	//	peripheral:didDiscoverCharacteristicsForService:
-	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
-	[myPeripheral
+	CBPeripheral* __weak peripheral = evoPerhiperal.peripheral;
+	[evoPerhiperal
 		addCommandForCallbackId: command.callbackId
 		forObject: characteristic
 		operation: EVO_OPERATION_DESCRIPTORS
@@ -998,35 +1143,35 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 
 - (void) readCharacteristic: (CDVInvokedUrlCommand*)command
 {
-	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
-	if (nil == myPeripheral) return; // Error.
+	EVOPeripheral* evoPerhiperal = [self getPeripheralFromCommand: command];
+	if (nil == evoPerhiperal) return; // Error.
 
-	CBCharacteristic* characteristic = [myPeripheral getObjectFromCommand: command atIndex: 1];
+	CBCharacteristic* characteristic = [evoPerhiperal getObjectFromCommand: command atIndex: 1];
 	if (nil == characteristic) return; // Error.
 
 	// Result is delivered in:
 	//	peripheral:didUpdateValueForCharacteristic:error:
 	// Note: This notification method is calledd both for read and notify.
 	// Therefore the command queue cannot be used for read.
-	[myPeripheral
+	[evoPerhiperal
 		addCallbackForCharacteristic: characteristic
 		callbackId: command.callbackId
 		isNotificationCallback: NO];
-	[myPeripheral.peripheral readValueForCharacteristic: characteristic];
+	[evoPerhiperal.peripheral readValueForCharacteristic: characteristic];
 }
 
 - (void) readDescriptor: (CDVInvokedUrlCommand*)command
 {
-	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
-	if (nil == myPeripheral) return; // Error.
+	EVOPeripheral* evoPerhiperal = [self getPeripheralFromCommand: command];
+	if (nil == evoPerhiperal) return; // Error.
 
-	CBDescriptor* descriptor = [myPeripheral getObjectFromCommand: command atIndex: 1];
+	CBDescriptor* descriptor = [evoPerhiperal getObjectFromCommand: command atIndex: 1];
 	if (nil == descriptor) return; // Error.
 
 	// Result is delivered in:
 	//	peripheral:didUpdateValueForDescriptor:error:
-	CBPeripheral* __weak peripheral = myPeripheral.peripheral;
-	[myPeripheral
+	CBPeripheral* __weak peripheral = evoPerhiperal.peripheral;
+	[evoPerhiperal
 		addCommandForCallbackId: command.callbackId
 		forObject: descriptor
 		operation: EVO_OPERATION_READ_DESCRIPTOR
@@ -1038,8 +1183,8 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 // TODO: Should we make this command always write with response?
 - (void) writeCharacteristic: (CDVInvokedUrlCommand*)command
 {
-	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
-	if (nil == myPeripheral)
+	EVOPeripheral* evoPerhiperal = [self getPeripheralFromCommand: command];
+	if (nil == evoPerhiperal)
 	{
 		[self
 			sendErrorMessage: @"device not found"
@@ -1047,7 +1192,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 		return; // Error.
 	}
 
-	CBCharacteristic* characteristic = [myPeripheral getObjectFromCommand: command atIndex: 1];
+	CBCharacteristic* characteristic = [evoPerhiperal getObjectFromCommand: command atIndex: 1];
 	if (nil == characteristic)
 	{
 		[self
@@ -1077,8 +1222,8 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 		// Write with response.
 		// Result for write type CBCharacteristicWriteWithResponse is delivered in:
 		//	peripheral:didWriteValueForCharacteristic:error:
-		CBPeripheral* __weak peripheral = myPeripheral.peripheral;
-		[myPeripheral
+		CBPeripheral* __weak peripheral = evoPerhiperal.peripheral;
+		[evoPerhiperal
 			addCommandForCallbackId: command.callbackId
 			forObject: characteristic
 			operation: EVO_OPERATION_WRITE_CHARACTERISTIC
@@ -1094,7 +1239,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 		// Write without response is writing with response is not allowed.
 		// TODO: Should we remove this from writeCharacteristic now when
 		// writeCharacteristicWithoutResponse is implemented?
-		CBPeripheral* peripheral = myPeripheral.peripheral;
+		CBPeripheral* peripheral = evoPerhiperal.peripheral;
 		[peripheral
 			writeValue: data
 			forCharacteristic: characteristic
@@ -1104,7 +1249,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 		[self sendOkClearCallback: command.callbackId];
 
 		// Run next command, if any.
-		[myPeripheral clearActiveCommandAndContinue];
+		[evoPerhiperal clearActiveCommandAndContinue];
 	}
 	else
 	{
@@ -1114,7 +1259,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 			forCallback: command.callbackId];
 
 		// Run next command, if any.
-		[myPeripheral clearActiveCommandAndContinue];
+		[evoPerhiperal clearActiveCommandAndContinue];
 
 		return;
 	}
@@ -1122,8 +1267,8 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 
 - (void) writeCharacteristicWithoutResponse: (CDVInvokedUrlCommand*)command
 {
-	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
-	if (nil == myPeripheral)
+	EVOPeripheral* evoPerhiperal = [self getPeripheralFromCommand: command];
+	if (nil == evoPerhiperal)
 	{
 		[self
 			sendErrorMessage: @"device not found"
@@ -1131,7 +1276,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 		return; // Error.
 	}
 
-	CBCharacteristic* characteristic = [myPeripheral getObjectFromCommand: command atIndex: 1];
+	CBCharacteristic* characteristic = [evoPerhiperal getObjectFromCommand: command atIndex: 1];
 	if (nil == characteristic)
 	{
 		[self
@@ -1150,7 +1295,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	}
 
 	// Write without response.
-	CBPeripheral* peripheral = myPeripheral.peripheral;
+	CBPeripheral* peripheral = evoPerhiperal.peripheral;
 	[peripheral
 		writeValue: data
 		forCharacteristic: characteristic
@@ -1160,7 +1305,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	[self sendOkClearCallback: command.callbackId];
 
 	// Run next command, if any.
-	[myPeripheral clearActiveCommandAndContinue];
+	[evoPerhiperal clearActiveCommandAndContinue];
 }
 
 // Note: Writing the value of a Client Configuration Descriptor (UUID = 2902)
@@ -1169,10 +1314,10 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 // In this case we do not write to the descriptor, see code below.
 - (void) writeDescriptor: (CDVInvokedUrlCommand*)command
 {
-	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
-	if (nil == myPeripheral) return; // Error.
+	EVOPeripheral* evoPerhiperal = [self getPeripheralFromCommand: command];
+	if (nil == evoPerhiperal) return; // Error.
 
-	CBDescriptor* descriptor = [myPeripheral getObjectFromCommand: command atIndex: 1];
+	CBDescriptor* descriptor = [evoPerhiperal getObjectFromCommand: command atIndex: 1];
 	if (nil == descriptor) return; // Error.
 
 	NSData* data = [command.arguments objectAtIndex: 2];
@@ -1209,8 +1354,8 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	{
 		// Result is delivered in:
 		//	peripheral:didWriteValueForDescriptor:error:
-		CBPeripheral* __weak peripheral = myPeripheral.peripheral;
-		[myPeripheral
+		CBPeripheral* __weak peripheral = evoPerhiperal.peripheral;
+		[evoPerhiperal
 			addCommandForCallbackId: command.callbackId
 			forObject: descriptor
 			operation: EVO_OPERATION_WRITE_DESCRIPTOR
@@ -1224,45 +1369,45 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 
 - (void) enableNotification: (CDVInvokedUrlCommand*)command
 {
-	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
-	if (nil == myPeripheral) return; // Error.
+	EVOPeripheral* evoPerhiperal = [self getPeripheralFromCommand: command];
+	if (nil == evoPerhiperal) return; // Error.
 
-	CBCharacteristic* characteristic = [myPeripheral getObjectFromCommand: command atIndex: 1];
+	CBCharacteristic* characteristic = [evoPerhiperal getObjectFromCommand: command atIndex: 1];
 	if (nil == characteristic) return; // Error.
 
 	// Result is delivered in:
 	//  peripheral:didUpdateValueForCharacteristic:error:
 	// TODO Confirm this: Possibly results are also delived in:
 	//	peripheral:didUpdateNotificationStateForCharacteristic:error:
-	[myPeripheral
+	[evoPerhiperal
 		addCallbackForCharacteristic: characteristic
 		callbackId: command.callbackId
 		isNotificationCallback: YES];
-	[myPeripheral.peripheral
+	[evoPerhiperal.peripheral
 		setNotifyValue: YES
 		forCharacteristic: characteristic];
 }
 
 - (void) disableNotification: (CDVInvokedUrlCommand*)command
 {
-	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
-	if (nil == myPeripheral) return; // Error.
+	EVOPeripheral* evoPerhiperal = [self getPeripheralFromCommand: command];
+	if (nil == evoPerhiperal) return; // Error.
 
-	CBCharacteristic* characteristic = [myPeripheral getObjectFromCommand: command atIndex: 1];
+	CBCharacteristic* characteristic = [evoPerhiperal getObjectFromCommand: command atIndex: 1];
 	if (nil == characteristic) return; // Error.
 
 	// Turn off notification.
-	[myPeripheral.peripheral
+	[evoPerhiperal.peripheral
 		setNotifyValue: NO
 		forCharacteristic: characteristic];
 
 	// Remove the callback from the JavaScript layer.
-	EVOCallbackInfo* callback = [myPeripheral
+	EVOCallbackInfo* callback = [evoPerhiperal
 		getCallbackForCharacteristic: characteristic];
 	[self sendNoResultClearCallback: callback.callbackId];
 
 	// Remove the callback from the Objective-C layer.
-	[myPeripheral removeCallbackForCharacteristic: characteristic];
+	[evoPerhiperal removeCallbackForCharacteristic: characteristic];
 }
 
 - (void) reset: (CDVInvokedUrlCommand*)command
@@ -1284,7 +1429,9 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
  */
 - (void) pluginInitialize
 {
-	self.scanIsWaiting = NO;
+	self.startScanCommand = nil;
+	self.startScanPostponedCommand = nil;
+	self.getBondedDevicesPostponedCommand = nil;
 
 	// CBCentralManagerOptionShowPowerAlertKey - "A Boolean value that
 	// specifies whether the system should display a warning dialog to
@@ -1308,6 +1455,10 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
  */
 - (void) onReset
 {
+	self.startScanCommand = nil;
+	self.startScanPostponedCommand = nil;
+	self.getBondedDevicesPostponedCommand = nil;
+
 	[self freePeripherals];
 }
 
@@ -1402,12 +1553,19 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
  */
 - (void) centralManagerDidUpdateState: (CBCentralManager*)central
 {
-	// Start scan if we have a waiting scan that failed because
-	// of the Central Manager not being on.
-	if (central.state == CBCentralManagerStatePoweredOn
-		&& self.scanIsWaiting)
+	// Execute commands that have been postponed because
+	// of Bluetooth not being on.
+	if (central.state == CBCentralManagerStatePoweredOn)
 	{
-		[self scanForPeripherals: self.scanIsWaitingServices];
+		if (nil != self.startScanPostponedCommand)
+		{
+			[self startScan: self.startScanPostponedCommand];
+		}
+
+		if (nil != self.getBondedDevicesPostponedCommand)
+		{
+			[self getBondedDevices: self.getBondedDevicesPostponedCommand];
+		}
 	}
 }
 
@@ -1430,20 +1588,20 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 {
 	[self
 		sendConnectionState: @2 // STATE_CONNECTED
-		forMyPeriperhal: [peripheral getMyPerhiperal]];
+		forEvoPeripheral: [peripheral getEvoPerhiperal]];
 }
 
 - (void)centralManager: (CBCentralManager *)central
 	didFailToConnectPeripheral: (CBPeripheral *)peripheral
 	error: (NSError *)error
 {
-	EVOPeripheral* myPeripheral = [peripheral getMyPerhiperal];
-	if (nil == myPeripheral) return;
+	EVOPeripheral* evoPerhiperal = [peripheral getEvoPerhiperal];
+	if (nil == evoPerhiperal) return;
 
 	// Send connect failed to JS.
 	[self
 		sendErrorMessage: @"failed to connect"
-		forCallback: myPeripheral.connectCallbackId];
+		forCallback: evoPerhiperal.connectCallbackId];
 
 	// Free allocated data. No need to disconnect,
 	// since connection failed.
@@ -1458,8 +1616,8 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	didDisconnectPeripheral: (CBPeripheral *)peripheral
 	error: (NSError *)error
 {
-	EVOPeripheral* myPeripheral = [peripheral getMyPerhiperal];
-	if (nil == myPeripheral) return;
+	EVOPeripheral* evoPerhiperal = [peripheral getEvoPerhiperal];
+	if (nil == evoPerhiperal) return;
 
 	// If the error object is non-nil the peripheral was
 	// disconnected by the system (and not by close).
@@ -1470,7 +1628,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 		// Send disconnected state to JS.
 		[self
 			sendConnectionState: @0 // STATE_DISCONNECTED
-			forMyPeriperhal: myPeripheral];
+			forEvoPeripheral: evoPerhiperal];
 
 		// Peripheral is already disconnected, but needs
 		// to be deallocated.
@@ -1489,26 +1647,26 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 - (void) freePeripheral: (CBPeripheral *)peripheral
 	disconnect: (bool)shouldDisconnect
 {
-	EVOPeripheral* myPeripheral = [peripheral getMyPerhiperal];
-	if (nil == myPeripheral)
+	EVOPeripheral* evoPerhiperal = [peripheral getEvoPerhiperal];
+	if (nil == evoPerhiperal)
 	{
 		return;
 	}
 
 	// Clear connect callback on the JS side.
-	[self sendNoResultClearCallback: myPeripheral.connectCallbackId];
+	[self sendNoResultClearCallback: evoPerhiperal.connectCallbackId];
 
 	// Remove from dictionary.
-	[self.peripherals removeObjectForKey: myPeripheral.handle];
+	[self.peripherals removeObjectForKey: evoPerhiperal.handle];
 
 	// Set references to nil.
-	[peripheral setMyPerhiperal: nil];
-	myPeripheral.peripheral = nil;
-	myPeripheral.ble = nil;
-	myPeripheral.connectCallbackId = nil;
+	[peripheral setEvoPeripheral: nil];
+	evoPerhiperal.peripheral = nil;
+	evoPerhiperal.ble = nil;
+	evoPerhiperal.connectCallbackId = nil;
 
 	// Optionally disconnect the peripheral.
-	if (shouldDisconnect)
+	if (shouldDisconnect && (CBPeripheralStateConnected == peripheral.state))
 	{
 		[self.central cancelPeripheralConnection: peripheral];
 	}
@@ -1519,14 +1677,14 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
  */
 - (void) freePeripherals
 {
-	// Stop scanning.
+	// Stop any ongoing scanning.
 	[self.central stopScan];
 
-	// Remove MyPeripheral and disconnect its associated peripheral.
+	// Remove the EvoPeripheral and disconnect its associated peripheral.
 	for (id key in self.peripherals)
 	{
-		EVOPeripheral* myPeripheral = [self.peripherals objectForKey: key];
-		[self freePeripheral: myPeripheral.peripheral disconnect: YES];
+		EVOPeripheral* evoPerhiperal = [self.peripherals objectForKey: key];
+		[self freePeripheral: evoPerhiperal.peripheral disconnect: YES];
 	}
 }
 
@@ -1536,49 +1694,6 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 - (NSNumber*) nextHandle
 {
 	return [NSNumber numberWithInt: ++(self.handleCounter)];
-}
-
-/**
- * Internal helper method.
- */
-- (int) scanForPeripherals: (NSArray*)services
-{
-	if (self.central.state != CBCentralManagerStatePoweredOn)
-	{
-		// BLE is off, set flag that scan is waiting, scan will be restarted
-		// in centralManagerDidUpdateState: when BLE is powered on.
-		self.scanIsWaiting = YES;
-		self.scanIsWaitingServices = services;
-		return -1;
-	}
-
-	self.scanIsWaiting = NO;
-	self.scanIsWaitingServices = nil;
-
-	//NSLog(@"scanForPeripherals services: %@", services);
-
-	NSDictionary* options = @{CBCentralManagerScanOptionAllowDuplicatesKey: @YES};
-
-	// Add services to scan for. Create array with service UUIDs.
-	NSMutableArray* serviceUUIDs = nil;
-	if (services)
-	{
-		serviceUUIDs = [NSMutableArray array];
-		for (NSString* uuidString in services)
-		{
-			CBUUID* uuid = [CBUUID UUIDWithString: uuidString];
-			[serviceUUIDs addObject: uuid];
-		}
-	}
-
-	//NSLog(@"scanForPeripherals serviceUUIDs: %@", serviceUUIDs);
-
-	// Start scanning.
-	[self.central
-		scanForPeripheralsWithServices: serviceUUIDs
-		options: options];
-
-	return 0;
 }
 
 /**
@@ -1595,8 +1710,8 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 		return nil;
 	}
 
-	EVOPeripheral* myPeripheral = self.peripherals[deviceHandle];
-	if (nil == myPeripheral)
+	EVOPeripheral* evoPerhiperal = self.peripherals[deviceHandle];
+	if (nil == evoPerhiperal)
 	{
 		[self
 			sendErrorMessage: @"device not found"
@@ -1604,7 +1719,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 		return nil;
 	}
 
-	return myPeripheral;
+	return evoPerhiperal;
 }
 
 /**
@@ -1625,11 +1740,11 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	};
 
 	// Send back data to JS.
-	if (self.scanCallbackId)
+	if (nil != self.startScanCommand)
 	{
 		[self
 			sendDictionary: info
-			forCallback: self.scanCallbackId
+			forCallback: self.startScanCommand.callbackId
 			keepCallback: YES];
 	}
 }
@@ -1638,20 +1753,20 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
  * Internal helper method.
  */
 - (void) sendConnectionState: (NSNumber *)state
-	forMyPeriperhal: (EVOPeripheral *)myPeripheral
+	forEvoPeripheral: (EVOPeripheral *)evoPerhiperal
 {
 	// Create an info object.
 	// The UUID is used as the address of the device (the 6-byte BLE address
 	// does not seem to be directly available on iOS).
 	NSDictionary* info = @{
-		@"deviceHandle" : myPeripheral.handle,
+		@"deviceHandle" : evoPerhiperal.handle,
 		@"state" : state
 	};
 
 	// Send back data to JS.
 	[self
 		sendDictionary: info
-		forCallback: myPeripheral.connectCallbackId
+		forCallback: evoPerhiperal.connectCallbackId
 		keepCallback: YES];
 }
 

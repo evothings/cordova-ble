@@ -28,6 +28,7 @@ import android.app.Activity;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.Iterator;
 import java.util.UUID;
 import java.io.UnsupportedEncodingException;
@@ -37,6 +38,7 @@ import android.os.ParcelUuid;
 import android.util.Log;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Handler;
 import android.Manifest;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
@@ -45,21 +47,26 @@ import android.text.TextUtils;
 
 public class BLE
 	extends CordovaPlugin
-	implements
-		LeScanCallback
+	implements LeScanCallback
 {
 	// ************* BLE CENTRAL ROLE *************
-	
+
 	// Implementation of BLE Central API.
-	
+
 	private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
 
 	private static final int ACTIVITY_REQUEST_ENABLE_BLUETOOTH = 1;
 	private static final int ACTIVITY_REQUEST_ENABLE_LOCATION = 2;
 
 	// Used by startScan().
-	private CallbackContext mScanCallbackContext;
+	private CallbackContext mScanCallbackContext = null;
 	private CordovaArgs mScanArgs;
+
+	// Used by bond and unbond.
+	private CallbackContext mBondCallbackContext = null;
+	private String mBondDeviceAddress;
+	private CallbackContext mUnbondCallbackContext = null;
+	private String mUnbondDeviceAddress;
 
 	// Used by reset().
 	private CallbackContext mResetCallbackContext;
@@ -67,7 +74,7 @@ public class BLE
 	// The Android application Context.
 	private Context mContext;
 
-	private boolean mRegisteredReceiver = false;
+	private boolean mRegisteredReceivers = false;
 
 	// Called when the device's Bluetooth powers on.
 	// Used by startScan() and connect() to wait for power-on if Bluetooth was
@@ -83,18 +90,41 @@ public class BLE
 	// Monotonically incrementing key to the Gatt map.
 	int mNextGattHandle = 1;
 
+	private void runAction(Runnable action)
+	{
+		// Original method, call directly.
+		//action.run();
+
+		// Possibly safer alternative, call on UI thread.
+		cordova.getActivity().runOnUiThread(action);
+
+		// See issue: https://github.com/evothings/cordova-ble/issues/122
+		// Some links:
+		//http://stackoverflow.com/questions/28894111/android-ble-gatt-error133-on-connecting-to-device
+		//http://stackoverflow.com/questions/20839018/while-connecting-to-ble113-from-android-4-3-is-logging-client-registered-waiti/23478737#23478737
+		// http://stackoverflow.com/questions/23762278/status-codes-132-and-133-from-ble112
+
+	}
+
 	// Called each time cordova.js is loaded.
 	@Override
 	public void initialize(final CordovaInterface cordova, CordovaWebView webView)
 	{
 		super.initialize(cordova, webView);
+
 		mContext = webView.getContext();
 
-		if (!mRegisteredReceiver) {
+		if (!mRegisteredReceivers)
+		{
 			mContext.registerReceiver(
 				new BluetoothStateReceiver(),
 				new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
-			mRegisteredReceiver = true;
+
+			mContext.registerReceiver(
+				new BondStateReceiver(),
+				new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED));
+
+			mRegisteredReceivers = true;
 		}
 	}
 
@@ -113,6 +143,18 @@ public class BLE
 			}
 			else if ("stopScan".equals(action)) {
 				stopScan(args, callbackContext);
+			}
+			else if ("getBondedDevices".equals(action)) {
+				getBondedDevices(args, callbackContext);
+			}
+			else if ("getBondState".equals(action)) {
+				getBondState(args, callbackContext);
+			}
+			else if ("bond".equals(action)) {
+				bond(args, callbackContext);
+			}
+			else if ("unbond".equals(action)) {
+				unbond(args, callbackContext);
 			}
 			else if ("connect".equals(action)) {
 				connect(args, callbackContext);
@@ -240,7 +282,7 @@ public class BLE
 		}
 		if (adapter.getState() == BluetoothAdapter.STATE_ON) {
 			// Bluetooth is ON
-			onPowerOn.run();
+			runAction(onPowerOn);
 		} else {
 			mOnPowerOn = onPowerOn;
 			mPowerOnCallbackContext = cc;
@@ -260,7 +302,7 @@ public class BLE
 			mPowerOnCallbackContext = null;
 			if (resultCode == Activity.RESULT_OK) {
 				if (null != onPowerOn) {
-					onPowerOn.run();
+					runAction(onPowerOn);
 				} else {
 					// Runnable was null.
 					if (null != cc) cc.error("Runnable is null in onActivityResult (internal error)");
@@ -319,6 +361,12 @@ public class BLE
 	// API implementation. See ble.js for documentation.
 	private void startScan(final CordovaArgs args, final CallbackContext callbackContext)
 	{
+		// Scanning must not be in progress.
+		if (mScanCallbackContext != null)
+		{
+			return;
+		}
+
 		// Save callback context.
 		mScanCallbackContext = callbackContext;
 		mScanArgs = args;
@@ -499,24 +547,223 @@ public class BLE
 	// API implementation.
 	private void stopScan(final CordovaArgs args, final CallbackContext callbackContext)
 	{
-		BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-		adapter.stopLeScan(this);
+		// No pending scan results will be reported.
 		mScanCallbackContext = null;
+
+		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+		final BluetoothAdapter.LeScanCallback callback = this;
+
+		// Call stopLeScan without checking if bluetooth is on.
+		adapter.stopLeScan(callback);
+
+		/*
+		// TODO: Since there is no callback given to stopScan, there can be other
+		// calls (typically startScan) that are called before the BLE enable dialog
+		// is closed, causing BLE enabling to be aborted. We therefore call stopLeScan
+		// directly, without checking if BLE is on. It would be better design to queue
+		// calls, and to also add callbacks for stopScan (and also to close).
+		// All operations that are not related to a device should be queued
+		// (the operations for a device are already queued, but close is
+		// missing callbacks).
+		checkPowerState(adapter, callbackContext, new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				adapter.stopLeScan(callback);
+			}
+		});
+		*/
+	}
+
+	// API implementation.
+	private void getBondedDevices(final CordovaArgs args, final CallbackContext callbackContext)
+	{
+		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+
+		checkPowerState(adapter, callbackContext, new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				// Result array.
+				JSONArray devices = new JSONArray();
+
+				Set<BluetoothDevice> bondedDevices = adapter.getBondedDevices();
+				for (BluetoothDevice bondedDevice : bondedDevices)
+				{
+					if (bondedDevice.getType() == BluetoothDevice.DEVICE_TYPE_LE)
+					{
+						try
+						{
+							JSONObject device = new JSONObject();
+							device.put("address", bondedDevice.getAddress());
+							device.put("name", null == bondedDevice.getName() ?
+								JSONObject.NULL : bondedDevice.getName());
+							devices.put(device);
+						}
+						catch (Exception e)
+						{
+							callbackContext.error("getBondedDevices error: " + e);
+							return;
+						}
+					}
+				}
+
+				callbackContext.success(devices);
+			}
+		});
+	}
+
+	// API implementation.
+	private void getBondState(final CordovaArgs args, final CallbackContext callbackContext)
+	{
+		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+
+		checkPowerState(adapter, callbackContext, new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				try
+				{
+					String address = args.getString(0);
+					// Not used on Android: String serviceUUID = args.getString(1);
+					BluetoothDevice device = adapter.getRemoteDevice(address);
+					int state = device.getBondState();
+					String result = "unknown";
+					if (state == BluetoothDevice.BOND_BONDED)
+					{
+						result = "bonded";
+					}
+					else if (state == BluetoothDevice.BOND_BONDING)
+					{
+						result = "bonding";
+					}
+					else if (state == BluetoothDevice.BOND_NONE)
+					{
+						result = "unbonded";
+					}
+
+					callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, result));
+				}
+				catch (Exception e)
+				{
+					callbackContext.error("getBondState error: " + e);
+				}
+			}
+		});
+	}
+
+	// API implementation.
+	private void bond(final CordovaArgs args, final CallbackContext callbackContext)
+	{
+		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+
+		checkPowerState(adapter, callbackContext, new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				try
+				{
+					Log.i("@@@@@@", "@@@ bond");
+
+					String address = args.getString(0);
+					mBondDeviceAddress = address;
+					BluetoothDevice device = adapter.getRemoteDevice(address);
+
+    				int bondState = device.getBondState();
+    				if (bondState == BluetoothDevice.BOND_BONDED)
+    				{
+						callbackContext.success("bonded");
+						return;
+					}
+
+					// Start bonding.
+    				if (!device.createBond())
+    				{
+						callbackContext.error("could not bond");
+						return;
+					}
+
+					// Save callback context.
+					mBondCallbackContext = callbackContext;
+				}
+				catch (Exception e)
+				{
+					callbackContext.error("bond error: " + e);
+				}
+			}
+		});
+	}
+
+	// API implementation.
+	private void unbond(final CordovaArgs args, final CallbackContext callbackContext)
+	{
+		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+
+		checkPowerState(adapter, callbackContext, new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				try
+				{
+					Log.i("@@@@@@", "@@@ unbond");
+
+					String address = args.getString(0);
+					mUnbondDeviceAddress = address;
+					BluetoothDevice device = adapter.getRemoteDevice(address);
+
+    				int bondState = device.getBondState();
+    				if (bondState == BluetoothDevice.BOND_NONE)
+    				{
+						callbackContext.success("unbonded");
+						return;
+					}
+
+					// Stop bonding.
+					java.lang.reflect.Method m = device.getClass().getMethod("removeBond");
+					Boolean result = (Boolean) m.invoke(device);
+    				if (!result.booleanValue())
+    				{
+						callbackContext.error("could not unbond");
+						return;
+					}
+
+					// Save callback context.
+					mUnbondCallbackContext = callbackContext;
+				}
+				catch (Exception e)
+				{
+					callbackContext.error("unbond error: " + e);
+				}
+			}
+		});
 	}
 
 	// API implementation.
 	private void connect(final CordovaArgs args, final CallbackContext callbackContext)
 	{
+		Log.i("@@@@@@", "@@@ connect");
+
 		final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
 		checkPowerState(adapter, callbackContext, new Runnable()
 		{
 			@Override
 			public void run()
 			{
-				try {
-					// Each device connection has a GattHandler, which handles the events the can happen to the connection.
+				try
+				{
+					// Each device connection has a GattHandler, which handles
+					// the events the can happen to the connection.
+
+					Log.i("@@@@@@", "@@@ creating gatt handler");
+
 					// The implementation of the GattHandler class is found at the end of this file.
 					GattHandler gh = new GattHandler(mNextGattHandle, callbackContext);
+
 					// Note: We set autoConnect to false since setting
 					// it to true breaks the plugin logic. If support for
 					// auto connect is needed, that should be designed
@@ -524,16 +771,26 @@ public class BLE
 					// is removed when disconnect occurs, and device resources
 					// are deallocated, therefore true cannot work at present.)
 					boolean autoConnect = false;
-					gh.mGatt = adapter.getRemoteDevice(args.getString(0)).connectGatt(mContext, autoConnect, gh);
+
+					Log.i("@@@@@@", "@@@ getRemoteDevice");
+					BluetoothDevice device = adapter.getRemoteDevice(args.getString(0));
+
+					Log.i("@@@@@@", "@@@ connectGatt");
+					gh.mGatt = device.connectGatt(mContext, autoConnect, gh);
 
 					// Note that gh.mGatt and this.mGatt are different object and have different types.
 					// --> Renamed this.mGatt to mConnectedDevices to avoid confusion.
 					if (mConnectedDevices == null)
+					{
 						mConnectedDevices = new HashMap<Integer, GattHandler>();
+					}
 					Object res = mConnectedDevices.put(mNextGattHandle, gh);
 					assert(res == null);
 					mNextGattHandle++;
-				} catch(Exception e) {
+				}
+				catch(Exception e)
+				{
+					Log.i("@@@@@@", "@@@ connect exception: " + e);
 					e.printStackTrace();
 					callbackContext.error(e.toString());
 				}
@@ -778,7 +1035,7 @@ public class BLE
 		});
 		gh.process();
 	}
-	
+
 	// Notification options flag.
 	private final int NOTIFICATION_OPTIONS_DISABLE_AUTOMATIC_CONFIG = 1;
 
@@ -792,7 +1049,7 @@ public class BLE
 
 		// Get characteristic.
 		BluetoothGattCharacteristic characteristic = gh.mCharacteristics.get(args.getInt(1));
-		
+
 		// Turn notification on.
 		boolean success = gh.mGatt.setCharacteristicNotification(characteristic, true);
 		if (!success) {
@@ -804,7 +1061,7 @@ public class BLE
 		// When turning notification on, the success callback will be
 		// called on every notification event.
 		gh.mNotifications.put(characteristic, callbackContext);
-		
+
 		// Write config descriptor if not disabled in options.
 		int options = args.getInt(2);
 		boolean writeConfigDescriptor = (options == 0);
@@ -827,10 +1084,10 @@ public class BLE
 			{
 				// Mark operation in process.
 				gattHandler.mCurrentOpContext = callbackContext;
-					
+
 				// Don't report result from writing descriptor.
 				gattHandler.mDontReportWriteDescriptor = true;
-				
+
 				// Write the config descriptor.
 				if (!enableConfigDescriptor(callbackContext, gattHandler, gatt, characteristic)) {
 					gattHandler.mDontReportWriteDescriptor = false;
@@ -842,7 +1099,7 @@ public class BLE
 		});
 		gattHandler.process();
 	}
-	
+
 	// Helper method.
 	private boolean enableConfigDescriptor(
 		final CallbackContext callbackContext,
@@ -860,19 +1117,19 @@ public class BLE
 
 		// Config descriptor value.
 		byte[] descriptorValue;
-		
+
 		// Check if notification or indication should be used.
 		if (0 != (characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_NOTIFY)) {
 			descriptorValue = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE;
-		} 
+		}
 		else if (0 != (characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_INDICATE)) {
 			descriptorValue = BluetoothGattDescriptor.ENABLE_INDICATION_VALUE;
-		} 
+		}
 		else {
 			callbackContext.error("Characteristic does not support notification or indication.");
 			return false;
-		} 
-		
+		}
+
 		// Set value of config descriptor.
 		configDescriptor.setValue(descriptorValue);
 
@@ -882,10 +1139,10 @@ public class BLE
 			callbackContext.error("Could not write config descriptor");
 			return false;
 		}
-		
+
 		return true;
 	}
-	
+
 	// API implementation.
 	private void disableNotification(
 		final CordovaArgs args,
@@ -903,8 +1160,8 @@ public class BLE
 			callbackContext.error("Could not disable notification");
 			return;
 		}
-		
-		// Remove callback context for the characteristic 
+
+		// Remove callback context for the characteristic
 		// when turning off notification.
 		gh.mNotifications.remove(characteristic);
 
@@ -933,10 +1190,10 @@ public class BLE
 			{
 				// Mark operation in process.
 				gattHandler.mCurrentOpContext = callbackContext;
-					
+
 				// Don't report result from writing descriptor.
 				gattHandler.mDontReportWriteDescriptor = true;
-				
+
 				// Write the config descriptor.
 				if (!disableConfigDescriptor(callbackContext, gattHandler, gatt, characteristic)) {
 					gattHandler.mDontReportWriteDescriptor = false;
@@ -944,14 +1201,14 @@ public class BLE
 					gattHandler.process();
 					return;
 				}
-				
+
 				// Call success callback for notification turned off.
 				callbackContext.success();
 			}
 		});
 		gattHandler.process();
 	}
-	
+
 	// Helper method.
 	private boolean disableConfigDescriptor(
 		final CallbackContext callbackContext,
@@ -966,7 +1223,7 @@ public class BLE
 			callbackContext.error("Could not get config descriptor");
 			return false;
 		}
-		
+
 		// Set value of config descriptor.
 		byte[] descriptorValue = BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE;
 		configDescriptor.setValue(descriptorValue);
@@ -977,10 +1234,10 @@ public class BLE
 			callbackContext.error("Could not write config descriptor");
 			return false;
 		}
-		
+
 		return true;
 	}
-	
+
 	// API implementation.
 	private void testCharConversion(
 		final CordovaArgs args,
@@ -1055,7 +1312,72 @@ public class BLE
 				}
 			}
 		}
-	};
+	}
+
+	/**
+	 * Used for both bond and unbond. We assume these are called one at a time.
+	 */
+	class BondStateReceiver extends BroadcastReceiver
+	{
+		public void onReceive(Context context, Intent intent)
+		{
+			if (intent.getAction().equals(BluetoothDevice.ACTION_BOND_STATE_CHANGED))
+			{
+				BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+				int state = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, -1);
+				int previousState = intent.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, -1);
+
+				// Check that the event is for the device address given in bond/unbond.
+				String deviceAddress = device.getAddress();
+
+				Log.i("@@@@@@", "@@@ Bond state changed: " + state + " previous: " + previousState
+					+ " address: " + deviceAddress + " mBondCallbackContext: " + mBondCallbackContext
+					+ " mUnbondCallbackContext: " + mUnbondCallbackContext);
+
+				// Handle bond callback.
+				if (null != mBondCallbackContext && deviceAddress.equals(mBondDeviceAddress))
+				{
+					Log.i("@@@@@@", "@@@ bond device address: " + mBondDeviceAddress);
+
+					if (state == BluetoothDevice.BOND_BONDED)
+					{
+						mBondCallbackContext.success("bonded");
+						mBondCallbackContext = null;
+					}
+					else if (state == BluetoothDevice.BOND_BONDING)
+					{
+						keepCallback(mBondCallbackContext, "bonding");
+					}
+					else if (state == BluetoothDevice.BOND_NONE)
+					{
+						mBondCallbackContext.success("unbonded");
+						mBondCallbackContext = null;
+					}
+				}
+
+				// Handle unbond callback.
+				if (null != mUnbondCallbackContext && deviceAddress.equals(mUnbondDeviceAddress))
+				{
+					Log.i("@@@@@@", "@@@ unbond device address: " + mUnbondDeviceAddress);
+
+					if (state == BluetoothDevice.BOND_BONDED)
+					{
+						mUnbondCallbackContext.success("bonded");
+						mUnbondCallbackContext = null;
+					}
+					else if (state == BluetoothDevice.BOND_BONDING)
+					{
+						keepCallback(mUnbondCallbackContext, "bonding");
+					}
+					else if (state == BluetoothDevice.BOND_NONE)
+					{
+						mUnbondCallbackContext.success("unbonded");
+						mUnbondCallbackContext = null;
+					}
+				}
+			}
+		}
+	}
 
 	/* Running more than one operation of certain types on remote Gatt devices
 	* seem to cause it to stop responding.
@@ -1115,23 +1437,36 @@ public class BLE
 			if (mCurrentOpContext != null) return;
 			Runnable runnable = mOperations.poll();
 			if (runnable == null) return;
-			runnable.run();
+			runAction(runnable);
 		}
 
 		@Override
 		public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState)
 		{
-			if (status == BluetoothGatt.GATT_SUCCESS) {
-				try {
-					JSONObject o = new JSONObject();
-					o.put("deviceHandle", mHandle);
-					o.put("state", newState);
-					keepCallback(mConnectContext, o);
-				} catch(JSONException e) {
-					e.printStackTrace();
-					assert(false);
+			Log.i("@@@@@@", "@@@ onConnectionStateChange status: " + status + " newState: " + newState);
+
+			if (status == BluetoothGatt.GATT_SUCCESS)
+			{
+				try
+				{
+					JSONObject result = new JSONObject();
+					result.put("deviceHandle", mHandle);
+					result.put("state", newState);
+					Log.i("@@@@@@", "@@@ connect success");
+					keepCallback(mConnectContext, result);
 				}
-			} else {
+				catch(JSONException e)
+				{
+					Log.i("@@@@@@", "@@@ connect error: " + e);
+					e.printStackTrace();
+					mConnectContext.error("Connect error: " + e);
+					//assert(false);
+				}
+			}
+			else
+			{
+				// Could this be where we get 133? Yes it is.
+				Log.i("@@@@@@", "@@@ connect error - status: " + status);
 				mConnectContext.error(status);
 			}
 		}
@@ -1240,10 +1575,10 @@ public class BLE
 			keepCallback(cc, c.getValue());
 		}
 	}
-	
-	
+
+
 	// ************* BLE PERIPHERAL ROLE *************
-	
+
 	// Implementation of advertisement API.
 
 	private BluetoothLeAdvertiser mAdvertiser;

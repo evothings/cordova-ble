@@ -71,21 +71,23 @@ typedef void (^EVOCommandBlock)(void);
 
 /* TODO: Should (strong, nonatomic) be used? Like this:
 @property (strong, nonatomic) NSString* callbackId;
-@property (strong, nonatomic) CBCentralManager* central;
-@property (strong, nonatomic) CBPeripheral* activePeripheral;
-@property (assign, nonatomic) BOOL scanIsWaiting;
 */
 
 @property int handleCounter;
 @property CBCentralManager* central;
 @property NSMutableDictionary* peripherals;
-@property BOOL scanIsWaiting;
-@property NSArray* scanIsWaitingServices;
-@property NSString* scanCallbackId;
+
+@property CDVInvokedUrlCommand* startScanCommand;
+@property CDVInvokedUrlCommand* startScanPostponedCommand;
+@property CDVInvokedUrlCommand* getBondedDevicesPostponedCommand;
 
 // Public Cordova API.
 - (void) startScan: (CDVInvokedUrlCommand*)command;
 - (void) stopScan: (CDVInvokedUrlCommand*)command;
+- (void) getBondedDevices: (CDVInvokedUrlCommand*)command;
+- (void) getBondState: (CDVInvokedUrlCommand*)command;
+- (void) bond: (CDVInvokedUrlCommand*)command;
+- (void) unbond: (CDVInvokedUrlCommand*)command;
 - (void) connect: (CDVInvokedUrlCommand*)command;
 - (void) close: (CDVInvokedUrlCommand*)command;
 - (void) rssi: (CDVInvokedUrlCommand*)command;

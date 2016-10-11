@@ -74,7 +74,7 @@ exports.startScan = function(arg1, arg2, arg3, arg4)
 	function onFail(error)
 	{
 		isScanning = false;
-		fail(device);
+		fail(error);
 	}
 
 	function onSuccess(device)

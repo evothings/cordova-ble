@@ -284,9 +284,25 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	}
 }
 
+/*
+// Not used.
 - (void) assertCommandAvailable
 {
 	assert(![self.commands isEmpty]);
+}
+*/
+
+- (bool) commandIsNotAvailable
+{
+    if ([self.commands isEmpty])
+    {
+    	NSLog(@"@@@ EVOBLE.m: The command queue was empty when command was expected.");
+    	return true;
+    }
+    else
+    {
+    	return false;
+    }
 }
 
 - (void) assertCommandHasObject: (id)obj andType: (int)type
@@ -477,7 +493,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 - (void) peripheralDidUpdateRSSI: (CBPeripheral *)peripheral
 	error: (NSError *)error
 {
-	[self assertCommandAvailable];
+	if ([self commandIsNotAvailable]) return;
 	[self assertCommandHasObject: peripheral andType: EVO_OPERATION_RSSI];
 
 	if (nil == error)
@@ -505,7 +521,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 - (void) peripheral: (CBPeripheral *)peripheral
 	didDiscoverServices: (NSError *)error
 {
-	[self assertCommandAvailable];
+	if ([self commandIsNotAvailable]) return;
 	[self assertCommandHasObject: peripheral andType: EVO_OPERATION_SERVICES];
 
 	if (nil == error)
@@ -542,7 +558,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	didDiscoverCharacteristicsForService: (CBService *)service
 	error:(NSError *)error
 {
-	[self assertCommandAvailable];
+	if ([self commandIsNotAvailable]) return;
 	[self assertCommandHasObject: service andType: EVO_OPERATION_CHARACTERISTICS];
 
 	if (nil == error)
@@ -586,7 +602,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	didDiscoverDescriptorsForCharacteristic: (CBCharacteristic *)characteristic
 	error: (NSError *)error
 {
-	[self assertCommandAvailable];
+	if ([self commandIsNotAvailable]) return;
 	[self assertCommandHasObject: characteristic andType: EVO_OPERATION_DESCRIPTORS];
 
 	if (nil == error)
@@ -678,7 +694,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	didUpdateValueForDescriptor: (CBDescriptor *)descriptor
 	error:(NSError *)error
 {
-	[self assertCommandAvailable];
+	if ([self commandIsNotAvailable]) return;
 	[self assertCommandHasObject: descriptor andType: EVO_OPERATION_READ_DESCRIPTOR];
 
 	if (nil == error)
@@ -726,7 +742,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	didWriteValueForCharacteristic: (CBCharacteristic *)characteristic
 	error:(NSError *)error
 {
-	[self assertCommandAvailable];
+	if ([self commandIsNotAvailable]) return;
 	[self assertCommandHasObject: characteristic andType: EVO_OPERATION_WRITE_CHARACTERISTIC];
 
 	if (nil == error)
@@ -748,7 +764,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	didWriteValueForDescriptor: (CBDescriptor *)descriptor
 	error: (NSError *)error
 {
-	[self assertCommandAvailable];
+	if ([self commandIsNotAvailable]) return;
 	[self assertCommandHasObject: descriptor andType: EVO_OPERATION_WRITE_DESCRIPTOR];
 
 	if (nil == error)

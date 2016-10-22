@@ -154,10 +154,13 @@ exports.startScan = function(arg1, arg2, arg3, arg4)
 function getCanonicalUUIDArray(uuidArray)
 {
 	var result = [];
+
 	for (var i in uuidArray)
 	{
 		result.push(exports.getCanonicalUUID(uuidArray[i]));
 	}
+
+	return result;
 }
 
 /**

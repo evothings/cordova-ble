@@ -838,6 +838,7 @@ exports.connectionState = {
  * @param {DeviceInfo} device - Device object from {scanCallback}.
  * @param {connectedCallback} connected - Called when connected to the device.
  * @param {disconnectedCallback} disconnected - Called when disconnected from the device.
+ * Note that this callback is not called when evothings.ble.close() is called.
  * @param {failCallback} fail - Called on error.
  * @param {ConnectOptions} options - Optional connect options object.
  * @example
@@ -945,8 +946,10 @@ function objectHandle(objectOrHandle)
 
 /**
  * Close the connection to a remote device.
- * <p>Frees any native resources associated with the device.
- * <p>Does not cause any callbacks to the function passed to connect().
+ * <p>Frees any native resources associated with the device.</p>
+ * <p>Does not cause any callbacks to the function passed to evothings.ble.connect().
+ * The disconnectedCallback in evothings.ble.connectToDevice()
+ * is not called when calling evothings.ble.close()</p>
  *
  * @param {DeviceInfo} device - Device object or a device handle
  * from {@link connectCallback}.

@@ -34,6 +34,7 @@
 	</platform>
 
 	<platform name="ios">
+    <preference name="BLUETOOTH_USAGE_DESCRIPTION" default="This app would like to use Bluetooth to connect to nearby devices." />
 		<config-file target="config.xml" parent="/*">
 			<feature name="BLE">
 				<param name="ios-package" value="EVOBLE"/>
@@ -45,6 +46,9 @@
 				<string>bluetooth-central</string>
 			</array>
 		</config-file>
+    <config-file target="*-Info.plist" parent="NSBluetoothPeripheralUsageDescription">
+      <string>$BLUETOOTH_USAGE_DESCRIPTION</string>
+    </config-file>
 
 		<framework src="CoreBluetooth.framework" />
 

@@ -1140,6 +1140,10 @@ public class BLE
 			return false;
 		}
 
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && gatt != null) {
+			gatt.requestMtu(512);
+		}
+
 		return true;
 	}
 

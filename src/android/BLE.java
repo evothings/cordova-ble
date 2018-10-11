@@ -1445,29 +1445,34 @@ public class BLE
 		{
 			Log.i("@@@@@@", "@@@ onConnectionStateChange status: " + status + " newState: " + newState);
 
-			if (status == BluetoothGatt.GATT_SUCCESS)
+			// Report both status and newState to the API client
+			// newState should be one of:
+			//   BluetoothProfile.STATE_CONNECTING
+			//   BluetoothProfile.STATE_CONNECTED
+			//   BluetoothProfile.STATE_DISCONNECTING
+			//   BluetoothProfile.STATE_DISCONNECTED
+			// status will be BluetoothGatt.GATT_SUCCESS (0) for a successful connect or disconnect
+			// but could also be:
+			//   Device went out of range - 8
+			//   Disconnected by device - 19
+			//   Issue with bond - 22
+			//   Device not found - 133 or 62
+	
+			try
 			{
-				try
-				{
-					JSONObject result = new JSONObject();
-					result.put("deviceHandle", mHandle);
-					result.put("state", newState);
-					Log.i("@@@@@@", "@@@ connect success");
-					keepCallback(mConnectContext, result);
-				}
-				catch(JSONException e)
-				{
-					Log.i("@@@@@@", "@@@ connect error: " + e);
-					e.printStackTrace();
-					mConnectContext.error("Connect error: " + e);
-					//assert(false);
-				}
+				JSONObject result = new JSONObject();
+				result.put("deviceHandle", mHandle);
+				result.put("state", newState);
+				result.put("status", status);
+				Log.i("@@@@@@", "@@@ connect success");
+				keepCallback(mConnectContext, result);
 			}
-			else
+			catch(JSONException e)
 			{
-				// Could this be where we get 133? Yes it is.
-				Log.i("@@@@@@", "@@@ connect error - status: " + status);
-				mConnectContext.error(status);
+				Log.i("@@@@@@", "@@@ connect error: " + e);
+				e.printStackTrace();
+				mConnectContext.error("Connect error: " + e);
+				//assert(false);
 			}
 		}
 
